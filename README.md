@@ -1,7 +1,7 @@
 # pigglet
 The Philogenetic Inference and Genotyping from Genotype Likelihoods Tool
 
-![Travis (.com) branch](https://img.shields.io/travis/com/winni2k/pigglet/master)
+[![Build Status](https://travis-ci.com/winni2k/pigglet.svg?token=K7dhHdBzXsubBntxA949&branch=master)](https://travis-ci.com/winni2k/pigglet)
 
 ## Dev setup
 
