@@ -1,4 +1,5 @@
 import pytest
+from pysam import VariantFile
 
 
 class Vcf:
@@ -11,7 +12,13 @@ class Vcf:
 
 
 def load_vcf_file(vcf_file):
-    pass
+    bcf_in = VariantFile(vcf_file)
+    pls = []
+    for rec in bcf_in.fetch():
+        for sample, value in rec.samples.items():
+            print(value.items()[0][1])
+            pls.append(value.items()[0][1])
+    print(pls)
 
 
 @pytest.mark.xfail
