@@ -1,1 +1,3 @@
+pysam
+numpy
 networkx

@@ -1,3 +1,5 @@
+from pysam import VariantFile
+import numpy
 
 class Vcf:
 
@@ -7,8 +9,15 @@ class Vcf:
     def gls(self):
         pass
 
-def load_vcf_file():
-    pass
+def load_vcf_file(vcf_file):
+    bcf_in = VariantFile(vcf_file)
+    pls = []
+    for rec in bcf_in.fetch():
+        for sample, value in rec.samples.items():
+            print(value.items()[0][1])
+            pls.append(value.items()[0][1])
+    print(pls)
+
 
 
 def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
@@ -17,7 +26,7 @@ def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
         fh.write("##fileformat=VCFv4.2\n")
         fh.write('##FORMAT=<ID=PL,Number=G,Type=String,Description="Phred scaled likelihood">\n')
         fh.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample_1\tsample_2\n")
-        fh.write('20\t14370\t.\tG\tA\t29\tPASS\tPL\t1,2,4\t3,7,8\n')
+        fh.write('20\t14370\t.\tG\tA\t29\tPASS\t.\tPL\t1,2,4\t3,7,8\n')
 
     vcf = load_vcf_file(vcf_file)
     assert vcf.gls().shape == (2, 3)
