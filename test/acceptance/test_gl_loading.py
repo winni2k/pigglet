@@ -1,3 +1,5 @@
+import pytest
+
 
 class Vcf:
 
@@ -7,10 +9,12 @@ class Vcf:
     def gls(self):
         pass
 
-def load_vcf_file():
+
+def load_vcf_file(vcf_file):
     pass
 
 
+@pytest.mark.xfail
 def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
     vcf_file = tmpdir.join('input.vcf')
     with open(vcf_file, 'w') as fh:
