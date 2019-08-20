@@ -63,6 +63,7 @@ class BalancedTreeLikelihoodBuilder:
         self.mutated_nodes = set()
         self.sample_id_to_node = {}
         self.mutation_gl = 1
+        self.sample_ids = None
         self.gls = None
         self.g = None
 
@@ -83,9 +84,11 @@ class BalancedTreeLikelihoodBuilder:
     def build(self):
         self.g = nx.balanced_tree(2, self.height, nx.DiGraph())
         sample_nodes = sample_nodes_of_tree(self.g)
-        for idx, sample_node in enumerate(sample_nodes):
-            self.g.nodes[sample_node]['sample_id'] = idx
-            self.sample_id_to_node[idx] = sample_node
+        if self.sample_ids is None:
+            self.sample_ids = list(range(len(sample_nodes)))
+        for sample_id, sample_node in zip(self.sample_ids, sample_nodes):
+            self.g.nodes[sample_node]['sample_id'] = sample_id
+            self.sample_id_to_node[sample_id] = sample_node
         self.gls = np.zeros((self.num_sites, len(sample_nodes), NUM_GLS))
 
         self._add_likelihood_peaks()
@@ -95,9 +98,15 @@ class BalancedTreeLikelihoodBuilder:
 
     def with_likelihood_peak_at_all_hom_ref(self):
         self.likelihood_peaks.add(0)
+        return self
 
     def with_mutated_sample_id(self, sample_id, site_idx):
         self.mutated_nodes.add((sample_id, site_idx))
+        return self
+
+    def with_sample_ids(self, *ids):
+        self.sample_ids = ids
+        return self
 
 
 def sample_nodes_of_tree(g):
@@ -135,7 +144,6 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         # then
         assert like == 4 * 3
 
-    # todo: return sample nodes in random order
     def test_with_mutation_before_fourth_node(self):
         # given
         b = BalancedTreeLikelihoodBuilder()
@@ -149,3 +157,29 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
 
         # then
         assert like == 1
+
+    def test_with_mutation_before_fourth_node_and_scrambled_sample_ids(self):
+        # given
+        b = BalancedTreeLikelihoodBuilder()
+        b.with_mutated_sample_id(3, 1)
+        b.with_sample_ids(3, 0, 1, 2)
+        g, gls = b.build()
+
+        calc = TreeLikelihoodCalculator(g, gls, sample_nodes_of_tree(g))
+
+        # when
+        like = calc.calculate_likelihood()
+
+        # then
+        assert like == 1
+
+    def test_with_mutation_before_fourth_node_and_non_sequential_sample_ids(self):
+        # given
+        b = BalancedTreeLikelihoodBuilder()
+        b.with_mutated_sample_id(3, 1)
+        b.with_sample_ids(3, 0, 4, 2)
+        g, gls = b.build()
+
+        # when/then
+        with pytest.raises(AssertionError):
+            calc = TreeLikelihoodCalculator(g, gls, sample_nodes_of_tree(g))
