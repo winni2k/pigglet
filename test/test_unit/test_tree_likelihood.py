@@ -3,10 +3,15 @@ import numpy as np
 import pytest
 
 NUM_GLS = 2
+HET_TUP = np.array([False, True], dtype=np.bool_)
 
 
 class TreeLikelihoodCalculator:
-    """Calculates likelihood of tree (g) from gls"""
+    """Calculates likelihood of tree (g) from gls for m sites and n samples
+
+    self.gls should have shape (m, n, NUM_GLS)
+    self.mutation_matrix_mask has shape (m, n, NUM_GLS)
+    """
 
     def __init__(self, g, gls, sample_nodes):
         self.g = g
@@ -14,7 +19,7 @@ class TreeLikelihoodCalculator:
         self.sample_nodes = sample_nodes
         assert self.gls.shape[1] == len(self.sample_nodes)
 
-        self.sample_ids = [g.nodes[n]['sample_id'] for n in self.sample_nodes]
+        self.sample_ids = [int(g.nodes[n]['sample_id']) for n in self.sample_nodes]
         assert max(self.sample_ids) + 1 == len(self.sample_nodes)
 
         self.mutation_matrix_mask = np.zeros_like(gls, np.bool_).reshape(-1)
@@ -25,18 +30,26 @@ class TreeLikelihoodCalculator:
         assert len(self.root) == 1
         self.root = self.root[0]
 
-
     def calculate_likelihood(self):
-        # self._update_mutation_matrix_mask()
-        return np.sum(self.gls[self.mutation_matrix_mask].reshape(self.gls.shape[0], self.gls.shape[1]))
+        self._update_mutation_matrix_mask()
+        return np.sum(self.gls[self.mutation_matrix_mask].reshape(self.gls.shape[0],
+                                                                  self.gls.shape[1]))
 
     def _update_mutation_matrix_mask(self):
-        for path in enumerate(nx.all_simple_paths(self.g, self.root, self.sample_nodes)):
+        for idx, path in enumerate(
+                nx.all_simple_paths(self.g, self.root, self.sample_nodes)):
+            sample_mutations = []
+            assert len(path) > 0
             for node in path:
                 try:
-                    self.g.nodes[node]['mutations']
+                    sample_mutations += self.g.nodes[node]['mutations']
                 except KeyError:
                     pass
+            if sample_mutations:
+                self.mutation_matrix_mask[
+                    np.array(sample_mutations),
+                    self.g.nodes[node]['sample_id']
+                ] = HET_TUP
 
 
 class BalancedTreeLikelihoodBuilder:
@@ -57,7 +70,8 @@ class BalancedTreeLikelihoodBuilder:
         # mutate nodes
         for sample_id, site_idx in self.mutated_nodes:
             try:
-                self.g.nodes[self.sample_id_to_node[sample_id]]['mutations'].append(site_idx)
+                self.g.nodes[self.sample_id_to_node[sample_id]]['mutations'].append(
+                    site_idx)
             except KeyError:
                 self.g.nodes[self.sample_id_to_node[sample_id]]['mutations'] = [site_idx]
             self.gls[site_idx, sample_id, 1] = self.mutation_gl
@@ -89,8 +103,10 @@ class BalancedTreeLikelihoodBuilder:
 def sample_nodes_of_tree(g):
     return [tup[0] for tup in filter(lambda tup: tup[1] == 0, g.out_degree)]
 
+
 def roots_of_tree(g):
     return [tup[0] for tup in filter(lambda tup: tup[1] == 0, g.in_degree)]
+
 
 class TestLikelihoodOfBalancedTreeHeightTwo:
 
@@ -120,7 +136,6 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         assert like == 4 * 3
 
     # todo: return sample nodes in random order
-    @pytest.mark.xfail(reason='Still needs implementing')
     def test_with_mutation_before_fourth_node(self):
         # given
         b = BalancedTreeLikelihoodBuilder()
@@ -134,4 +149,3 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
 
         # then
         assert like == 1
-
