@@ -1,5 +1,5 @@
 # pigglet
-The Philogenetic Inference and Genotyping from Genotype Likelihoods Tool
+The Phylogenetic Inference and Genotyping from Genotype Likelihoods Tool
 
 
 ## Dev setup
