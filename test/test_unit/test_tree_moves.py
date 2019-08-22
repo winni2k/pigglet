@@ -1,0 +1,2 @@
+class TestPruneAndReattach:
+    pass

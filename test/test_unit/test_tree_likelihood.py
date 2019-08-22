@@ -1,3 +1,13 @@
+"""
+Regarding builder classes
+=========================
+
+All builder classes end in "Builder"
+All attributes are private.
+All methods prefixed with "_" are private.
+Call build() to obtain the constructed object.
+"""
+
 import networkx as nx
 import numpy as np
 import pytest
@@ -11,19 +21,50 @@ def sample_nodes_of_tree(g):
     return [tup[0] for tup in filter(lambda tup: tup[1] == 0, g.out_degree)]
 
 
+class TreeBuilder:
+    def __init__(self):
+        self.g = nx.DiGraph()
+        self.sample_ids = []
+
+    def with_balanced_tree(self, height=2, n_branches=2):
+        self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
+        nx.relabel_nodes(self.g, {n: n - 1 for n in self.g.nodes}, copy=False)
+        return self
+
+    def with_mutation_at(self, attachment_node, new_node_id):
+        self.g.add_edge(attachment_node, new_node_id)
+        return self
+
+    def with_sample_at(self, attachment_node, new_sample_name):
+        self.g.add_node(new_sample_name, sample_id=len(self.sample_ids))
+        self.g.add_edge(attachment_node, new_sample_name)
+        return self
+
+    def with_sample_ids(self, *ids):
+        self.sample_ids = ids
+        return self
+
+    def build(self):
+        if len(self.g.nodes()) == 0:
+            self.g.add_edge(-1, 0)
+        sample_nodes = sample_nodes_of_tree(self.g)
+        if len(self.sample_ids) == 0:
+            self.sample_ids = list(range(len(sample_nodes)))
+        for sample_id, sample_node in zip(self.sample_ids, sample_nodes):
+            self.g.nodes[sample_node]['sample_id'] = sample_id
+
+        return self.g
+
+
 class TreeLikelihoodBuilder:
-    """All methods and attributes are private, except for build() and methods prefixed with "with_"
-    """
 
     def __init__(self):
         self.likelihood_peaks = set()
         self.mutated_sample_ids = set()
         self.mutated_gls = set()
-        self.sample_id_to_node = {}
         self.mutation_gl = 1
-        self.sample_ids = list()
         self.gls = None
-        self.g = nx.DiGraph()
+        self.tree_builder = TreeBuilder()
 
     def _mutate_gls(self):
         for sample_id, site_idx in itertools.chain(self.mutated_gls,
@@ -35,26 +76,19 @@ class TreeLikelihoodBuilder:
             self.gls[:, :, peak] = self.mutation_gl
 
     def build(self):
-        if len(self.g.nodes()) == 0:
-            self.g.add_edge(-1, 0)
-        sample_nodes = sample_nodes_of_tree(self.g)
-        if len(self.sample_ids) == 0:
-            self.sample_ids = list(range(len(sample_nodes)))
-        for sample_id, sample_node in zip(self.sample_ids, sample_nodes):
-            self.g.nodes[sample_node]['sample_id'] = sample_id
-            self.sample_id_to_node[sample_id] = sample_node
+        tree = self.tree_builder.build()
+        sample_nodes = sample_nodes_of_tree(tree)
 
-        num_sites = len(self.g.nodes()) - 1 - len(sample_nodes)
+        num_sites = len(tree.nodes()) - 1 - len(sample_nodes)
         self.gls = np.zeros((num_sites, len(sample_nodes), NUM_GLS))
 
         self._add_likelihood_peaks()
         self._mutate_gls()
 
-        return self.g, self.gls
+        return tree, self.gls
 
     def with_balanced_tree(self, height=2, n_branches=2):
-        self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
-        nx.relabel_nodes(self.g, {n: n - 1 for n in self.g.nodes}, copy=False)
+        self.tree_builder.with_balanced_tree(height=height, n_branches=n_branches)
         return self
 
     def with_likelihood_peak_at_all_hom_ref(self):
@@ -69,17 +103,15 @@ class TreeLikelihoodBuilder:
         self.mutated_gls.add((sample_id, site_idx))
 
     def with_sample_ids(self, *ids):
-        self.sample_ids = ids
+        self.tree_builder.with_sample_ids(*ids)
         return self
 
     def with_mutation_at(self, attachment_node, new_node_id):
-        self.g.add_edge(attachment_node, new_node_id)
+        self.tree_builder.with_mutation_at(attachment_node, new_node_id)
         return self
 
     def with_sample_at(self, attachment_node, new_sample_name):
-        self.g.add_node(new_sample_name, sample_id=len(self.sample_ids))
-        self.g.add_edge(attachment_node, new_sample_name)
-
+        self.tree_builder.with_sample_at(attachment_node, new_sample_name)
         return self
 
 
