@@ -28,7 +28,7 @@ setup(
     author_email='warren.kretzschmar@ki.se',
     url='https://github.com/winni2k',
     install_requires=['networkx', 'numpy', 'pysam'],
-    packages=find_packages(exclude=['contrib', 'docs', 'tests']),  # Required
+    packages=find_packages(exclude=['contrib', 'docs', 'test*']),  # Required
     python_requires='>=3.6, <4',
 
 )
