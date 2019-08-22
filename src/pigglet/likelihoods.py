@@ -9,6 +9,11 @@ class TreeLikelihoodCalculator:
 
     self.gls should have shape (m, n, NUM_GLS)
     self.mutation_matrix_mask has shape (m, n, NUM_GLS)
+
+    The likelihood tree is a rooted mutation tree with attached samples.
+    This means that every node, except for the root and leaf nodes, represents
+    a single mutation. The mutation node IDs are also the index of the mutation into the
+    mutation and GL matrices.
     """
 
     def __init__(self, g, gls, sample_nodes):
@@ -34,19 +39,11 @@ class TreeLikelihoodCalculator:
                                                                   self.gls.shape[1]))
 
     def _update_mutation_matrix_mask(self):
-        for idx, path in enumerate(
-                nx.all_simple_paths(self.g, self.root, self.sample_nodes)):
-            sample_mutations = []
-            assert len(path) > 0
-            for node in path:
-                try:
-                    sample_mutations += self.g.nodes[node]['mutations']
-                except KeyError:
-                    pass
-            if sample_mutations:
+        for path in nx.all_simple_paths(self.g, self.root, self.sample_nodes):
+            if len(path) > 2:
                 self.mutation_matrix_mask[
-                    np.array(sample_mutations),
-                    self.g.nodes[node]['sample_id']
+                    np.array(path[1:-1]),
+                    self.g.nodes[path[-1]]['sample_id']
                 ] = HET_TUP
 
 
