@@ -21,7 +21,6 @@ class TreeLikelihoodBuilder:
     def __init__(self):
         self.likelihood_peaks = set()
         self.mutated_sample_ids = set()
-        self.mutated_nodes = set()
         self.mutated_gls = set()
         self.sample_id_to_node = {}
         self.mutation_gl = 1
@@ -69,23 +68,11 @@ class TreeLikelihoodBuilder:
         self.mutated_sample_ids.add((sample_id, site_idx))
         return self
 
-    def with_mutated_node_at(self, node, site_idx):
-        self.mutated_nodes.add((node, site_idx))
-        return self
-
     def with_mutated_gl_at(self, sample_id, site_idx):
         self.mutated_gls.add((sample_id, site_idx))
 
     def with_sample_ids(self, *ids):
         self.sample_ids = ids
-        return self
-
-    def with_tree_height(self, height):
-        self.height = height
-        return self
-
-    def with_tree(self, g):
-        self.g = g
         return self
 
     def with_mutation_at(self, attachment_node, new_node_id):
@@ -223,7 +210,6 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         # given
         b = TreeLikelihoodBuilder()
         b.with_balanced_tree()
-        b.with_mutated_node_at(2, 1)
         b.with_mutated_gl_at(2, 1)
         b.with_mutated_gl_at(3, 1)
         g, gls = b.build()
