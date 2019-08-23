@@ -31,7 +31,7 @@ class TreeLikelihoodBuilder:
 
     def build(self):
         tree = self.tree_builder.build()
-        self.num_sites = max(len(tree) -1 , self.num_sites)
+        self.num_sites = max(len(tree) - 1, self.num_sites)
         self.gls = np.zeros((self.num_sites, self.num_samples, NUM_GLS))
 
         self._add_likelihood_peaks()
@@ -61,6 +61,7 @@ class TreeLikelihoodBuilder:
         self.num_sites = n_sites
         self.num_samples = n_samples
         return self
+
 
 class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
 
