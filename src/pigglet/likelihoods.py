@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 
 from pigglet.constants import NUM_GLS, HET_TUP
+from pigglet.tree_utils import roots_of_tree
 
 
 class TreeLikelihoodCalculator:
@@ -56,7 +57,3 @@ class TreeLikelihoodCalculator:
                     np.array(path[1:]),
                     sample_idx
                 ] = HET_TUP
-
-
-def roots_of_tree(g):
-    return [tup[0] for tup in filter(lambda tup: tup[1] == 0, g.in_degree)]
