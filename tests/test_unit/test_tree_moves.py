@@ -32,6 +32,8 @@ class TreeInteractor:
         return self
 
     def swap_labels(self, n1, n2):
+        if n1 == n2:
+            raise ValueError
         nx.relabel_nodes(self.g, {n1: TMP_LABEL}, copy=False)
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)
         return self
@@ -113,3 +115,13 @@ class TestSwapNodeLabels:
         # then
         assert set(nx.ancestors(inter.g, 0)) == {-1, 1}
         assert set(nx.ancestors(inter.g, 4)) == {-1}
+
+    def test_raises_if_node_label_is_identical(self):
+        # given
+        b = TreeInteractorBuilder()
+        b.with_balanced_tree(2)
+        inter = b.build()
+
+        # when/then
+        with pytest.raises(ValueError):
+            inter.swap_labels(0, 0)
