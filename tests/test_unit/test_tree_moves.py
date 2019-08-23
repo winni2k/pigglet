@@ -38,6 +38,17 @@ class TreeInteractor:
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)
         return self
 
+    def swap_subtrees(self, n1, n2):
+        if n2 in nx.ancestors(self.g, n1) or n2 in nx.descendants(self.g, n1):
+            return self
+        n1_parent = list(self.g.in_edges(n1))[0][0]
+        n2_parent = list(self.g.in_edges(n2))[0][0]
+        self.prune(n1)
+        self.prune(n2)
+        self.attach(n1, n2_parent)
+        self.attach(n2, n1_parent)
+        return self
+
 
 class TreeInteractorBuilder(TreeBuilder):
 
@@ -125,3 +136,21 @@ class TestSwapNodeLabels:
         # when/then
         with pytest.raises(ValueError):
             inter.swap_labels(0, 0)
+
+
+class TestSwapSubtrees:
+
+    def test_swaps_two_indirectly_related_nodes(self):
+        # given
+        b = TreeInteractorBuilder()
+        b.with_balanced_tree(3)
+        inter = b.build()
+
+        # when
+        inter.swap_subtrees(2, 4)
+
+        # then
+        assert set(nx.ancestors(inter.g, 2)) == {-1, 1}
+        assert set(nx.descendants(inter.g, 2)) == {6, 7}
+        assert set(nx.ancestors(inter.g, 4)) == {-1, 0}
+        assert set(nx.descendants(inter.g, 4)) == {10, 11}
