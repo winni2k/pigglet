@@ -15,6 +15,8 @@ class TreeLikelihoodBuilder:
         self.mutated_sample_ids = set()
         self.mutated_gls = set()
         self.mutation_gl = 1
+        self.num_sites = 0
+        self.num_samples = 0
         self.gls = None
         self.tree_builder = TreeBuilder()
 
@@ -29,10 +31,8 @@ class TreeLikelihoodBuilder:
 
     def build(self):
         tree = self.tree_builder.build()
-        sample_nodes = sample_nodes_of_tree(tree)
-
-        num_sites = len(tree.nodes()) - 1 - len(sample_nodes)
-        self.gls = np.zeros((num_sites, len(sample_nodes), NUM_GLS))
+        self.num_sites = max(len(tree) -1 , self.num_sites)
+        self.gls = np.zeros((self.num_sites, self.num_samples, NUM_GLS))
 
         self._add_likelihood_peaks()
         self._mutate_gls()
@@ -47,25 +47,20 @@ class TreeLikelihoodBuilder:
         self.likelihood_peaks.add(0)
         return self
 
-    def with_mutated_sample_id_at(self, sample_id, site_idx):
-        self.mutated_sample_ids.add((sample_id, site_idx))
-        return self
-
-    def with_mutated_gl_at(self, sample_id, site_idx):
-        self.mutated_gls.add((sample_id, site_idx))
-
-    def with_sample_ids(self, *ids):
-        self.tree_builder.with_sample_ids(*ids)
+    def with_mutated_gl_at(self, sample_idx, site_idx):
+        self.num_sites = max(site_idx + 1, self.num_sites)
+        self.num_samples = max(sample_idx + 1, self.num_samples)
+        self.mutated_gls.add((sample_idx, site_idx))
         return self
 
     def with_mutation_at(self, attachment_node, new_node_id):
         self.tree_builder.with_mutation_at(attachment_node, new_node_id)
         return self
 
-    def with_sample_at(self, attachment_node, new_sample_name):
-        self.tree_builder.with_sample_at(attachment_node, new_sample_name)
+    def with_gl_dimensions(self, n_sites, n_samples):
+        self.num_sites = n_sites
+        self.num_samples = n_samples
         return self
-
 
 class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
 
