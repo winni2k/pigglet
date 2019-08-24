@@ -13,7 +13,7 @@ import pytest
 from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
 
 
-class TestLikelihoodOfBalancedTreeHeightTwo:
+class TestSampleAttachmentLikelihood:
 
     def test_one_sample_one_site_no_mutation(self):
         # given
@@ -23,7 +23,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([-1])
+        like = calc.sample_attachment_likelihood([-1])
 
         # then
         assert like == 1
@@ -36,7 +36,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([-1, -1])
+        like = calc.sample_attachment_likelihood([-1, -1])
 
         # then
         assert like == 2
@@ -50,8 +50,8 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when/then
-        assert calc.calculate_likelihood([0]) == 1
-        assert calc.calculate_likelihood([-1]) == 0
+        assert calc.sample_attachment_likelihood([0]) == 1
+        assert calc.sample_attachment_likelihood([-1]) == 0
 
     def test_one_sample_two_private_mutations(self):
         # given
@@ -63,7 +63,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([1])
+        like = calc.sample_attachment_likelihood([1])
 
         # then
         assert like == 2
@@ -77,9 +77,9 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when/then
-        assert calc.calculate_likelihood([1, 1, -1, -1]) == 6
-        assert calc.calculate_likelihood([1, 1, 0, 0]) == 4
-        assert calc.calculate_likelihood([1, 1, 1, 1]) == 4
+        assert calc.sample_attachment_likelihood([1, 1, -1, -1]) == 6
+        assert calc.sample_attachment_likelihood([1, 1, 0, 0]) == 4
+        assert calc.sample_attachment_likelihood([1, 1, 1, 1]) == 4
 
     @pytest.mark.parametrize('sample_id_to_mutate,exp_like', [(0, 0), (1, 1)])
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate, exp_like):
@@ -92,7 +92,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([-1, 0])
+        like = calc.sample_attachment_likelihood([-1, 0])
 
         # then
         assert like == exp_like
@@ -105,7 +105,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
 
         # when/then
         with pytest.raises(AssertionError):
-            calc.calculate_likelihood([4])
+            calc.sample_attachment_likelihood([4])
 
     def test_with_two_private_mutations(self):
         # given
@@ -119,7 +119,7 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([0, 1])
+        like = calc.sample_attachment_likelihood([0, 1])
 
         # then
         assert like == 2
@@ -134,7 +134,83 @@ class TestLikelihoodOfBalancedTreeHeightTwo:
         calc = b.build()
 
         # when
-        like = calc.calculate_likelihood([0, 0, 1, 1])
+        like = calc.sample_attachment_likelihood([0, 0, 1, 1])
 
         # then
         assert like == 2
+
+
+class TestSampleMarginalizedLikelihood:
+
+    def test_single_mutation_one_sample(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutated_gl_at(0, 0)
+        calc = b.build()
+
+        # when
+        like = calc.sample_marginalized_likelihood()
+
+        # then
+        assert like == 1
+
+    def test_single_mutation_two_samples(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(1, 0)
+        calc = b.build()
+
+        # when
+        like = calc.sample_marginalized_likelihood()
+
+        # then
+        assert like == 0 + 1 + 1 + 2
+
+    def test_two_mutations_one_sample_balanced_tree(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_balanced_tree(1)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(0, 1)
+        calc = b.build()
+
+        # when
+        like = calc.sample_marginalized_likelihood()
+
+        # then
+        assert like == 0 + 1 + 1
+
+    def test_two_mutations_one_sample(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutation_at(0, 1)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(0, 1)
+        calc = b.build()
+
+        # when
+        like = calc.sample_marginalized_likelihood()
+
+        # then
+        assert like == 0 + 1 + 2
+
+    def test_two_mutations_two_samples(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutation_at(0, 1)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(0, 1)
+        b.with_mutated_gl_at(1, 0)
+        b.with_mutated_gl_at(1, 1)
+        calc = b.build()
+
+        # when
+        like = calc.sample_marginalized_likelihood()
+
+        # then
+        assert like == 0 + 1 + 2 + 1 + 2 + 3 + 2 + 3 + 4

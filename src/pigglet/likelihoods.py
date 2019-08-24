@@ -1,3 +1,5 @@
+import itertools
+
 import networkx as nx
 import numpy as np
 
@@ -36,7 +38,7 @@ class TreeLikelihoodCalculator:
             self.mutation_matrix_mask[1::NUM_GLS] = False
         self.mutation_matrix_mask = self.mutation_matrix_mask.reshape(self.gls.shape)
 
-    def calculate_likelihood(self, attachment_nodes):
+    def sample_attachment_likelihood(self, attachment_nodes):
         """Calculate the likelihood of the mutation tree with samples attached at
         `attachment_nodes`"""
         assert len(attachment_nodes) == self.n_samples
@@ -44,6 +46,16 @@ class TreeLikelihoodCalculator:
         self._update_mutation_matrix_mask(attachment_nodes)
         return np.sum(self.gls[self.mutation_matrix_mask].reshape(self.gls.shape[0],
                                                                   self.gls.shape[1]))
+
+    def sample_marginalized_likelihood(self):
+        like_sum = 0
+        nodes = list(self.g)
+        sample_nodes = []
+        for _ in range(self.n_samples):
+            sample_nodes.append(nodes)
+        for nodes in itertools.product(*sample_nodes):
+            like_sum += self.sample_attachment_likelihood(nodes)
+        return like_sum
 
     def _update_mutation_matrix_mask(self, attachment_nodes):
         attachment_node_set = set(attachment_nodes)
