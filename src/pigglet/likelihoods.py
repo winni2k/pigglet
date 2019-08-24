@@ -20,15 +20,12 @@ class TreeLikelihoodCalculator:
     mutation and GL matrices.
     """
 
-    def __init__(self, g, gls, sample_nodes):
-        self.g = g
+    def __init__(self, g, gls):
         self.gls = gls
         self.n_samples = self.gls.shape[1]
-
-        self.root = roots_of_tree(self.g)
-        assert len(self.root) == 1
-        self.root = self.root[0]
-
+        self.g = None
+        self.root = None
+        self.set_g(g)
         self.mutation_matrix_mask = np.zeros_like(self.gls, np.bool_)
 
     def _reset_mutation_matrix(self):
@@ -37,6 +34,12 @@ class TreeLikelihoodCalculator:
         for start in range(1, NUM_GLS):
             self.mutation_matrix_mask[1::NUM_GLS] = False
         self.mutation_matrix_mask = self.mutation_matrix_mask.reshape(self.gls.shape)
+
+    def set_g(self, g):
+        roots = roots_of_tree(g)
+        assert len(roots) == 1
+        self.root = roots[0]
+        self.g = g
 
     def sample_attachment_likelihood(self, attachment_nodes):
         """Calculate the likelihood of the mutation tree with samples attached at
