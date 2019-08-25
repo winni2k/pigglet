@@ -62,11 +62,23 @@ class TestUniformAttach:
 
         # when
         inter.uniform_attach(0)
-        edges = list(inter.g.in_edges(0))
 
         # then
-        assert len(edges) == 1
-        assert edges[0][0] in {-1, 1, 4, 5}
+        assert nx.ancestors(inter.g, 0) <= {-1, 1, 4, 5}
+
+    def test_also__reattaches_to_root(self):
+        # given
+        b = TreeInteractorBuilder()
+        b.with_mutation_at(-1, 0)
+        inter = b.build()
+
+        inter.prune(0)
+
+        # when
+        inter.uniform_attach(0)
+
+        # then
+        assert list(nx.ancestors(inter.g, 0)) == [-1]
 
 
 class TestSwapNodeLabels:

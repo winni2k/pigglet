@@ -1,3 +1,4 @@
+import itertools
 import random
 
 import networkx as nx
@@ -22,7 +23,10 @@ class TreeInteractor:
         self.g.add_edge(target, node)
 
     def uniform_attach(self, node):
-        valid_attachment_points = list(nx.descendants(self.g, self.root))
+        valid_attachment_points = itertools.chain(
+            nx.descendants(self.g, self.root),
+            [self.root]
+        )
         self._uniform_attach_to_nodes(node, valid_attachment_points)
         return 1
 
@@ -57,7 +61,8 @@ class TreeInteractor:
         anc_descendants = nx.descendants(self.g, ancestor)
 
         self.prune(ancestor)
-        self._uniform_attach_to_nodes(ancestor, dec_descendants)
+        self._uniform_attach_to_nodes(ancestor,
+                                      itertools.chain(dec_descendants, [descendant]))
 
         return (len(dec_descendants) + 1) / (len(anc_descendants) + 1)
 

@@ -47,12 +47,13 @@ class MCMCRunner:
     def run(self):
         iteration = 0
         mcmc_moves = list(range(NUM_MCMC_MOVES))
+        mover = Mover(self.g)
+        moves = [mover.prune_and_reattach,
+                 mover.swap_node,
+                 mover.swap_subtree]
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
+            mover.set_g(self.g.copy())
             move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
-            mover = Mover(self.g)
-            moves = [mover.prune_and_reattach,
-                     mover.swap_node,
-                     mover.swap_subtree]
             mh_correction = moves[move]()
             new_g = mover.g
             self.calc.set_g(new_g)
@@ -76,7 +77,12 @@ class MCMCRunner:
 
 class Mover:
     def __init__(self, g):
-        self.g = g.copy()
+        self.g = None
+        self.interactor = None
+        self.set_g(g)
+
+    def set_g(self, g):
+        self.g = g
         self.interactor = TreeInteractor(self.g)
 
     def prune_and_reattach(self):
