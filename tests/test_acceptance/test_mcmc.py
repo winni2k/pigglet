@@ -1,3 +1,6 @@
+import networkx as nx
+import pytest
+
 from pigglet_testing.builders.tree_likelihood import MCMCBuilder
 
 
@@ -10,7 +13,7 @@ def test_finds_one_sample_one_site():
     mcmc.run()
 
     # then
-    assert set(mcmc.g.edges()) == {(-1, 0)}
+    assert set(mcmc.ml_g.edges()) == {(-1, 0)}
 
 
 def test_finds_two_samples_two_sites():
@@ -25,7 +28,7 @@ def test_finds_two_samples_two_sites():
     mcmc.run()
 
     # then
-    assert set(mcmc.g.edges()) == {(-1, 0), (-1, 1)}
+    assert set(mcmc.ml_g.edges()) == {(-1, 0), (-1, 1)}
 
 
 def test_finds_two_samples_two_sites_in_line():
@@ -40,4 +43,42 @@ def test_finds_two_samples_two_sites_in_line():
     mcmc.run()
 
     # then
-    assert set(mcmc.g.edges()) == {(-1, 0), (0, 1)}
+    assert set(mcmc.ml_g.edges()) == {(-1, 0), (0, 1)}
+
+
+@pytest.mark.parametrize('n_mutations', [3, 4])
+def test_arbitrary_trees(n_mutations):
+    # given
+    # n_mutations = 4
+    rand_g = nx.gnr_graph(n_mutations, 0).reverse()
+    nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
+
+    leaf_nodes = [x for x in rand_g.nodes() if rand_g.out_degree(x) == 0]
+    print('leaf nodes:', leaf_nodes)
+    print(dict(rand_g.out_degree()))
+    print(rand_g.edges())
+
+    b = MCMCBuilder()
+    b.with_n_burnin_iter(10 * 2 ** n_mutations)
+
+    # set GLs to het for every mutation of the sample and to hom ref for all other mutations
+    for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
+        mutations = set(nx.ancestors(rand_g, attachment_point))
+        mutations.add(attachment_point)
+        mutations.remove(-1)
+        for mutation in mutations:
+            b.with_mutated_gl_at(sample, mutation)
+        for non_mutation in set(rand_g) - mutations:
+            if non_mutation != -1:
+                b.with_unmutated_gl_at(sample, non_mutation)
+
+    mcmc = b.build()
+
+    # when
+    mcmc.run()
+    print(mcmc.g.edges())
+    print(mcmc.ml_g.edges())
+    print(mcmc.gls)
+
+    # then
+    assert set(mcmc.ml_g.edges()) == set(rand_g.edges())

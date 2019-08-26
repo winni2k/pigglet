@@ -13,6 +13,7 @@ class MCMCRunner:
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
                  tree_move_weights, tree_interactor, likelihood_calculator):
         self.g = graph
+        self.ml_g = graph
         self.gls = gls
         self.num_sampling_iter = num_sampling_iter
         self.num_burnin_iter = num_burnin_iter
@@ -58,6 +59,9 @@ class MCMCRunner:
             new_g = mover.g
             self.calc.set_g(new_g)
             new_like = self.calc.sample_marginalized_likelihood()
+            if new_like >= self.current_like:
+                self.ml_g = new_g
+            print(f'{iteration}: ml_g({self.ml_g.edges}), {self.current_like}, {self.g.edges}, {move}, {new_like} {new_g.edges}')
             accepted = self._choose_g(new_g, new_like, mh_correction)
             if accepted:
                 iteration += 1
