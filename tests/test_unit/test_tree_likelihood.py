@@ -7,6 +7,7 @@ All attributes are private.
 All methods prefixed with "_" are private.
 Call build() to obtain the constructed object.
 """
+import math
 
 import pytest
 
@@ -23,7 +24,7 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([-1])
+        like = calc.log_sample_attachment_likelihood([-1])
 
         # then
         assert like == 1
@@ -36,7 +37,7 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([-1, -1])
+        like = calc.log_sample_attachment_likelihood([-1, -1])
 
         # then
         assert like == 2
@@ -50,8 +51,8 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when/then
-        assert calc.sample_attachment_likelihood([0]) == 1
-        assert calc.sample_attachment_likelihood([-1]) == 0
+        assert calc.log_sample_attachment_likelihood([0]) == 1
+        assert calc.log_sample_attachment_likelihood([-1]) == 0
 
     def test_one_sample_two_private_mutations(self):
         # given
@@ -63,7 +64,7 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([1])
+        like = calc.log_sample_attachment_likelihood([1])
 
         # then
         assert like == 2
@@ -77,9 +78,9 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when/then
-        assert calc.sample_attachment_likelihood([1, 1, -1, -1]) == 6
-        assert calc.sample_attachment_likelihood([1, 1, 0, 0]) == 4
-        assert calc.sample_attachment_likelihood([1, 1, 1, 1]) == 4
+        assert calc.log_sample_attachment_likelihood([1, 1, -1, -1]) == 6
+        assert calc.log_sample_attachment_likelihood([1, 1, 0, 0]) == 4
+        assert calc.log_sample_attachment_likelihood([1, 1, 1, 1]) == 4
 
     @pytest.mark.parametrize('sample_id_to_mutate,exp_like', [(0, 0), (1, 1)])
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate, exp_like):
@@ -92,7 +93,7 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([-1, 0])
+        like = calc.log_sample_attachment_likelihood([-1, 0])
 
         # then
         assert like == exp_like
@@ -105,7 +106,7 @@ class TestSampleAttachmentLikelihood:
 
         # when/then
         with pytest.raises(AssertionError):
-            calc.sample_attachment_likelihood([4])
+            calc.log_sample_attachment_likelihood([4])
 
     def test_with_two_private_mutations(self):
         # given
@@ -119,7 +120,7 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([0, 1])
+        like = calc.log_sample_attachment_likelihood([0, 1])
 
         # then
         assert like == 2
@@ -134,10 +135,14 @@ class TestSampleAttachmentLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_attachment_likelihood([0, 0, 1, 1])
+        like = calc.log_sample_attachment_likelihood([0, 0, 1, 1])
 
         # then
         assert like == 2
+
+
+def sum_of_exp_of(*log_likelihoods):
+    return sum(math.exp(x) for x in log_likelihoods)
 
 
 class TestSampleMarginalizedLikelihood:
@@ -153,7 +158,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == 1
+        assert like == sum_of_exp_of(0, 1)
 
     def test_single_mutation_two_samples(self):
         # given
@@ -167,7 +172,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == 0 + 1 + 1 + 2
+        assert like == sum_of_exp_of(0, 1, 1, 2)
 
     def test_two_mutations_one_sample_balanced_tree(self):
         # given
@@ -181,7 +186,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == 0 + 1 + 1
+        assert like == sum_of_exp_of(0, 1, 1)
 
     def test_two_mutations_one_sample(self):
         # given
@@ -196,7 +201,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == 0 + 1 + 2
+        assert like == sum_of_exp_of(0, 1, 2)
 
     def test_two_mutations_two_samples(self):
         # given
@@ -213,4 +218,4 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == 0 + 1 + 2 + 1 + 2 + 3 + 2 + 3 + 4
+        assert like == sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4)

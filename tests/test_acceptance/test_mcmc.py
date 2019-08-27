@@ -13,7 +13,7 @@ def test_finds_one_sample_one_site():
     mcmc.run()
 
     # then
-    assert set(mcmc.ml_g.edges()) == {(-1, 0)}
+    assert set(mcmc.map_g.edges()) == {(-1, 0)}
 
 
 def test_finds_two_samples_two_sites():
@@ -28,7 +28,7 @@ def test_finds_two_samples_two_sites():
     mcmc.run()
 
     # then
-    assert set(mcmc.ml_g.edges()) == {(-1, 0), (-1, 1)}
+    assert set(mcmc.map_g.edges()) == {(-1, 0), (-1, 1)}
 
 
 def test_finds_two_samples_two_sites_in_line():
@@ -43,7 +43,7 @@ def test_finds_two_samples_two_sites_in_line():
     mcmc.run()
 
     # then
-    assert set(mcmc.ml_g.edges()) == {(-1, 0), (0, 1)}
+    assert set(mcmc.map_g.edges()) == {(-1, 0), (0, 1)}
 
 
 @pytest.mark.parametrize('n_mutations', [3, 4])
@@ -77,8 +77,8 @@ def test_arbitrary_trees(n_mutations):
     # when
     mcmc.run()
     print(mcmc.g.edges())
-    print(mcmc.ml_g.edges())
+    print(mcmc.map_g.edges())
     print(mcmc.gls)
 
     # then
-    assert set(mcmc.ml_g.edges()) == set(rand_g.edges())
+    assert set(mcmc.map_g.edges()) == set(rand_g.edges())

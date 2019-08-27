@@ -41,8 +41,8 @@ class TreeLikelihoodCalculator:
         self.root = roots[0]
         self.g = g
 
-    def sample_attachment_likelihood(self, attachment_nodes):
-        """Calculate the likelihood of the mutation tree with samples attached at
+    def log_sample_attachment_likelihood(self, attachment_nodes):
+        """Calculate the log likelihood of the mutation tree with samples attached at
         `attachment_nodes`"""
         assert len(attachment_nodes) == self.n_samples
         self._reset_mutation_matrix()
@@ -51,13 +51,14 @@ class TreeLikelihoodCalculator:
                                                                   self.gls.shape[1]))
 
     def sample_marginalized_likelihood(self):
+        """Calculate the sum of the likelihoods of all possible sample attachments"""
         like_sum = 0
         nodes = list(self.g)
         sample_nodes = []
         for _ in range(self.n_samples):
             sample_nodes.append(nodes)
         for nodes in itertools.product(*sample_nodes):
-            like_sum += self.sample_attachment_likelihood(nodes)
+            like_sum += np.exp(self.log_sample_attachment_likelihood(nodes))
         return like_sum
 
     def _update_mutation_matrix_mask(self, attachment_nodes):
