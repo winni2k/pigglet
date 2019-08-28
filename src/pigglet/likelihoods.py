@@ -25,6 +25,7 @@ class TreeLikelihoodCalculator:
         self.n_samples = self.gls.shape[1]
         self.g = None
         self.root = None
+        self.paths = None
         self.set_g(g)
         self.mutation_matrix_mask = np.zeros_like(self.gls, np.bool_)
 
@@ -39,6 +40,10 @@ class TreeLikelihoodCalculator:
         roots = roots_of_tree(g)
         assert len(roots) == 1
         self.root = roots[0]
+        attachment_points = set(g) - {self.root}
+        print(attachment_points)
+        self.paths = {p[-1]: np.array(p[1:]) for p in
+                      nx.all_simple_paths(g, self.root, attachment_points)}
         self.g = g
 
     def log_sample_attachment_likelihood(self, attachment_nodes):
@@ -58,18 +63,16 @@ class TreeLikelihoodCalculator:
         for _ in range(self.n_samples):
             sample_nodes.append(nodes)
         for nodes in itertools.product(*sample_nodes):
+            print(nodes)
             like_sum += np.exp(self.log_sample_attachment_likelihood(nodes))
         return like_sum
 
     def _update_mutation_matrix_mask(self, attachment_nodes):
         attachment_node_set = set(attachment_nodes)
         attachment_node_set.discard(self.root)
-        seen_paths = {p[-1]: p for p in
-                      nx.all_simple_paths(self.g, self.root, attachment_node_set)}
         for sample_idx, node in enumerate(attachment_nodes):
             if node > self.root:
-                path = seen_paths[node]
                 self.mutation_matrix_mask[
-                    np.array(path[1:]),
+                    self.paths[node],
                     sample_idx
                 ] = HET_TUP

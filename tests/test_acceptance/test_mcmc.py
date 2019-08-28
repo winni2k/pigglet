@@ -53,11 +53,6 @@ def test_arbitrary_trees(n_mutations):
     rand_g = nx.gnr_graph(n_mutations, 0).reverse()
     nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
 
-    leaf_nodes = [x for x in rand_g.nodes() if rand_g.out_degree(x) == 0]
-    print('leaf nodes:', leaf_nodes)
-    print(dict(rand_g.out_degree()))
-    print(rand_g.edges())
-
     b = MCMCBuilder()
     b.with_n_burnin_iter(10 * 2 ** n_mutations)
 
@@ -76,9 +71,6 @@ def test_arbitrary_trees(n_mutations):
 
     # when
     mcmc.run()
-    print(mcmc.g.edges())
-    print(mcmc.map_g.edges())
-    print(mcmc.gls)
 
     # then
     assert set(mcmc.map_g.edges()) == set(rand_g.edges())

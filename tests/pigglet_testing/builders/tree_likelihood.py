@@ -99,13 +99,19 @@ class MCMCBuilder(LikelihoodBuilder):
         super().__init__()
         self.seed = None
         self.n_burnin_iter = 10
+        self.n_sampling_iter = 10
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
+        return self
+
+    def with_n_sampling_iter(self, n_iter):
+        self.n_sampling_iter = n_iter
         return self
 
     def build(self):
         if self.seed is None:
             random.seed(42)
         gls = super().build()
-        return MCMCRunner.from_gls(gls, num_burnin_iter=self.n_burnin_iter)
+        return MCMCRunner.from_gls(gls, num_burnin_iter=self.n_burnin_iter,
+                                   num_sampling_iter=self.n_sampling_iter)
