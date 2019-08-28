@@ -25,37 +25,15 @@ class TreeLikelihoodCalculator:
         self.root = None
         self.paths = None
         self.set_g(g)
-        self.mutation_matrix_mask = np.zeros_like(self.gls, np.bool_)
-
-    def _reset_mutation_matrix(self):
-        self.mutation_matrix_mask = self.mutation_matrix_mask.reshape(-1)
-        self.mutation_matrix_mask[::NUM_GLS] = True
-        for start in range(1, NUM_GLS):
-            self.mutation_matrix_mask[1::NUM_GLS] = False
-        self.mutation_matrix_mask = self.mutation_matrix_mask.reshape(self.gls.shape)
 
     def set_g(self, g):
         roots = roots_of_tree(g)
         assert len(roots) == 1
         self.root = roots[0]
-        attachment_points = set(g) - {self.root}
-        print(attachment_points)
-        self.paths = {p[-1]: np.array(p[1:]) for p in
-                      nx.all_simple_paths(g, self.root, attachment_points)}
         self.g = g
-
-    def log_sample_attachment_likelihood(self, attachment_nodes):
-        """Calculate the log likelihood of the mutation tree with samples attached at
-        `attachment_nodes`"""
-        assert len(attachment_nodes) == self.n_samples
-        self._reset_mutation_matrix()
-        self._update_mutation_matrix_mask(attachment_nodes)
-        return np.sum(self.gls[self.mutation_matrix_mask].reshape(self.gls.shape[0],
-                                                                  self.gls.shape[1]))
 
     def sample_likelihood(self, sample_idx):
         assert sample_idx < self.n_samples
-        self._reset_mutation_matrix()
         mutation_mask = np.zeros(self.gls.shape[0] * 2, np.bool_)
         mutation_mask[::NUM_GLS] = True
         sample_gls = self.gls[:, sample_idx].reshape(-1)
@@ -79,13 +57,3 @@ class TreeLikelihoodCalculator:
         for sample in range(self.n_samples):
             like *= self.sample_likelihood(sample)
         return like
-
-    def _update_mutation_matrix_mask(self, attachment_nodes):
-        attachment_node_set = set(attachment_nodes)
-        attachment_node_set.discard(self.root)
-        for sample_idx, node in enumerate(attachment_nodes):
-            if node > self.root:
-                self.mutation_matrix_mask[
-                    self.paths[node],
-                    sample_idx
-                ] = HET_TUP
