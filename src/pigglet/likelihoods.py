@@ -3,7 +3,7 @@ import itertools
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import NUM_GLS, HET_TUP
+from pigglet.constants import NUM_GLS, HET_TUP, HOM_TUP
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -54,6 +54,26 @@ class TreeLikelihoodCalculator:
         self._update_mutation_matrix_mask(attachment_nodes)
         return np.sum(self.gls[self.mutation_matrix_mask].reshape(self.gls.shape[0],
                                                                   self.gls.shape[1]))
+
+    def sample_likelihood(self, sample_idx):
+        assert sample_idx < self.n_samples
+        self._reset_mutation_matrix()
+        mutation_mask = np.zeros(self.gls.shape[0] * 2, np.bool_)
+        mutation_mask[::NUM_GLS] = True
+        sample_gls = self.gls[:, sample_idx].reshape(-1)
+        attachment_log_like = np.zeros(self.gls.shape[0]+1)
+        attachment_log_like[0] = np.sum(sample_gls[mutation_mask])
+        for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
+            if u == v:
+                pass
+            elif label == 'forward':
+                mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HET_TUP
+                attachment_log_like[v+1] = np.sum(sample_gls[mutation_mask])
+            elif label == 'reverse':
+                mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HOM_TUP
+            else:
+                raise ValueError(f'Unexpected label: {label}')
+        return np.sum(np.exp(attachment_log_like))
 
     def sample_marginalized_likelihood(self):
         """Calculate the sum of the likelihoods of all possible sample attachments"""
