@@ -1,5 +1,3 @@
-import itertools
-
 import networkx as nx
 import numpy as np
 
@@ -61,14 +59,14 @@ class TreeLikelihoodCalculator:
         mutation_mask = np.zeros(self.gls.shape[0] * 2, np.bool_)
         mutation_mask[::NUM_GLS] = True
         sample_gls = self.gls[:, sample_idx].reshape(-1)
-        attachment_log_like = np.zeros(self.gls.shape[0]+1)
+        attachment_log_like = np.zeros(self.gls.shape[0] + 1)
         attachment_log_like[0] = np.sum(sample_gls[mutation_mask])
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
                 pass
             elif label == 'forward':
                 mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HET_TUP
-                attachment_log_like[v+1] = np.sum(sample_gls[mutation_mask])
+                attachment_log_like[v + 1] = np.sum(sample_gls[mutation_mask])
             elif label == 'reverse':
                 mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HOM_TUP
             else:
@@ -77,15 +75,10 @@ class TreeLikelihoodCalculator:
 
     def sample_marginalized_likelihood(self):
         """Calculate the sum of the likelihoods of all possible sample attachments"""
-        like_sum = 0
-        nodes = list(self.g)
-        sample_nodes = []
-        for _ in range(self.n_samples):
-            sample_nodes.append(nodes)
-        for nodes in itertools.product(*sample_nodes):
-            print(nodes)
-            like_sum += np.exp(self.log_sample_attachment_likelihood(nodes))
-        return like_sum
+        like = 1
+        for sample in range(self.n_samples):
+            like *= self.sample_likelihood(sample)
+        return like
 
     def _update_mutation_matrix_mask(self, attachment_nodes):
         attachment_node_set = set(attachment_nodes)

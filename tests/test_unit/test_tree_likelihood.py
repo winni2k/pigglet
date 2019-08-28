@@ -10,6 +10,7 @@ Call build() to obtain the constructed object.
 import math
 
 import pytest
+from pytest import approx
 
 from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
 
@@ -293,7 +294,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == sum_of_exp_of(0, 1, 1, 2)
+        assert like == approx(sum_of_exp_of(0, 1, 1, 2))
 
     def test_two_mutations_one_sample_balanced_tree(self):
         # given
