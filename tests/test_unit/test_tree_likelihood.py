@@ -196,7 +196,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == sum_of_exp_of(0, 1, 2)
+        assert like == approx(sum_of_exp_of(0, 1, 2))
 
     def test_two_mutations_two_samples(self):
         # given
@@ -213,4 +213,4 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_likelihood()
 
         # then
-        assert like == sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4)
+        assert like == approx(sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4))

@@ -1,3 +1,5 @@
+import math
+
 import networkx as nx
 import numpy as np
 
@@ -53,7 +55,7 @@ class TreeLikelihoodCalculator:
 
     def sample_marginalized_likelihood(self):
         """Calculate the sum of the likelihoods of all possible sample attachments"""
-        like = 1
+        like = 0
         for sample in range(self.n_samples):
-            like *= self.sample_likelihood(sample)
-        return like
+            like += math.log(self.sample_likelihood(sample))
+        return math.exp(like)
