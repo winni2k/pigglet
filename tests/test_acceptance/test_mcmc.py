@@ -1,7 +1,8 @@
 import networkx as nx
 import pytest
 
-from pigglet_testing.builders.tree_likelihood import MCMCBuilder
+from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
+    add_gl_at_ancestor_mutations_for
 
 
 def test_finds_one_sample_one_site():
@@ -56,16 +57,8 @@ def test_arbitrary_trees(n_mutations):
     b = MCMCBuilder()
     b.with_n_burnin_iter(10 * 2 ** n_mutations)
 
-    # set GLs to het for every mutation of the sample and to hom ref for all other mutations
     for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
-        mutations = set(nx.ancestors(rand_g, attachment_point))
-        mutations.add(attachment_point)
-        mutations.remove(-1)
-        for mutation in mutations:
-            b.with_mutated_gl_at(sample, mutation)
-        for non_mutation in set(rand_g) - mutations:
-            if non_mutation != -1:
-                b.with_unmutated_gl_at(sample, non_mutation)
+        add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
 
     mcmc = b.build()
 

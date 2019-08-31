@@ -2,7 +2,8 @@ from statistics import mean, stdev
 
 import networkx as nx
 
-from pigglet_testing.builders.tree_likelihood import MCMCBuilder
+from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
+    add_gl_at_ancestor_mutations_for
 
 
 def test_arbitrary_trees_all_mutations_have_sample(n_burnin_iter=10, n_mutations=10):
@@ -46,17 +47,6 @@ def test_arbitrary_trees_leaves_have_sample(n_burnin_iter=10, n_mutations=10):
     mcmc = b.build()
 
     return mcmc
-
-
-def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):
-    mutations = set(nx.ancestors(rand_g, attachment_point))
-    mutations.add(attachment_point)
-    mutations.remove(-1)
-    for mutation in mutations:
-        b.with_mutated_gl_at(sample, mutation)
-    for non_mutation in set(rand_g) - mutations:
-        if non_mutation != -1:
-            b.with_unmutated_gl_at(sample, non_mutation)
 
 
 if __name__ == '__main__':

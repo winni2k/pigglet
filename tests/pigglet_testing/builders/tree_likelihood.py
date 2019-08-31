@@ -1,5 +1,6 @@
 import random
 
+import networkx as nx
 import numpy as np
 
 from pigglet.constants import NUM_GLS
@@ -115,3 +116,14 @@ class MCMCBuilder(LikelihoodBuilder):
         gls = super().build()
         return MCMCRunner.from_gls(gls, num_burnin_iter=self.n_burnin_iter,
                                    num_sampling_iter=self.n_sampling_iter)
+
+
+def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):
+    mutations = set(nx.ancestors(rand_g, attachment_point))
+    mutations.add(attachment_point)
+    mutations.remove(-1)
+    for mutation in mutations:
+        b.with_mutated_gl_at(sample, mutation)
+    for non_mutation in set(rand_g) - mutations:
+        if non_mutation != -1:
+            b.with_unmutated_gl_at(sample, non_mutation)
