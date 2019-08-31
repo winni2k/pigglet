@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import HET_NUM
+from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -43,7 +43,7 @@ class TreeLikelihoodCalculator:
     def sample_likelihoods(self):
         """Calculate the likelihoods of all possible sample attachments"""
         attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
-                                       dtype=np.float128)
+                                       dtype=LOG_LIKE_DTYPE)
         current_log_like = np.sum(
             self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
             0)
