@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import NUM_GLS, HET_NUM
+from pigglet.constants import HET_NUM
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -19,8 +19,12 @@ class TreeLikelihoodCalculator:
     """
 
     def __init__(self, g, gls):
-        self.gls = gls
-        self.n_samples = self.gls.shape[1]
+        glstmp = np.zeros((gls.shape[0], gls.shape[2], gls.shape[1]))
+        for genotype_idx in range(gls.shape[2]):
+            glstmp[:, genotype_idx, :] = gls[:, :, genotype_idx]
+        self.gls = glstmp
+        self.n_sites = self.gls.shape[0]
+        self.n_samples = self.gls.shape[2]
         self.g = None
         self.root = None
         self.paths = None
@@ -38,21 +42,22 @@ class TreeLikelihoodCalculator:
 
     def sample_likelihoods(self):
         """Calculate the likelihoods of all possible sample attachments"""
-        attachment_log_like = np.zeros((self.gls.shape[0] + 1, self.gls.shape[1]),
+        attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
                                        dtype=np.float128)
         current_log_like = np.sum(
-            self.gls.reshape(-1)[::NUM_GLS].reshape(self.gls.shape[:2]), 0)
+            self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
+            0)
         attachment_log_like[0] = current_log_like
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
                 pass
             elif label == 'forward':
-                current_log_like += self.gls[v, :, HET_NUM] \
-                                    - self.gls[v, :, 0]
+                current_log_like += self.gls[v, HET_NUM, :] \
+                                    - self.gls[v, 0, :]
                 attachment_log_like[v + 1] = current_log_like
             elif label == 'reverse':
-                current_log_like -= self.gls[v, :, HET_NUM] \
-                                    - self.gls[v, :, 0]
+                current_log_like -= self.gls[v, HET_NUM, :] \
+                                    - self.gls[v, 0, :]
             else:
                 raise ValueError(f'Unexpected label: {label}')
         return np.sum(np.exp(attachment_log_like), 0)

@@ -64,22 +64,16 @@ if __name__ == '__main__':
 
     # m (samples) == n (sites)
     repeats = 3
-    print('Testing random tree with leaf nodes have sample')
-    for number, mutations in [(10, 100), (10, 300), (10, 1000), (10, 3000), (1000, 10)]:
-        print(f'number={number}, repeats={repeats}, mutations={mutations}')
-        timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()',
-                                number=number,
-                                repeat=repeats,
-                                globals=globals(),
-                                setup=f'mcmc = test_arbitrary_trees_leaves_have_sample(n_mutations={mutations})')
-        print(mean(timings), stdev(timings))
-
-    print('Testing random tree with every mutation has sample')
-    for number, mutations in [(10, 100), (10, 300), (2, 1000), (1, 3000), (1000, 10)]:
-        print(f'number={number}, repeats={repeats}, mutations={mutations}')
-        timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()',
-                                number=number,
-                                repeat=repeats,
-                                globals=globals(),
-                                setup=f'mcmc = test_arbitrary_trees_all_mutations_have_sample(n_mutations={mutations})')
-        print(mean(timings), stdev(timings))
+    for setup_string in [
+        'test_arbitrary_trees_leaves_have_sample(n_mutations={mutations})',
+        'test_arbitrary_trees_all_mutations_have_sample(n_mutations={mutations})']:
+        print(f'Testing {setup_string}')
+        for number, mutations in [(10, 100), (10, 300), (10, 1000), (10, 3000),
+                                  (1000, 10)]:
+            print(f'number={number}, repeats={repeats}, mutations={mutations}')
+            timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()',
+                                    number=number,
+                                    repeat=repeats,
+                                    globals=globals(),
+                                    setup='mcmc = ' + setup_string.format(mutations=mutations))
+            print(mean(timings), stdev(timings))
