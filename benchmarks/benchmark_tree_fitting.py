@@ -10,7 +10,7 @@ def test_arbitrary_trees(n_burnin_iter=10, n_mutations=10):
     rand_g = nx.gnr_graph(n_mutations, 0).reverse()
     nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
 
-    leaf_nodes = [x for x in rand_g.nodes() if rand_g.out_degree(x) == 0]
+    # leaf_nodes = [x for x in rand_g.nodes() if rand_g.out_degree(x) == 0]
     # print('leaf nodes:', leaf_nodes)
     # print(dict(rand_g.out_degree()))
     # print(rand_g.edges())
@@ -39,9 +39,12 @@ if __name__ == '__main__':
     import timeit
 
     # mcmc = test_arbitrary_trees(10)
-    for number, mutations in [(1000, 10), (10, 100)]:
-        print(f'number={number}, mutations={mutations}')
-        timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()', number=number,
+    repeats=3
+    for number, mutations in [(10, 100), (10, 300), (1000, 10)]:
+        print(f'number={number}, repeats={repeats}, mutations={mutations}')
+        timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()',
+                                number=number,
+                                repeat=repeats,
                                 globals=globals(),
                                 setup=f'mcmc = test_arbitrary_trees(n_mutations={mutations})')
         print(mean(timings), stdev(timings))

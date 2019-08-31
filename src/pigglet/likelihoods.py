@@ -3,7 +3,7 @@ import math
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import NUM_GLS, HET_TUP, HOM_TUP
+from pigglet.constants import NUM_GLS, HET_NUM
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -35,20 +35,22 @@ class TreeLikelihoodCalculator:
         self.g = g
 
     def sample_likelihood(self, sample_idx):
+        """Calculate the likelihood of all attachment points for a sample index"""
         assert sample_idx < self.n_samples
-        mutation_mask = np.zeros(self.gls.shape[0] * 2, np.bool_)
-        mutation_mask[::NUM_GLS] = True
         sample_gls = self.gls[:, sample_idx].reshape(-1)
         attachment_log_like = np.zeros(self.gls.shape[0] + 1)
-        attachment_log_like[0] = np.sum(sample_gls[mutation_mask])
+        current_log_like = np.sum(sample_gls[::NUM_GLS])
+        attachment_log_like[0] = current_log_like
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
                 pass
             elif label == 'forward':
-                mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HET_TUP
-                attachment_log_like[v + 1] = np.sum(sample_gls[mutation_mask])
+                current_log_like += sample_gls[NUM_GLS * v + HET_NUM] \
+                                    - sample_gls[NUM_GLS * v]
+                attachment_log_like[v + 1] = current_log_like
             elif label == 'reverse':
-                mutation_mask[NUM_GLS * v: (NUM_GLS * v + NUM_GLS)] = HOM_TUP
+                current_log_like -= sample_gls[NUM_GLS * v + HET_NUM] \
+                                    - sample_gls[NUM_GLS * v]
             else:
                 raise ValueError(f'Unexpected label: {label}')
         return np.sum(np.exp(attachment_log_like))

@@ -19,6 +19,10 @@ def sum_of_exp_of(*log_likelihoods):
     return sum(math.exp(x) for x in log_likelihoods)
 
 
+def log_sum_of_exp_of(*log_likelihoods):
+    return math.log(sum_of_exp_of(*log_likelihoods))
+
+
 class TestSampleLikelihood:
 
     def test_one_sample_one_site_no_mutation(self):
@@ -153,7 +157,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == sum_of_exp_of(0, 1)
+        assert like == log_sum_of_exp_of(0, 1)
 
     def test_single_mutation_two_samples(self):
         # given
@@ -167,7 +171,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == approx(sum_of_exp_of(0, 1, 1, 2))
+        assert like == approx(log_sum_of_exp_of(0, 1, 1, 2))
 
     def test_two_mutations_one_sample_balanced_tree(self):
         # given
@@ -181,7 +185,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == sum_of_exp_of(0, 1, 1)
+        assert like == log_sum_of_exp_of(0, 1, 1)
 
     def test_two_mutations_one_sample(self):
         # given
@@ -196,7 +200,7 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == approx(sum_of_exp_of(0, 1, 2))
+        assert like == approx(log_sum_of_exp_of(0, 1, 2))
 
     def test_two_mutations_two_samples(self):
         # given
@@ -213,4 +217,4 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == approx(sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4))
+        assert like == approx(log_sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4))
