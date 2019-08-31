@@ -150,7 +150,7 @@ class TestSampleMarginalizedLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_marginalized_likelihood()
+        like = calc.sample_marginalized_log_likelihood()
 
         # then
         assert like == sum_of_exp_of(0, 1)
@@ -164,7 +164,7 @@ class TestSampleMarginalizedLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_marginalized_likelihood()
+        like = calc.sample_marginalized_log_likelihood()
 
         # then
         assert like == approx(sum_of_exp_of(0, 1, 1, 2))
@@ -178,7 +178,7 @@ class TestSampleMarginalizedLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_marginalized_likelihood()
+        like = calc.sample_marginalized_log_likelihood()
 
         # then
         assert like == sum_of_exp_of(0, 1, 1)
@@ -193,7 +193,7 @@ class TestSampleMarginalizedLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_marginalized_likelihood()
+        like = calc.sample_marginalized_log_likelihood()
 
         # then
         assert like == approx(sum_of_exp_of(0, 1, 2))
@@ -210,7 +210,7 @@ class TestSampleMarginalizedLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_marginalized_likelihood()
+        like = calc.sample_marginalized_log_likelihood()
 
         # then
         assert like == approx(sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4))

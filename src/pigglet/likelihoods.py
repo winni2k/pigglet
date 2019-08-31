@@ -53,9 +53,9 @@ class TreeLikelihoodCalculator:
                 raise ValueError(f'Unexpected label: {label}')
         return np.sum(np.exp(attachment_log_like))
 
-    def sample_marginalized_likelihood(self):
+    def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the likelihoods of all possible sample attachments"""
         like = 0
         for sample in range(self.n_samples):
             like += math.log(self.sample_likelihood(sample))
-        return math.exp(like)
+        return like

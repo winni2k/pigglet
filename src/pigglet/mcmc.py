@@ -44,25 +44,22 @@ class MCMCRunner:
                    tree_move_weights=tree_move_weights,
                    tree_interactor=tree_interactor,
                    likelihood_calculator=like_calc,
-                   current_like=like_calc.sample_marginalized_likelihood())
+                   current_like=like_calc.sample_marginalized_log_likelihood())
 
     def run(self):
         iteration = 0
-        print('run')
         mcmc_moves = list(range(NUM_MCMC_MOVES))
         mover = Mover(self.g)
         moves = [mover.prune_and_reattach,
                  mover.swap_node,
                  mover.swap_subtree]
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
-            print(iteration)
-
             mover.set_g(self.g.copy())
             move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
             mh_correction = moves[move]()
             new_g = mover.g
             self.calc.set_g(new_g)
-            new_like = self.calc.sample_marginalized_likelihood()
+            new_like = self.calc.sample_marginalized_log_likelihood()
             if new_like >= self.current_like:
                 self.map_g = new_g
             accepted = self._choose_g(new_g, new_like, mh_correction)
