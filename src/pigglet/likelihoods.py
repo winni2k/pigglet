@@ -48,16 +48,16 @@ class TreeLikelihoodCalculator:
             self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
             0)
         attachment_log_like[0] = current_log_like
+        diffs = []
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
-                pass
-            elif label == 'forward':
-                current_log_like += self.gls[v, HET_NUM, :] \
-                                    - self.gls[v, 0, :]
+                continue
+            if label == 'forward':
+                diffs.append(self.gls[v, HET_NUM, :] - self.gls[v, 0, :])
+                current_log_like += diffs[-1]
                 attachment_log_like[v + 1] = current_log_like
             elif label == 'reverse':
-                current_log_like -= self.gls[v, HET_NUM, :] \
-                                    - self.gls[v, 0, :]
+                current_log_like -= diffs.pop()
             else:
                 raise ValueError(f'Unexpected label: {label}')
         return np.sum(np.exp(attachment_log_like), 0)
