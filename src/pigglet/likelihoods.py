@@ -1,5 +1,3 @@
-import math
-
 import networkx as nx
 import numpy as np
 
@@ -36,28 +34,29 @@ class TreeLikelihoodCalculator:
 
     def sample_likelihood(self, sample_idx):
         """Calculate the likelihood of all attachment points for a sample index"""
-        assert sample_idx < self.n_samples
-        sample_gls = self.gls[:, sample_idx].reshape(-1)
-        attachment_log_like = np.zeros(self.gls.shape[0] + 1)
-        current_log_like = np.sum(sample_gls[::NUM_GLS])
+        return self.sample_likelihoods()[sample_idx]
+
+    def sample_likelihoods(self):
+        """Calculate the likelihoods of all possible sample attachments"""
+        attachment_log_like = np.zeros((self.gls.shape[0] + 1, self.gls.shape[1]),
+                                       dtype=np.float128)
+        current_log_like = np.sum(
+            self.gls.reshape(-1)[::NUM_GLS].reshape(self.gls.shape[:2]), 0)
         attachment_log_like[0] = current_log_like
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
                 pass
             elif label == 'forward':
-                current_log_like += sample_gls[NUM_GLS * v + HET_NUM] \
-                                    - sample_gls[NUM_GLS * v]
+                current_log_like += self.gls[v, :, HET_NUM] \
+                                    - self.gls[v, :, 0]
                 attachment_log_like[v + 1] = current_log_like
             elif label == 'reverse':
-                current_log_like -= sample_gls[NUM_GLS * v + HET_NUM] \
-                                    - sample_gls[NUM_GLS * v]
+                current_log_like -= self.gls[v, :, HET_NUM] \
+                                    - self.gls[v, :, 0]
             else:
                 raise ValueError(f'Unexpected label: {label}')
-        return np.sum(np.exp(attachment_log_like))
+        return np.sum(np.exp(attachment_log_like), 0)
 
     def sample_marginalized_log_likelihood(self):
-        """Calculate the sum of the likelihoods of all possible sample attachments"""
-        like = 0
-        for sample in range(self.n_samples):
-            like += math.log(self.sample_likelihood(sample))
-        return like
+        """Calculate the sum of the log likelihoods of all possible sample attachments"""
+        return np.sum(np.log(self.sample_likelihoods()))
