@@ -66,7 +66,8 @@ if __name__ == '__main__':
     repeats = 3
     for setup_string in [
         'test_arbitrary_trees_leaves_have_sample(n_mutations={mutations})',
-        'test_arbitrary_trees_all_mutations_have_sample(n_mutations={mutations})']:
+        'test_arbitrary_trees_all_mutations_have_sample(n_mutations={mutations})'
+    ]:
         print(f'Testing {setup_string}')
         for number, mutations in [(10, 100), (10, 300), (10, 1000), (10, 3000),
                                   (1000, 10)]:
@@ -75,5 +76,6 @@ if __name__ == '__main__':
                                     number=number,
                                     repeat=repeats,
                                     globals=globals(),
-                                    setup='mcmc = ' + setup_string.format(mutations=mutations))
+                                    setup='mcmc = ' + setup_string.format(
+                                        mutations=mutations))
             print(mean(timings), stdev(timings))
