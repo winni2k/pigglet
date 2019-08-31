@@ -1,9 +1,9 @@
-from pigglet_testing.builders.vcf import VCFBuilder
+from pigglet_testing.builders.vcf import VCFLoaderBuilder
 
 
 def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
-    b = VCFBuilder(tmpdir)
-    b.with_site_gls([[1, 2, 4], [3, 7, 8]])
+    b = VCFLoaderBuilder(tmpdir)
+    b.with_site_gls([1, 2, 4], [3, 7, 8])
     loader = b.build()
 
     assert loader.gls.shape == (1, 2, 3)
@@ -17,9 +17,9 @@ def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
 
 
 def test_loads_gls_of_two_sites_and_two_samples_from_vcf(tmpdir):
-    b = VCFBuilder(tmpdir)
-    b.with_site_gls([[1, 2, 3], [4, 5, 6]])
-    b.with_site_gls([[7, 8, 9], [10, 11, 12]])
+    b = VCFLoaderBuilder(tmpdir)
+    b.with_site_gls([1, 2, 3], [4, 5, 6])
+    b.with_site_gls([7, 8, 9], [10, 11, 12])
     loader = b.build()
 
     assert loader.gls.shape == (2, 2, 3)

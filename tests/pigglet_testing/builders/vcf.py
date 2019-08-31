@@ -20,10 +20,16 @@ class VCFBuilder:
                     row += '\t' + ','.join(tripple)
                 row += '\n'
                 fh.write(row)
-        loader = LikelihoodLoader()
-        loader.load(self.vcf_file)
-        return loader
+        return self.vcf_file
 
-    def with_site_gls(self, gls):
+    def with_site_gls(self, *gls):
         self.gls.append(gls)
         return self
+
+
+class VCFLoaderBuilder(VCFBuilder):
+    def build(self):
+        vcf_file = super().build()
+        loader = LikelihoodLoader()
+        loader.load(vcf_file)
+        return loader
