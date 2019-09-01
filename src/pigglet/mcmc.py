@@ -49,7 +49,7 @@ class MCMCRunner:
     def run(self):
         iteration = 0
         mcmc_moves = list(range(NUM_MCMC_MOVES))
-        mover = Mover(self.g)
+        mover = MoveExecutor(self.g)
         moves = [mover.prune_and_reattach,
                  mover.swap_node,
                  mover.swap_subtree]
@@ -79,7 +79,7 @@ class MCMCRunner:
         return accept
 
 
-class Mover:
+class MoveExecutor:
     def __init__(self, g):
         self.g = None
         self.interactor = None

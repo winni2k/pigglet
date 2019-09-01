@@ -12,6 +12,7 @@ class LikelihoodLoader:
     def load(self, vcf_file):
         site_infos, site_pls = load_vcf_file(vcf_file)
         self.gls = np.array(site_pls, dtype=PL_DTYPE)
+        return self
 
 
 def load_vcf_file(vcf_file, gl_type='PL'):
