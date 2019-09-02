@@ -6,32 +6,44 @@ from pigglet.constants import PL_DTYPE
 
 class LikelihoodLoader:
 
-    def __init__(self):
-        self.gls = None
+    def __init__(self, vcf_file=None):
+        self.vcf_file = vcf_file
+        self.bcf_in = None
+        self.gl_field_preference = ['GL']
+        self.gl_field_idx = 1
+        self.gl_field = 1
 
-    def load(self, vcf_file):
-        site_infos, site_pls = load_vcf_file(vcf_file)
-        self.gls = np.array(site_pls, dtype=PL_DTYPE)
-        return self
+    def load(self):
+        self.bcf_in = VariantFile(self.vcf_file)
+        self.determine_field()
+        return self.extract_gls()
+
+    def determine_field(self):
+        formats = list(self.bcf_in.header.formats)
+        for field in self.gl_field_preference:
+            try:
+                self.gl_field_idx = formats.index(field)
+                return
+            except ValueError:
+                pass
+        raise ValueError(
+            f'Could not find a genotype likelihood format field in VCF ({self.vcf_file})'
+        )
+
+    def extract_gls(self):
+        site_gls = []
+        infos = []
+        for site_info, gls in site_pl_iter(self.bcf_in.fetch(), self.gl_field_idx):
+            infos.append(site_info)
+            site_gls.append(gls)
+        return np.array(site_gls, dtype=PL_DTYPE)
 
 
-def load_vcf_file(vcf_file, gl_type='PL'):
-    bcf_in = VariantFile(vcf_file)
-    site_pls = []
-    site_infos = []
-    assert gl_type == 'PL'
-    for site_info, pls in site_pl_iter(bcf_in.fetch()):
-        site_infos.append(site_info)
-        site_pls.append(pls)
-
-    return site_infos, site_pls
-
-
-def site_pl_iter(records):
+def site_pl_iter(records, record_idx):
     for rec in records:
         values = []
         assert len(rec.alts) == 1
         site_info = (rec.chrom, rec.pos, rec.ref, rec.alts[0])
         for sample, value in rec.samples.items():
-            values.append(value.items()[0][1])
+            values.append(value.items()[record_idx][1])
         yield site_info, values

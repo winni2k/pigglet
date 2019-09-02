@@ -11,17 +11,20 @@ class VCFBuilder:
         with open(self.vcf_file, 'w') as fh:
             fh.write("##fileformat=VCFv4.2\n")
             fh.write(
-                '##FORMAT=<ID=PL,Number=G,Type=String,Description="Phred scaled likelihood">\n')
+                '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n'
+                '##FORMAT=<ID=GL,Number=G,Type=String,Description='
+                '"Log10 scaled genotype likelihood">\n'
+            )
             fh.write(
                 "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
             for samp_num in range(self.n_samples):
                 fh.write(f'\tsample_{samp_num}')
             fh.write('\n')
             for idx, site_gls in enumerate(self.gls):
-                row = f'20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\tPL'
+                row = f'20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\tGT:PL'
                 for tripple in site_gls:
                     tripple = [str(v) for v in tripple]
-                    row += '\t' + ','.join(tripple)
+                    row += '\t' + './.:' + ','.join(tripple)
                 row += '\n'
                 fh.write(row)
         return self.vcf_file
@@ -36,7 +39,10 @@ class VCFBuilder:
 
 class VCFLoaderBuilder(VCFBuilder):
     def build(self):
-        vcf_file = super().build()
-        loader = LikelihoodLoader()
-        loader.load(vcf_file)
-        return loader
+        return LikelihoodLoader(super().build())
+
+
+class VCFLoadedGLBuilder(VCFLoaderBuilder):
+    def build(self):
+        loader = super().build()
+        return loader.load()

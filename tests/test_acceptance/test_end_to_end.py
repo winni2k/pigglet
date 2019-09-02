@@ -6,7 +6,7 @@ from pigglet import cli
 from pigglet_testing.builders.vcf import VCFBuilder
 
 
-@pytest.mark.parametrize('with_click', [True, False])
+@pytest.mark.parametrize('with_click', [False])
 def test_single_mutation_one_sample(tmpdir, with_click):
     # given
     b = VCFBuilder(tmpdir)
