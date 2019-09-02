@@ -6,17 +6,17 @@ class VCFBuilder:
         self.vcf_file = tmpdir.join('input.vcf')
         self.gls = []
         self.n_samples = None
+        self.header = (
+            "##fileformat=VCFv4.2\n"
+            '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n'
+            '##FORMAT=<ID=GL,Number=G,Type=String,Description='
+            '"Log10 scaled genotype likelihood">\n'
+        )
 
     def build(self):
         with open(self.vcf_file, 'w') as fh:
-            fh.write("##fileformat=VCFv4.2\n")
-            fh.write(
-                '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n'
-                '##FORMAT=<ID=GL,Number=G,Type=String,Description='
-                '"Log10 scaled genotype likelihood">\n'
-            )
-            fh.write(
-                "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
+            fh.write(self.header)
+            fh.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
             for samp_num in range(self.n_samples):
                 fh.write(f'\tsample_{samp_num}')
             fh.write('\n')

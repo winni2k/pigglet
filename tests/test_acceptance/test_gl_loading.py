@@ -1,4 +1,6 @@
-from pigglet_testing.builders.vcf import VCFLoadedGLBuilder
+import pytest
+
+from pigglet_testing.builders.vcf import VCFLoadedGLBuilder, VCFLoaderBuilder
 
 
 def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
@@ -33,15 +35,12 @@ def test_loads_gls_of_two_sites_and_two_samples_from_vcf(tmpdir):
 
 
 def test_raises_on_vcf_with_unacceptable_likelihood_encoding(tmpdir):
-    b = VCFLoadedGLBuilder(tmpdir)
+    # given
+    b = VCFLoaderBuilder(tmpdir)
     b.with_site_gls([1, 2, 4], [3, 7, 8])
-    gls = b.build()
+    b.header = b.header.replace('GL', 'PL')
+    loader = b.build()
 
-    assert gls.shape == (1, 2, 3)
-    first_row = gls[0]
-    assert first_row[0][0] == 1
-    assert first_row[0][1] == 2
-    assert first_row[0][2] == 4
-    assert first_row[1][0] == 3
-    assert first_row[1][1] == 7
-    assert first_row[1][2] == 8
+    # when/then
+    with pytest.raises(ValueError):
+        loader.load()
