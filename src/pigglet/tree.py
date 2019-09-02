@@ -17,7 +17,7 @@ class TreeInteractor:
 
     def prune(self, node):
         for edge in list(self.g.in_edges(node)):
-            self.g.remove_edge(edge[0], edge[1])
+            self.g.remove_edge(*edge)
 
     def attach(self, node, target):
         self.g.add_edge(target, node)
@@ -38,22 +38,25 @@ class TreeInteractor:
         return 1
 
     def swap_subtrees(self, n1, n2):
-        if n1 == -1 or n2 == -1:
+        if n1 == self.root or n2 == self.root:
             raise ValueError
         if n2 in nx.ancestors(self.g, n1):
             return self._uniform_subtree_swap(n2, n1)
         elif n2 in nx.descendants(self.g, n1):
             return self._uniform_subtree_swap(n1, n2)
-        n1_parent = next(self.g.predecessors(n1))
-        n2_parent = next(self.g.predecessors(n2))
+        n1_parent = self._parent_of(n1)
+        n2_parent = self._parent_of(n2)
         self.prune(n1)
         self.prune(n2)
         self.attach(n1, n2_parent)
         self.attach(n2, n1_parent)
         return 1
 
+    def _parent_of(self, n):
+        return next(self.g.predecessors(n))
+
     def _uniform_subtree_swap(self, ancestor, descendant):
-        anc_parent = next(self.g.predecessors(ancestor))
+        anc_parent = self._parent_of(ancestor)
         dec_descendants = nx.descendants(self.g, descendant)
 
         self.prune(descendant)
