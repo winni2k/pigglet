@@ -34,5 +34,4 @@ class TreeBuilder:
             self.sample_ids = list(range(len(sample_nodes)))
         for sample_id, sample_node in zip(self.sample_ids, sample_nodes):
             self.g.nodes[sample_node]['sample_id'] = sample_id
-
         return self.g
