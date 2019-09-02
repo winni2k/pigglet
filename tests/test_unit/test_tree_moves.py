@@ -18,7 +18,7 @@ class TreeInteractor:
 
     def prune(self, node):
         for edge in list(self.g.in_edges(node)):
-            self.g.remove_edge(edge[0], edge[1])
+            self.g.remove_edge(*edge)
 
     def attach(self, node, target):
         self.g.add_edge(target, node)
@@ -34,22 +34,25 @@ class TreeInteractor:
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)
 
     def swap_subtrees(self, n1, n2):
-        if n1 == -1 or n2 == -1:
+        if n1 == self.root or n2 == self.root:
             raise ValueError
         if n2 in nx.ancestors(self.g, n1):
             return self._uniform_subtree_swap(n2, n1)
         elif n2 in nx.descendants(self.g, n1):
             return self._uniform_subtree_swap(n1, n2)
-        n1_parent = next(self.g.predecessors(n1))
-        n2_parent = next(self.g.predecessors(n2))
+        n1_parent = self._parent_of(n1)
+        n2_parent = self._parent_of(n2)
         self.prune(n1)
         self.prune(n2)
         self.attach(n1, n2_parent)
         self.attach(n2, n1_parent)
         return 1
 
+    def _parent_of(self, n):
+        return next(self.g.predecessors(n))
+
     def _uniform_subtree_swap(self, ancestor, descendant):
-        anc_parent = next(self.g.predecessors(ancestor))
+        anc_parent = self._parent_of(ancestor)
         dec_descendants = nx.descendants(self.g, descendant)
 
         self.prune(descendant)
@@ -184,7 +187,7 @@ class TestSwapSubtrees:
         mh_correction = inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) <= {-1, 2, 6, 7}
+        assert set(nx.ancestors(inter.g, 0)) in [{-1, 2}, {-1, 2, 6}, {-1, 2, 7}]
         assert set(nx.descendants(inter.g, 0)) == {3, 8, 9}
         assert set(nx.ancestors(inter.g, 2)) == {-1}
         assert set(nx.descendants(inter.g, 2)) == {0, 3, 6, 7, 8, 9}
@@ -204,7 +207,7 @@ class TestSwapSubtrees:
         mh_correction = inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) <= {-1, 1, 2, 3}
+        assert set(nx.ancestors(inter.g, 0)) in [{-1, 1}, {-1, 1, 2}, {-1, 1, 3}]
         assert set(nx.descendants(inter.g, 0)) == set()
         assert set(nx.ancestors(inter.g, 1)) == {-1}
         assert set(nx.descendants(inter.g, 1)) == {0, 2, 3}
@@ -213,6 +216,13 @@ class TestSwapSubtrees:
     @pytest.mark.parametrize('swap_nodes', [(0, 2), (2, 0)])
     def test_swaps_two_nodes_two_jumps_away_in_line_from_unbalanced_tree(self,
                                                                          swap_nodes):
+        """
+        -1->0->1->2->3
+                   |>4
+
+        -1->2->3   ... 0->1?
+            |>4
+        """
         # given
         b = TreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
@@ -226,7 +236,7 @@ class TestSwapSubtrees:
         mh_correction = inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) <= {-1, 2, 3, 4}
+        assert set(nx.ancestors(inter.g, 0)) in [{-1, 2}, {-1, 2, 3}, {-1, 2, 4}]
         assert set(nx.descendants(inter.g, 0)) == {1}
         assert set(nx.ancestors(inter.g, 2)) == {-1}
         assert set(nx.descendants(inter.g, 2)) == {0, 1, 3, 4}
