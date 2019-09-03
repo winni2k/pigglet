@@ -14,6 +14,7 @@ def run(gl_vcf, out_prefix):
     from pigglet.mcmc import MCMCRunner
     from pigglet.gl_loader import LikelihoodLoader
     import networkx as nx
+
     gls = LikelihoodLoader(vcf_file=gl_vcf).load()
     runner = MCMCRunner.from_gls(gls=gls)
     runner.run()

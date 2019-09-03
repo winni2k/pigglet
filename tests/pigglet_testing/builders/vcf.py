@@ -21,7 +21,7 @@ class VCFBuilder:
                 fh.write(f'\tsample_{samp_num}')
             fh.write('\n')
             for idx, site_gls in enumerate(self.gls):
-                row = f'20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\tGT:PL'
+                row = f'20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\tGT:GL'
                 for tripple in site_gls:
                     tripple = [str(v) for v in tripple]
                     row += '\t' + './.:' + ','.join(tripple)

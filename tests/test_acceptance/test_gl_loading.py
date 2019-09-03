@@ -10,12 +10,8 @@ def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
 
     assert gls.shape == (1, 2, 3)
     first_row = gls[0]
-    assert first_row[0][0] == 1
-    assert first_row[0][1] == 2
-    assert first_row[0][2] == 4
-    assert first_row[1][0] == 3
-    assert first_row[1][1] == 7
-    assert first_row[1][2] == 8
+    assert list(first_row[0]) == [1, 2, 4]
+    assert list(first_row[1]) == [3, 7, 8]
 
 
 def test_loads_gls_of_two_sites_and_two_samples_from_vcf(tmpdir):

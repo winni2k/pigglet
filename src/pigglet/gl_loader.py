@@ -5,6 +5,7 @@ from pigglet.constants import GL_DTYPE
 
 
 class LikelihoodLoader:
+    """Loads GLs from a VCF"""
 
     def __init__(self, vcf_file=None):
         self.vcf_file = vcf_file
@@ -12,13 +13,21 @@ class LikelihoodLoader:
         self.gl_field_preference = ['GL']
         self.gl_field_idx = 1
         self.gl_field = 1
+        self.gls = None
 
     def load(self):
-        self.bcf_in = VariantFile(self.vcf_file)
-        self.determine_field()
-        return self.extract_gls()
+        """Extract GLs from a VCF
 
-    def determine_field(self):
+        The VCF contains m sites, n samples, and g likelihoods per site and sample.
+        Converts to log10 space.
+
+        :return numpy array of shape (m, n, g)"""
+        self.bcf_in = VariantFile(self.vcf_file)
+        self._determine_field()
+        self._extract_gls()
+        return self.gls
+
+    def _determine_field(self):
         formats = list(self.bcf_in.header.formats)
         for field in self.gl_field_preference:
             try:
@@ -30,16 +39,16 @@ class LikelihoodLoader:
             f'Could not find a genotype likelihood format field in VCF ({self.vcf_file})'
         )
 
-    def extract_gls(self):
+    def _extract_gls(self):
         site_gls = []
         infos = []
-        for site_info, gls in site_pl_iter(self.bcf_in.fetch(), self.gl_field_idx):
+        for site_info, gls in site_gl_iter(self.bcf_in.fetch(), self.gl_field_idx):
             infos.append(site_info)
             site_gls.append(gls)
-        return np.array(site_gls, dtype=GL_DTYPE)
+        self.gls = np.array(site_gls, dtype=GL_DTYPE)
 
 
-def site_pl_iter(records, record_idx):
+def site_gl_iter(records, record_idx):
     for rec in records:
         values = []
         assert len(rec.alts) == 1
