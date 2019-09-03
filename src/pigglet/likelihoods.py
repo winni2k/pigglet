@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE
+from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE, REAL_SPACE_LIKE_DTYPE
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -60,8 +60,8 @@ class TreeLikelihoodCalculator:
                 current_log_like -= diffs.pop()
             else:
                 raise ValueError(f'Unexpected label: {label}')
-        return np.sum(np.exp(attachment_log_like), 0)
+        return np.sum(np.power(10, attachment_log_like, dtype=REAL_SPACE_LIKE_DTYPE), 0)
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
-        return np.sum(np.log(self.sample_likelihoods()))
+        return np.sum(np.log10(self.sample_likelihoods(), dtype=LOG_LIKE_DTYPE))

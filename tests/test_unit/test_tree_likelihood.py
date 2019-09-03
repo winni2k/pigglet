@@ -16,11 +16,11 @@ from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBui
 
 
 def sum_of_exp_of(*log_likelihoods):
-    return sum(math.exp(x) for x in log_likelihoods)
+    return sum(math.pow(10, x) for x in log_likelihoods)
 
 
 def log_sum_of_exp_of(*log_likelihoods):
-    return math.log(sum_of_exp_of(*log_likelihoods))
+    return math.log10(sum_of_exp_of(*log_likelihoods))
 
 
 class TestSampleLikelihood:

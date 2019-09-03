@@ -1,7 +1,7 @@
 import numpy as np
 from pysam.libcbcf import VariantFile
 
-from pigglet.constants import PL_DTYPE
+from pigglet.constants import GL_DTYPE
 
 
 class LikelihoodLoader:
@@ -36,7 +36,7 @@ class LikelihoodLoader:
         for site_info, gls in site_pl_iter(self.bcf_in.fetch(), self.gl_field_idx):
             infos.append(site_info)
             site_gls.append(gls)
-        return np.array(site_gls, dtype=PL_DTYPE)
+        return np.array(site_gls, dtype=GL_DTYPE)
 
 
 def site_pl_iter(records, record_idx):

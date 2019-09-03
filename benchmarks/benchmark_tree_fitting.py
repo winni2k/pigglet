@@ -17,6 +17,7 @@ def test_arbitrary_trees_all_mutations_have_sample(n_burnin_iter=10, n_mutations
     # print(rand_g.edges())
 
     b = MCMCBuilder()
+    b.with_normalized_gls()
     b.with_n_burnin_iter(n_burnin_iter)
     b.with_n_sampling_iter(0)
 
@@ -37,6 +38,7 @@ def test_arbitrary_trees_leaves_have_sample(n_burnin_iter=10, n_mutations=10):
     leaf_nodes = [x for x in rand_g.nodes() if rand_g.out_degree(x) == 0]
 
     b = MCMCBuilder()
+    b.with_normalized_gls()
     b.with_n_burnin_iter(n_burnin_iter)
     b.with_n_sampling_iter(0)
 

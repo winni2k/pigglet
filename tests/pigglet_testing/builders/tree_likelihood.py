@@ -4,6 +4,7 @@ import networkx as nx
 import numpy as np
 
 from pigglet.constants import NUM_GLS
+from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import TreeLikelihoodCalculator
 from pigglet.mcmc import MCMCRunner
 from pigglet_testing.builders.tree import TreeBuilder
@@ -101,6 +102,7 @@ class MCMCBuilder(LikelihoodBuilder):
         self.seed = None
         self.n_burnin_iter = 10
         self.n_sampling_iter = 10
+        self.normalize_gls = False
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
@@ -110,10 +112,16 @@ class MCMCBuilder(LikelihoodBuilder):
         self.n_sampling_iter = n_iter
         return self
 
+    def with_normalized_gls(self):
+        self.normalize_gls = True
+        return self
+
     def build(self):
         if self.seed is None:
             random.seed(42)
         gls = super().build()
+        if self.normalize_gls:
+            gls = GLManipulator(gls).normalize().gls
         return MCMCRunner.from_gls(gls, num_burnin_iter=self.n_burnin_iter,
                                    num_sampling_iter=self.n_sampling_iter)
 
