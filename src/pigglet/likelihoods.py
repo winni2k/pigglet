@@ -1,3 +1,5 @@
+import math
+
 import networkx as nx
 import numpy as np
 
@@ -38,7 +40,7 @@ class TreeLikelihoodCalculator:
 
     def sample_likelihood(self, sample_idx):
         """Calculate the likelihood of all attachment points for a sample index"""
-        return self.sample_likelihoods()[sample_idx]
+        return np.exp(self.sample_likelihoods()[sample_idx])
 
     def sample_likelihoods(self):
         """Calculate the likelihoods of all possible sample attachments"""
@@ -60,8 +62,9 @@ class TreeLikelihoodCalculator:
                 current_log_like -= diffs.pop()
             else:
                 raise ValueError(f'Unexpected label: {label}')
-        return np.sum(np.power(10, attachment_log_like, dtype=REAL_SPACE_LIKE_DTYPE), 0)
+        return np.logaddexp.reduce(attachment_log_like / math.log10(math.e),
+                                   dtype=REAL_SPACE_LIKE_DTYPE, axis=0)
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
-        return np.sum(np.log10(self.sample_likelihoods(), dtype=LOG_LIKE_DTYPE))
+        return np.sum(self.sample_likelihoods() * math.log10(math.e))
