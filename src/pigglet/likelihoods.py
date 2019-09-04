@@ -1,12 +1,34 @@
-import math
-
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE, REAL_SPACE_LIKE_DTYPE
+from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE
 from pigglet.tree_utils import roots_of_tree
 
 
+# def length_iter(length):
+#     length = int(length)
+#     yield length
+#     while length > 2:
+#         length //= 2
+#         yield length
+#
+#
+# def strided_reduction(attachment_log_like):
+#     # for stride in stride_iter(attachment_log_like.shape[0]):
+#     even_cols = attachment_log_like.shape[0] % 2 == 0
+#     out = attachment_log_like
+#     extra_cols = None
+#     while out.shape[0] > 1:
+#         if out.shape[0] % 2 == 1:
+#             extra_cols = np.row_stack((extra_cols, out[-1, :]))
+#             out = out[:-1, :]
+#         out = np.logaddexp(out[:out.shape[0]:2, :], out[1:out.shape[0]:2, :])
+#
+#     if extra_cols is not None:
+#         out = np.row_stack((out, extra_cols))
+#     return np.logaddexp.reduce(out, dtype=REAL_SPACE_LIKE_DTYPE, axis=0)
+#
+#
 class TreeLikelihoodCalculator:
     """Calculates likelihood of mutation tree (g) and attachment points
     from gls for m sites and n samples
@@ -62,9 +84,8 @@ class TreeLikelihoodCalculator:
                 current_log_like -= diffs.pop()
             else:
                 raise ValueError(f'Unexpected label: {label}')
-        return np.logaddexp.reduce(attachment_log_like / math.log10(math.e),
-                                   dtype=REAL_SPACE_LIKE_DTYPE, axis=0)
+        return np.logaddexp.reduce(attachment_log_like, axis=0)
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
-        return np.sum(self.sample_likelihoods() * math.log10(math.e))
+        return np.sum(self.sample_likelihoods())
