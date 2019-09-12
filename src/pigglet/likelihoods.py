@@ -1,3 +1,5 @@
+import math
+
 import networkx as nx
 import numpy as np
 
@@ -95,6 +97,31 @@ class TreeLikelihoodCalculator:
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
         return np.sum(self.attachment_marginaziled_sample_log_likelihoods())
 
+    def mutation_probabilites(self, attach_prob):
+        """Accepts an (m + 1) x n matrix of (normalized) log attachment probabilities
+
+        m is the number of sites and n is the number of samples
+
+        returns an m x n matrix of mutation probabilities. Each cell is the probability
+        that site i is mutated in sample j.
+        """
+
+        attach_prob = attach_prob[1:]
+        attach_prob = np.exp(attach_prob)
+        mut_probs = np.zeros_like(attach_prob)
+        seen_muts = []
+        for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
+            if u == v:
+                continue
+            if label == 'forward':
+                seen_muts.append(v)
+                mut_probs[seen_muts] += attach_prob[v]
+            elif label == 'reverse':
+                seen_muts.pop()
+            else:
+                raise ValueError(f'Unexpected label: {label}')
+        return mut_probs
+
 
 class AttachmentAggregator:
     """Aggregates attachment scores"""
@@ -111,3 +138,6 @@ class AttachmentAggregator:
         else:
             self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
         self.num_additions += 1
+
+    def normalized_attachment_probabilities(self):
+        return self.attachment_scores - math.log(self.num_additions)
