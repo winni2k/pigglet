@@ -30,7 +30,7 @@ from pigglet.tree_utils import roots_of_tree
 #
 #
 class TreeLikelihoodCalculator:
-    """Calculates likelihood of mutation tree (g) and attachment points
+    """Calculates likelihood of mutation tree (self.g) and attachment points
     from gls for m sites and n samples
 
     self.gls should have shape (m, n, NUM_GLS)
@@ -60,11 +60,7 @@ class TreeLikelihoodCalculator:
         self.root = roots[0]
         self.g = g
 
-    def sample_likelihood(self, sample_idx):
-        """Calculate the likelihood of all attachment points for a sample index"""
-        return np.exp(self.sample_likelihoods()[sample_idx])
-
-    def sample_likelihoods(self):
+    def attachment_scores(self):
         """Calculate the likelihoods of all possible sample attachments"""
         attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
                                        dtype=LOG_LIKE_DTYPE)
@@ -84,7 +80,11 @@ class TreeLikelihoodCalculator:
                 current_log_like -= diffs.pop()
             else:
                 raise ValueError(f'Unexpected label: {label}')
-        return np.logaddexp.reduce(attachment_log_like, axis=0)
+        return attachment_log_like
+
+    def sample_likelihoods(self):
+        """Calculate the marginal likelihoods of all possible sample attachments"""
+        return np.logaddexp.reduce(self.attachment_scores(), axis=0)
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""

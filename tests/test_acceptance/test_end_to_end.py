@@ -7,7 +7,7 @@ from pigglet_testing.builders.vcf import VCFBuilder
 
 
 @pytest.mark.parametrize('with_click', [False])
-def test_single_mutation_one_sample(tmpdir, with_click):
+def test_single_mutation_one_sample_creates_trivial_graph(tmpdir, with_click):
     # given
     b = VCFBuilder(tmpdir)
     b.with_site_gls([0, 1, 0])

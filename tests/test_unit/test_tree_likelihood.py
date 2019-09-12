@@ -9,10 +9,15 @@ Call build() to obtain the constructed object.
 """
 import math
 
+import numpy as np
 import pytest
 from pytest import approx
 
 from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
+
+
+def get_sample_likelihood(calc, sample_idx):
+    return np.exp(calc.sample_likelihoods()[sample_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):
@@ -33,7 +38,7 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        like = calc.sample_likelihood(0)
+        like = get_sample_likelihood(calc, 0)
 
         # then
         assert like == approx(sum_of_exp_of(0, 1))
@@ -46,8 +51,8 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        like1 = calc.sample_likelihood(0)
-        like2 = calc.sample_likelihood(1)
+        like1 = get_sample_likelihood(calc, 0)
+        like2 = get_sample_likelihood(calc, 1)
 
         # then
         assert like1 == approx(sum_of_exp_of(0, 1))
@@ -62,7 +67,7 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when/then
-        assert calc.sample_likelihood(0) == approx(sum_of_exp_of(0, 1))
+        assert get_sample_likelihood(calc, 0) == approx(sum_of_exp_of(0, 1))
 
     def test_one_sample_two_private_mutations(self):
         # given
@@ -74,7 +79,7 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when/then
-        assert calc.sample_likelihood(0) == approx(sum_of_exp_of(0, 1, 2))
+        assert get_sample_likelihood(calc, 0) == approx(sum_of_exp_of(0, 1, 2))
 
     def test_four_samples_two_mutations_and_likelihood_one(self):
         # given
@@ -86,7 +91,7 @@ class TestSampleLikelihood:
 
         # when/then
         for sample in range(4):
-            assert calc.sample_likelihood(sample) == approx(sum_of_exp_of(2, 1, 1))
+            assert get_sample_likelihood(calc, sample) == approx(sum_of_exp_of(2, 1, 1))
 
     @pytest.mark.parametrize('sample_id_to_mutate', [0, 1])
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate):
@@ -99,8 +104,9 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when/then
-        assert calc.sample_likelihood(sample_id_to_mutate) == approx(sum_of_exp_of(0, 1))
-        assert calc.sample_likelihood(abs(sample_id_to_mutate - 1)) == approx(
+        assert get_sample_likelihood(calc, sample_id_to_mutate) == approx(
+            sum_of_exp_of(0, 1))
+        assert get_sample_likelihood(calc, abs(sample_id_to_mutate - 1)) == approx(
             sum_of_exp_of(0, 0))
 
     def test_raises_on_invalid_sample_idx(self):
@@ -111,7 +117,7 @@ class TestSampleLikelihood:
 
         # when/then
         with pytest.raises(IndexError):
-            calc.sample_likelihood(1)
+            get_sample_likelihood(calc, 1)
 
     def test_with_two_private_mutations(self):
         # given
@@ -126,7 +132,7 @@ class TestSampleLikelihood:
 
         # when
         for sample in range(2):
-            assert calc.sample_likelihood(sample) == approx(sum_of_exp_of(0, 0, 1))
+            assert get_sample_likelihood(calc, sample) == approx(sum_of_exp_of(0, 0, 1))
 
     def test_with_doubleton_mutation(self):
         # given
@@ -138,10 +144,10 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        assert calc.sample_likelihood(0) == approx(sum_of_exp_of(0, 0, 0))
-        assert calc.sample_likelihood(1) == approx(sum_of_exp_of(0, 0, 0))
-        assert calc.sample_likelihood(2) == approx(sum_of_exp_of(0, 0, 1))
-        assert calc.sample_likelihood(3) == approx(sum_of_exp_of(0, 0, 1))
+        assert get_sample_likelihood(calc, 0) == approx(sum_of_exp_of(0, 0, 0))
+        assert get_sample_likelihood(calc, 1) == approx(sum_of_exp_of(0, 0, 0))
+        assert get_sample_likelihood(calc, 2) == approx(sum_of_exp_of(0, 0, 1))
+        assert get_sample_likelihood(calc, 3) == approx(sum_of_exp_of(0, 0, 1))
 
 
 class TestSampleMarginalizedLikelihood:
