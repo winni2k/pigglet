@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE
+from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE, HOM_REF_NUM
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -52,6 +52,7 @@ class TreeLikelihoodCalculator:
         self.g = None
         self.root = None
         self.paths = None
+        self._attachment_log_like = None
         self.set_g(g)
 
     def set_g(self, g):
@@ -59,33 +60,37 @@ class TreeLikelihoodCalculator:
         assert len(roots) == 1
         self.root = roots[0]
         self.g = g
+        self._attachment_log_like = None
 
-    def attachment_scores(self):
+    @property
+    def attachment_log_like(self):
         """Calculate the likelihoods of all possible sample attachments"""
-        attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
-                                       dtype=LOG_LIKE_DTYPE)
-        current_log_like = np.sum(
-            self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
-            0)
-        attachment_log_like[0] = current_log_like
-        diffs = []
-        for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
-            if u == v:
-                continue
-            if label == 'forward':
-                diffs.append(self.gls[v, HET_NUM, :] - self.gls[v, 0, :])
-                current_log_like += diffs[-1]
-                attachment_log_like[v + 1] = current_log_like
-            elif label == 'reverse':
-                current_log_like -= diffs.pop()
-            else:
-                raise ValueError(f'Unexpected label: {label}')
-        return attachment_log_like
+        if self._attachment_log_like is None:
+            attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
+                                           dtype=LOG_LIKE_DTYPE)
+            current_log_like = np.sum(
+                self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
+                0)
+            attachment_log_like[0] = current_log_like
+            diffs = []
+            for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
+                if u == v:
+                    continue
+                if label == 'forward':
+                    diffs.append(self.gls[v, HET_NUM, :] - self.gls[v, HOM_REF_NUM, :])
+                    current_log_like += diffs[-1]
+                    attachment_log_like[v + 1] = current_log_like
+                elif label == 'reverse':
+                    current_log_like -= diffs.pop()
+                else:
+                    raise ValueError(f'Unexpected label: {label}')
+            self._attachment_log_like = attachment_log_like
+        return self._attachment_log_like
 
-    def sample_likelihoods(self):
+    def attachment_marginaziled_sample_log_likelihoods(self):
         """Calculate the marginal likelihoods of all possible sample attachments"""
-        return np.logaddexp.reduce(self.attachment_scores(), axis=0)
+        return np.logaddexp.reduce(self.attachment_log_like, axis=0)
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
-        return np.sum(self.sample_likelihoods())
+        return np.sum(self.attachment_marginaziled_sample_log_likelihoods())
