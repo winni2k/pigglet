@@ -94,3 +94,20 @@ class TreeLikelihoodCalculator:
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""
         return np.sum(self.attachment_marginaziled_sample_log_likelihoods())
+
+
+class AttachmentAggregator:
+    """Aggregates attachment scores"""
+
+    def __init__(self):
+        self.attachment_scores = None
+        self.num_additions = 0
+
+    def add_attachment_log_likes(self, calc):
+        sum_likes = calc.attachment_marginaziled_sample_log_likelihoods()
+        log_likes = calc.attachment_log_like - sum_likes
+        if self.attachment_scores is None:
+            self.attachment_scores = log_likes
+        else:
+            self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
+        self.num_additions += 1

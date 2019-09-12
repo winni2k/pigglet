@@ -3,23 +3,8 @@ import math
 import numpy as np
 import pytest
 
+from pigglet.likelihoods import AttachmentAggregator
 from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
-
-
-class AttachmentAggregator:
-
-    def __init__(self):
-        self.attachment_scores = None
-        self.num_additions = 0
-
-    def add_attachment_log_likes(self, calc):
-        sum_likes = calc.attachment_marginaziled_sample_log_likelihoods()
-        log_likes = calc.attachment_log_like - sum_likes
-        if self.attachment_scores is None:
-            self.attachment_scores = log_likes
-        else:
-            self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
-        self.num_additions += 1
 
 
 class TestAttachmentAggregatorAddAttachmentlogLikes:
