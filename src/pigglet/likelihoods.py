@@ -66,7 +66,12 @@ class TreeLikelihoodCalculator:
 
     @property
     def attachment_log_like(self):
-        """Calculate the likelihoods of all possible sample attachments"""
+        """Calculate the likelihoods of all possible sample attachments
+
+        :returns (m+1) x n numpy array
+        the cell at row i and column j is the probability of sample j attaching to site
+        i-1, where i=0 is the root node"""
+
         if self._attachment_log_like is None:
             attachment_log_like = np.zeros((self.n_sites + 1, self.n_samples),
                                            dtype=LOG_LIKE_DTYPE)
@@ -98,7 +103,7 @@ class TreeLikelihoodCalculator:
         return np.sum(self.attachment_marginaziled_sample_log_likelihoods())
 
     def mutation_probabilites(self, attach_prob):
-        """Accepts an (m + 1) x n matrix of (normalized) log attachment probabilities
+        """Accepts an (m + 1) x n matrix of (ideally normalized) log attachment probabilities
 
         m is the number of sites and n is the number of samples
 
@@ -121,6 +126,9 @@ class TreeLikelihoodCalculator:
             else:
                 raise ValueError(f'Unexpected label: {label}')
         return mut_probs
+
+    def ml_sample_attachments(self):
+        return np.argmax(self.attachment_log_like, axis=0)
 
 
 class AttachmentAggregator:

@@ -2,7 +2,7 @@ import random
 
 import networkx as nx
 
-from pigglet.likelihoods import TreeLikelihoodCalculator
+from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
 from pigglet.tree import TreeInteractor
 
 NUM_MCMC_MOVES = 3
@@ -11,7 +11,8 @@ NUM_MCMC_MOVES = 3
 class MCMCRunner:
 
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
-                 tree_move_weights, tree_interactor, likelihood_calculator, current_like):
+                 tree_move_weights, tree_interactor, likelihood_calculator,
+                 current_like):
         self.g = graph
         self.map_g = graph
         self.gls = gls
@@ -21,6 +22,7 @@ class MCMCRunner:
         self.tree_interactor = tree_interactor
         self.calc = likelihood_calculator
         self.current_like = current_like
+        self.agg = AttachmentAggregator()
 
     @classmethod
     def from_gls(cls, gls,
@@ -64,6 +66,7 @@ class MCMCRunner:
                 self.map_g = new_g
             accepted = self._choose_g(new_g, new_like, mh_correction)
             if accepted:
+                self.agg.add_attachment_log_likes(self.calc)
                 iteration += 1
 
     def _choose_g(self, new_g, new_like, mh_correction):

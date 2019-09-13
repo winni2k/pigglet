@@ -224,3 +224,64 @@ class TestSampleMarginalizedLikelihood:
 
         # then
         assert like == approx(log_sum_of_exp_of(0, 1, 2, 1, 2, 3, 2, 3, 4))
+
+
+class TestMLAttachments:
+
+    def test_single_mutation_one_sample(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutated_gl_at(0, 0)
+        calc = b.build()
+
+        # when
+        attachments = calc.ml_sample_attachments()
+
+        # then
+        assert list(attachments) == [1]
+
+    def test_single_mutation_two_samples(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(1, 0)
+        calc = b.build()
+
+        # when
+        attachments = calc.ml_sample_attachments()
+
+        # then
+        assert list(attachments) == [1, 1]
+
+    def test_two_mutations_one_sample(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutation_at(0, 1)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(0, 1)
+        calc = b.build()
+
+        # when
+        attachments = calc.ml_sample_attachments()
+
+        # then
+        assert list(attachments) == [2]
+
+    def test_two_mutations_two_samples(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_at(-1, 0)
+        b.with_mutation_at(0, 1)
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(0, 1)
+        b.with_mutated_gl_at(1, 0)
+        calc = b.build()
+
+        # when
+        attachments = calc.ml_sample_attachments()
+
+        # then
+        assert list(attachments) == [2, 1]
