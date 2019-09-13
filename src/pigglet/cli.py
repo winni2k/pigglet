@@ -3,14 +3,19 @@ import click
 
 @click.command()
 @click.version_option()
-@click.argument('genotype_likelihood_VCF', type=click.Path(exists=True))
-@click.argument('output_prefix', type=click.Path())
-def cli(genotype_likelihood_vcf, output_prefix):
-    """pigglet main entry point"""
-    return run(genotype_likelihood_vcf, output_prefix)
+@click.argument('gl_vcf', type=click.Path(exists=True))
+@click.argument('out_prefix', type=click.Path())
+@click.option('-b', '--burnin', type=int, default=10, show_default=True,
+              help='Number of burn-in iterations to run')
+@click.option('-s', '--sampling', type=int, default=10, show_default=True,
+              help='Number of sampling iterations to run')
+def cli(gl_vcf, out_prefix, burnin, sampling):
+    """Impute mutation tree from genotype likelihoods stored in GL_VCF and save the
+    resulting tree and mutation probabilities to OUT_PREFIX.
 
+    Mutations and samples are ordered in the output according to their order in GL_VCF.
+    """
 
-def run(gl_vcf, out_prefix):
     from pigglet.mcmc import MCMCRunner
     from pigglet.gl_loader import LikelihoodLoader
     import networkx as nx
@@ -19,7 +24,9 @@ def run(gl_vcf, out_prefix):
     from pigglet.likelihoods import TreeLikelihoodCalculator
 
     gls = LikelihoodLoader(vcf_file=gl_vcf).load()
-    runner = MCMCRunner.from_gls(gls=gls)
+    runner = MCMCRunner.from_gls(gls=gls,
+                                 num_burnin_iter=burnin,
+                                 num_sampling_iter=sampling)
     runner.run()
 
     calc = TreeLikelihoodCalculator(runner.map_g, gls)
