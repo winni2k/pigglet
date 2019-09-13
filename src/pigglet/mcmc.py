@@ -1,6 +1,7 @@
 import random
 
 import networkx as nx
+import logging
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
 from pigglet.tree import TreeInteractor
@@ -55,6 +56,7 @@ class MCMCRunner:
         moves = [mover.prune_and_reattach,
                  mover.swap_node,
                  mover.swap_subtree]
+        tries = 0
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             mover.set_g(self.g.copy())
             move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
@@ -62,12 +64,16 @@ class MCMCRunner:
             new_g = mover.g
             self.calc.set_g(new_g)
             new_like = self.calc.sample_marginalized_log_likelihood()
-            if new_like >= self.current_like:
+            if new_like > self.current_like:
                 self.map_g = new_g
+                logging.info('New MAP tree with likelihood %s', new_like)
             accepted = self._choose_g(new_g, new_like, mh_correction)
+            tries += 1
             if accepted:
+                logging.debug('Iteration %s complete after %s tries', iteration, tries)
                 self.agg.add_attachment_log_likes(self.calc)
                 iteration += 1
+                tries = 0
 
     def _choose_g(self, new_g, new_like, mh_correction):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
