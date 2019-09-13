@@ -1,7 +1,7 @@
+import logging
 import random
 
 import networkx as nx
-import logging
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
 from pigglet.tree import TreeInteractor
@@ -13,7 +13,7 @@ class MCMCRunner:
 
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
                  tree_move_weights, tree_interactor, likelihood_calculator,
-                 current_like):
+                 current_like, reporting_interval):
         self.g = graph
         self.map_g = graph
         self.gls = gls
@@ -24,6 +24,7 @@ class MCMCRunner:
         self.calc = likelihood_calculator
         self.current_like = current_like
         self.agg = AttachmentAggregator()
+        self.reporting_interval = reporting_interval
 
     @classmethod
     def from_gls(cls, gls,
@@ -31,7 +32,8 @@ class MCMCRunner:
                  num_burnin_iter=10,
                  prune_and_reattach_weight=1,
                  swap_node_weight=1,
-                 swap_subtree_weight=1):
+                 swap_subtree_weight=1,
+                 reporting_interval=1):
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [
             prune_and_reattach_weight,
@@ -47,7 +49,8 @@ class MCMCRunner:
                    tree_move_weights=tree_move_weights,
                    tree_interactor=tree_interactor,
                    likelihood_calculator=like_calc,
-                   current_like=like_calc.sample_marginalized_log_likelihood())
+                   current_like=like_calc.sample_marginalized_log_likelihood(),
+                   reporting_interval=reporting_interval)
 
     def run(self):
         iteration = 0
@@ -58,6 +61,8 @@ class MCMCRunner:
                  mover.swap_subtree]
         tries = 0
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
+            if iteration == self.num_burnin_iter:
+                logging.info('Entering sampling iterations')
             mover.set_g(self.g.copy())
             move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
             mh_correction = moves[move]()
@@ -66,14 +71,18 @@ class MCMCRunner:
             new_like = self.calc.sample_marginalized_log_likelihood()
             if new_like > self.current_like:
                 self.map_g = new_g
-                logging.info('New MAP tree with likelihood %s', new_like)
+                logging.info('Iteration %s: new MAP tree with likelihood %s',
+                             iteration,
+                             new_like)
             accepted = self._choose_g(new_g, new_like, mh_correction)
             tries += 1
             if accepted:
-                logging.debug('Iteration %s complete after %s tries', iteration, tries)
+                if iteration % self.reporting_interval == 0 and iteration != 0:
+                    logging.info('Iteration %s: acceptance rate is %s', iteration,
+                                 self.reporting_interval / tries)
+                    tries = 0
                 self.agg.add_attachment_log_likes(self.calc)
                 iteration += 1
-                tries = 0
 
     def _choose_g(self, new_g, new_like, mh_correction):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
