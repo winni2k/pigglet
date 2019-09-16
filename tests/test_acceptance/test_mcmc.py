@@ -67,3 +67,18 @@ def test_arbitrary_trees(n_mutations):
 
     # then
     assert set(mcmc.map_g.edges()) == set(rand_g.edges())
+
+
+@pytest.mark.parametrize('burnin,sampling', [(0, 3), (3, 0), (3, 3)])
+def test_aggregates_the_correct_number_of_runs(burnin, sampling):
+    b = MCMCBuilder()
+    b.with_mutated_gl_at(0, 0)
+    b.with_n_burnin_iter(burnin)
+    b.with_n_sampling_iter(sampling)
+    mcmc = b.build()
+
+    # when
+    mcmc.run()
+
+    # then
+    assert mcmc.agg.num_additions == sampling

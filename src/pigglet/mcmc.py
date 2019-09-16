@@ -98,8 +98,9 @@ class MCMCRunner:
                         self.map_like
                     )
                     tries = 0
-                self.agg.add_attachment_log_likes(self.calc)
                 iteration += 1
+                if iteration > self.num_burnin_iter:
+                    self.agg.add_attachment_log_likes(self.calc)
                 pbar.update()
 
     def _choose_g(self, new_g, new_like, mh_correction):
