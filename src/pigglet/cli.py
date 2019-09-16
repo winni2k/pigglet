@@ -1,6 +1,18 @@
 import click
 
 
+def configure_logger(log_level, log_file):
+    import logging
+    logging.basicConfig(
+        level=log_level,
+        format="%(process)d|pigglet|%(asctime)s|%(levelname)s  %(message)s",
+        datefmt='%Y-%m-%dT%H:%M:%S',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ])
+
+
 @click.command()
 @click.version_option()
 @click.argument('gl_vcf', type=click.Path(exists=True))
@@ -24,9 +36,8 @@ def cli(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, sto
     Mutations and samples are ordered in the output according to their order in GL_VCF.
     """
 
+    configure_logger(log_level=log_level, log_file=out_prefix + '.log')
     import logging
-    logging.basicConfig(level=getattr(logging, log_level),
-                        format='%(process)d-pigglet-%(levelname)s: %(message)s')
 
     from pigglet.mcmc import MCMCRunner
     from pigglet.gl_loader import LikelihoodLoader
