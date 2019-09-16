@@ -15,7 +15,7 @@ class MCMCRunner:
 
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
                  tree_move_weights, tree_interactor, likelihood_calculator,
-                 current_like, reporting_interval):
+                 current_like, reporting_interval, manager):
         self.g = graph
         self.map_g = graph
         self.gls = gls
@@ -27,6 +27,7 @@ class MCMCRunner:
         self.current_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
+        self.manager = manager
 
     @classmethod
     def from_gls(cls, gls,
@@ -35,7 +36,8 @@ class MCMCRunner:
                  prune_and_reattach_weight=1,
                  swap_node_weight=1,
                  swap_subtree_weight=1,
-                 reporting_interval=1):
+                 reporting_interval=1,
+                 manager=None):
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [
             prune_and_reattach_weight,
@@ -45,6 +47,8 @@ class MCMCRunner:
         assert len(tree_move_weights) == NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
         like_calc = TreeLikelihoodCalculator(graph, gls)
+        if manager is None:
+            manager = enlighten.get_manager(stream=sys.stderr)
         return cls(gls, graph,
                    num_sampling_iter=num_sampling_iter,
                    num_burnin_iter=num_burnin_iter,
@@ -52,7 +56,8 @@ class MCMCRunner:
                    tree_interactor=tree_interactor,
                    likelihood_calculator=like_calc,
                    current_like=like_calc.sample_marginalized_log_likelihood(),
-                   reporting_interval=reporting_interval)
+                   reporting_interval=reporting_interval,
+                   manager=manager)
 
     def run(self):
         iteration = 0
@@ -62,12 +67,11 @@ class MCMCRunner:
                  mover.swap_node,
                  mover.swap_subtree]
         tries = 0
-        burnin_pbar, sampling_pbar, manager = self._get_progress_bars()
-        burnin_pbar.refresh()
-        sampling_pbar.refresh()
+        pbar = self._get_progress_bar(type='burnin')
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             if iteration == self.num_burnin_iter:
                 logging.info('Entering sampling iterations')
+                pbar = self._get_progress_bar(type='sampling')
             mover.set_g(self.g.copy())
             move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
             mh_correction = moves[move]()
@@ -87,12 +91,8 @@ class MCMCRunner:
                                  self.reporting_interval / tries)
                     tries = 0
                 self.agg.add_attachment_log_likes(self.calc)
-                if iteration < self.num_burnin_iter:
-                    burnin_pbar.update()
-                else:
-                    sampling_pbar.update()
                 iteration += 1
-        manager.stop()
+                pbar.update()
 
     def _choose_g(self, new_g, new_like, mh_correction):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
@@ -106,19 +106,20 @@ class MCMCRunner:
             self.current_like = new_like
         return accept
 
-    def _get_progress_bars(self):
-        manager = enlighten.get_manager(stream=sys.stderr)
-        burnin_pbar = manager.counter(
-            total=self.num_burnin_iter,
-            desc='Burnin iterations',
-            unit='iterations'
-        )
-        sampling_pbar = manager.counter(
-            total=self.num_sampling_iter,
-            desc='Sampling iterations',
-            unit='iterations'
-        )
-        return burnin_pbar, sampling_pbar, manager
+    def _get_progress_bar(self, type):
+        if type == 'burnin':
+            return self.manager.counter(
+                total=self.num_burnin_iter,
+                desc='Burnin iterations',
+                unit='iterations'
+            )
+        elif type == 'sampling':
+            return self.manager.counter(
+                total=self.num_sampling_iter,
+                desc='Sampling iterations',
+                unit='iterations'
+            )
+        raise ValueError
 
 
 class MoveExecutor:
