@@ -25,6 +25,7 @@ class MCMCRunner:
         self.tree_interactor = tree_interactor
         self.calc = likelihood_calculator
         self.current_like = current_like
+        self.map_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
         self.manager = manager
@@ -80,15 +81,22 @@ class MCMCRunner:
             new_like = self.calc.sample_marginalized_log_likelihood()
             if new_like > self.current_like:
                 self.map_g = new_g
+                self.map_like = new_like
                 logging.info('Iteration %s: new MAP tree with likelihood %s',
                              iteration,
-                             new_like)
+                             self.map_like)
             accepted = self._choose_g(new_g, new_like, mh_correction)
             tries += 1
             if accepted:
                 if iteration % self.reporting_interval == 0 and iteration != 0:
-                    logging.info('Iteration %s: acceptance rate is %s', iteration,
-                                 self.reporting_interval / tries)
+                    logging.info(
+                        'Iteration %s: acceptance rate: %s\tcurrent like: %s'
+                        '\tMAP like: %s',
+                        iteration,
+                        self.reporting_interval / tries,
+                        self.current_like,
+                        self.map_like
+                    )
                     tries = 0
                 self.agg.add_attachment_log_likes(self.calc)
                 iteration += 1
