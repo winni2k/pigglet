@@ -1,6 +1,8 @@
 import logging
 import random
+import sys
 
+import enlighten
 import networkx as nx
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
@@ -60,6 +62,9 @@ class MCMCRunner:
                  mover.swap_node,
                  mover.swap_subtree]
         tries = 0
+        burnin_pbar, sampling_pbar, manager = self._get_progress_bars()
+        burnin_pbar.refresh()
+        sampling_pbar.refresh()
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             if iteration == self.num_burnin_iter:
                 logging.info('Entering sampling iterations')
@@ -82,7 +87,12 @@ class MCMCRunner:
                                  self.reporting_interval / tries)
                     tries = 0
                 self.agg.add_attachment_log_likes(self.calc)
+                if iteration < self.num_burnin_iter:
+                    burnin_pbar.update()
+                else:
+                    sampling_pbar.update()
                 iteration += 1
+        manager.stop()
 
     def _choose_g(self, new_g, new_like, mh_correction):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
@@ -95,6 +105,20 @@ class MCMCRunner:
             self.g = new_g
             self.current_like = new_like
         return accept
+
+    def _get_progress_bars(self):
+        manager = enlighten.get_manager(stream=sys.stderr)
+        burnin_pbar = manager.counter(
+            total=self.num_burnin_iter,
+            desc='Burnin iterations',
+            unit='iterations'
+        )
+        sampling_pbar = manager.counter(
+            total=self.num_sampling_iter,
+            desc='Sampling iterations',
+            unit='iterations'
+        )
+        return burnin_pbar, sampling_pbar, manager
 
 
 class MoveExecutor:

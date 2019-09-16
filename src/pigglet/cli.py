@@ -31,6 +31,9 @@ def cli(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, sto
     from pigglet.mcmc import MCMCRunner
     from pigglet.gl_loader import LikelihoodLoader
 
+    version = get_version()
+    logging.info(f'The PIGGLET v{version}')
+
     logging.info('Loading GLs in %s', gl_vcf)
     loader = LikelihoodLoader(vcf_file=gl_vcf)
     gls = loader.load()
@@ -52,6 +55,11 @@ def cli(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, sto
 
     logging.info('Storing results')
     store_results(gls, out_prefix, output_store, runner)
+
+
+def get_version():
+    import pkg_resources  # part of setuptools
+    return pkg_resources.require("pigglet")[0].version
 
 
 def store_input(gls, loader, output_store, store_gls):
