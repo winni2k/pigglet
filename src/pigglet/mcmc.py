@@ -1,9 +1,8 @@
 import logging
 import random
-import sys
 
-import enlighten
 import networkx as nx
+from tqdm import tqdm
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
 from pigglet.tree import TreeInteractor
@@ -15,7 +14,7 @@ class MCMCRunner:
 
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
                  tree_move_weights, tree_interactor, likelihood_calculator,
-                 current_like, reporting_interval, manager):
+                 current_like, reporting_interval):
         self.g = graph
         self.map_g = graph
         self.gls = gls
@@ -28,17 +27,17 @@ class MCMCRunner:
         self.map_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
-        self.manager = manager
 
     @classmethod
-    def from_gls(cls, gls,
-                 num_sampling_iter=10,
-                 num_burnin_iter=10,
-                 prune_and_reattach_weight=1,
-                 swap_node_weight=1,
-                 swap_subtree_weight=1,
-                 reporting_interval=1,
-                 manager=None):
+    def from_gls(
+            cls, gls,
+            num_sampling_iter=10,
+            num_burnin_iter=10,
+            prune_and_reattach_weight=1,
+            swap_node_weight=1,
+            swap_subtree_weight=1,
+            reporting_interval=1,
+    ):
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [
             prune_and_reattach_weight,
@@ -48,17 +47,17 @@ class MCMCRunner:
         assert len(tree_move_weights) == NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
         like_calc = TreeLikelihoodCalculator(graph, gls)
-        if manager is None:
-            manager = enlighten.get_manager(stream=sys.stderr)
-        return cls(gls, graph,
-                   num_sampling_iter=num_sampling_iter,
-                   num_burnin_iter=num_burnin_iter,
-                   tree_move_weights=tree_move_weights,
-                   tree_interactor=tree_interactor,
-                   likelihood_calculator=like_calc,
-                   current_like=like_calc.sample_marginalized_log_likelihood(),
-                   reporting_interval=reporting_interval,
-                   manager=manager)
+        return cls(
+            gls,
+            graph,
+            num_sampling_iter=num_sampling_iter,
+            num_burnin_iter=num_burnin_iter,
+            tree_move_weights=tree_move_weights,
+            tree_interactor=tree_interactor,
+            likelihood_calculator=like_calc,
+            current_like=like_calc.sample_marginalized_log_likelihood(),
+            reporting_interval=reporting_interval,
+        )
 
     def run(self):
         iteration = 0
@@ -117,16 +116,18 @@ class MCMCRunner:
 
     def _get_progress_bar(self, type):
         if type == 'burnin':
-            return self.manager.counter(
+            return tqdm(
                 total=self.num_burnin_iter,
                 desc='Burnin iterations',
-                unit='iterations'
+                unit='iterations',
+                mininterval=5.0,
             )
         elif type == 'sampling':
-            return self.manager.counter(
+            return tqdm(
                 total=self.num_sampling_iter,
                 desc='Sampling iterations',
-                unit='iterations'
+                unit='iterations',
+                mininterval=5.0,
             )
         raise ValueError
 
