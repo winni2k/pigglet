@@ -81,7 +81,7 @@ class MCMCRunner:
             if new_like > self.current_like:
                 self.map_g = new_g
                 self.map_like = new_like
-                logging.info('Iteration %s: new MAP tree with likelihood %s',
+                logging.debug('Iteration %s: new MAP tree with likelihood %s',
                              iteration,
                              self.map_like)
             accepted = self._choose_g(new_g, new_like, mh_correction)
