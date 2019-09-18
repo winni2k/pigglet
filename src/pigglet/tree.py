@@ -11,8 +11,16 @@ class TreeMoveMemento:
     """This memento stores the information necessary to undo a TreeInteractor move"""
 
     def __init__(self, commands, args):
-        self.commands = commands
-        self.args = args
+        self._commands = commands
+        self._args = args
+
+    @property
+    def commands(self):
+        return reversed(self._commands)
+
+    @property
+    def args(self):
+        return reversed(self._args)
 
     @classmethod
     def of_prune(cls, edge):
@@ -21,6 +29,14 @@ class TreeMoveMemento:
     @classmethod
     def of_attach(cls, node, target):
         return cls(commands=['prune'], args=[{'node': node}])
+
+    @classmethod
+    def of_swap_labels(cls, n1, n2):
+        return cls(commands=['swap_labels'], args=[{'n1': n1, 'n2': n2}])
+
+    def append(self, other):
+        self._commands += other.commands
+        self._args += other.args
 
 
 class TreeInteractor:
@@ -55,7 +71,7 @@ class TreeInteractor:
             nx.descendants(self.g, self.root),
             [self.root]
         )
-        self._uniform_attach_to_nodes(node, valid_attachment_points)
+        return self._uniform_attach_to_nodes(node, valid_attachment_points)
 
     def swap_labels(self, n1, n2):
         self.mh_correction = 1
@@ -63,46 +79,48 @@ class TreeInteractor:
             raise ValueError
         nx.relabel_nodes(self.g, {n1: TMP_LABEL}, copy=False)
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)
+        return TreeMoveMemento.of_swap_labels(n1, n2)
 
     def swap_subtrees(self, n1, n2):
         if n1 == self.root or n2 == self.root:
             raise ValueError
         if n2 in nx.ancestors(self.g, n1):
-            self.mh_correction = self._uniform_subtree_swap(n2, n1)
-            return
-        elif n2 in nx.descendants(self.g, n1):
-            self.mh_correction = self._uniform_subtree_swap(n1, n2)
-            return
+            return self._uniform_subtree_swap(n2, n1)
+        if n2 in nx.descendants(self.g, n1):
+            return self._uniform_subtree_swap(n1, n2)
         self.mh_correction = 1
         n1_parent = self._parent_of(n1)
         n2_parent = self._parent_of(n2)
-        self.prune(n1)
-        self.prune(n2)
-        self.attach(n1, n2_parent)
-        self.attach(n2, n1_parent)
+        memento = self.prune(n1)
+        memento.append(self.prune(n2))
+        memento.append(self.attach(n1, n2_parent))
+        memento.append(self.attach(n2, n1_parent))
+        return memento
 
     def undo(self, memento):
-        for idx, command in enumerate(memento.commands):
-            getattr(self, command)(**memento.args[idx])
+        for command, args in zip(memento.commands, memento.args):
+            getattr(self, command)(**args)
 
     def _parent_of(self, n):
         return next(self.g.predecessors(n))
 
     def _uniform_subtree_swap(self, ancestor, descendant):
         anc_parent = self._parent_of(ancestor)
-        dec_descendants = nx.descendants(self.g, descendant)
+        dec_descendants = set(nx.descendants(self.g, descendant))
 
-        self.prune(descendant)
-        self.attach(descendant, anc_parent)
-        anc_descendants = nx.descendants(self.g, ancestor)
+        memento = self.prune(descendant)
+        memento.append(self.attach(descendant, anc_parent))
+        anc_descendants = set(nx.descendants(self.g, ancestor))
 
-        self.prune(ancestor)
-        self._uniform_attach_to_nodes(ancestor,
-                                      itertools.chain(dec_descendants, [descendant]))
+        memento.append(self.prune(ancestor))
+        memento.append(self._uniform_attach_to_nodes(ancestor,
+                                                     itertools.chain(dec_descendants,
+                                                                     [descendant])))
 
-        return (len(dec_descendants) + 1) / (len(anc_descendants) + 1)
+        self.mh_correction = (len(dec_descendants) + 1) / (len(anc_descendants) + 1)
+        return memento
 
     def _uniform_attach_to_nodes(self, node, target_nodes):
         target_nodes = list(target_nodes)
         attach_idx = random.randrange(len(target_nodes))
-        self.attach(node, target_nodes[attach_idx])
+        return self.attach(node, target_nodes[attach_idx])
