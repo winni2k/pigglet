@@ -73,8 +73,7 @@ class MCMCRunner:
                 logging.info('Entering sampling iterations')
                 pbar = self._get_progress_bar(type='sampling')
             mover.set_g(self.g.copy())
-            move = random.choices(mcmc_moves, weights=self.tree_move_weights)[0]
-            mh_correction = moves[move]()
+            moves[random.choices(mcmc_moves, weights=self.tree_move_weights)[0]]()
             new_g = mover.g
             self.calc.set_g(new_g)
             new_like = self.calc.sample_marginalized_log_likelihood()
@@ -82,9 +81,9 @@ class MCMCRunner:
                 self.map_g = new_g
                 self.map_like = new_like
                 logging.debug('Iteration %s: new MAP tree with likelihood %s',
-                             iteration,
-                             self.map_like)
-            accepted = self._choose_g(new_g, new_like, mh_correction)
+                              iteration,
+                              self.map_like)
+            accepted = self._choose_g(new_g, new_like, mover.mh_correction())
             tries += 1
             if accepted:
                 if iteration % self.reporting_interval == 0 and iteration != 0:
@@ -142,24 +141,27 @@ class MoveExecutor:
         self.g = g
         self.interactor = TreeInteractor(self.g)
 
+    def mh_correction(self):
+        return self.interactor.mh_correction
+
     def prune_and_reattach(self):
         if self._is_tree_too_small():
-            return 1
+            return
         node = random.randrange(len(self.g) - 1)
         self.interactor.prune(node)
-        return self.interactor.uniform_attach(node)
+        self.interactor.uniform_attach(node)
 
     def swap_node(self):
         if self._is_tree_too_small():
-            return 1
+            return
         n1, n2 = self._get_two_distinct_nodes()
-        return self.interactor.swap_labels(n1, n2)
+        self.interactor.swap_labels(n1, n2)
 
     def swap_subtree(self):
         if self._is_tree_too_small():
-            return 1
+            return
         n1, n2 = self._get_two_distinct_nodes()
-        return self.interactor.swap_subtrees(n1, n2)
+        self.interactor.swap_subtrees(n1, n2)
 
     def _get_two_distinct_nodes(self):
         assert len(self.g) > 2
