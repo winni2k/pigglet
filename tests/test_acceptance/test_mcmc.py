@@ -1,8 +1,9 @@
 import networkx as nx
 import pytest
+from hypothesis import given, strategies
 
 from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
-    add_gl_at_ancestor_mutations_for
+    add_gl_at_ancestor_mutations_for, MoveExecutorBuilder
 
 
 def test_finds_one_sample_one_site():
@@ -82,3 +83,28 @@ def test_aggregates_the_correct_number_of_runs(burnin, sampling):
 
     # then
     assert mcmc.agg.num_additions == sampling
+
+
+class TestMoveExecutor:
+    @given(strategies.data(),
+           strategies.integers(min_value=1, max_value=3), )
+    def test_undoes_any_move(self, data, num_moves):
+        # given
+        b = MoveExecutorBuilder()
+        b.with_balanced_tree(3)
+        exe = b.build()
+        original_tree = exe.g.copy()
+
+        for idx in range(num_moves):
+            res = exe.available_moves[
+                data.draw(strategies.integers(min_value=0, max_value=2))]()
+            if idx == 0:
+                memento = res
+            else:
+                memento.append(res)
+
+        # when
+        exe.undo(memento)
+
+        # then
+        assert set(exe.g.edges) == set(original_tree.edges)

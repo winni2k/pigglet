@@ -11,16 +11,8 @@ class TreeMoveMemento:
     """This memento stores the information necessary to undo a TreeInteractor move"""
 
     def __init__(self, commands, args):
-        self._commands = commands
-        self._args = args
-
-    @property
-    def commands(self):
-        return reversed(self._commands)
-
-    @property
-    def args(self):
-        return reversed(self._args)
+        self.commands = commands
+        self.args = args
 
     @classmethod
     def of_prune(cls, edge):
@@ -35,8 +27,8 @@ class TreeMoveMemento:
         return cls(commands=['swap_labels'], args=[{'n1': n1, 'n2': n2}])
 
     def append(self, other):
-        self._commands += other.commands
-        self._args += other.args
+        self.commands += other.commands
+        self.args += other.args
 
 
 class TreeInteractor:
@@ -98,7 +90,7 @@ class TreeInteractor:
         return memento
 
     def undo(self, memento):
-        for command, args in zip(memento.commands, memento.args):
+        for command, args in zip(reversed(memento.commands), reversed(memento.args)):
             getattr(self, command)(**args)
 
     def _parent_of(self, n):

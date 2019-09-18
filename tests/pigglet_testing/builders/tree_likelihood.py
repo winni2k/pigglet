@@ -6,7 +6,7 @@ import numpy as np
 from pigglet.constants import NUM_GLS
 from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import TreeLikelihoodCalculator
-from pigglet.mcmc import MCMCRunner
+from pigglet.mcmc import MCMCRunner, MoveExecutor
 from pigglet_testing.builders.tree import TreeBuilder
 
 
@@ -94,6 +94,12 @@ class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
     def build(self):
         g, gls = super().build()
         return TreeLikelihoodCalculator(g, gls)
+
+
+class MoveExecutorBuilder(TreeBuilder):
+    def build(self):
+        g = super().build()
+        return MoveExecutor(g)
 
 
 class MCMCBuilder(LikelihoodBuilder):
