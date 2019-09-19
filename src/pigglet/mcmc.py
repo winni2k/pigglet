@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
 from pigglet.tree import TreeInteractor
+from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
 
@@ -24,6 +25,7 @@ class MCMCRunner:
         self.tree_interactor = tree_interactor
         self.calc = likelihood_calculator
         self.current_like = current_like
+        self.new_like = None
         self.map_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
@@ -69,21 +71,11 @@ class MCMCRunner:
             if iteration == self.num_burnin_iter:
                 logging.info('Entering sampling iterations')
                 pbar = self._get_progress_bar(type='sampling')
-            memento = self.mover.available_moves[
-                random.choices(self.mcmc_moves, weights=self.tree_move_weights)[0]]()
-            self.calc.expire_log_like()
-            new_like = self.calc.sample_marginalized_log_likelihood()
-            accepted = self._mh_acceptance(new_like, self.mover.mh_correction())
+            accepted = self._mh_step()
             tries += 1
             if not accepted:
-                self.mover.undo(memento)
                 continue
-            if new_like > self.map_like:
-                self.map_g = self.g.copy()
-                self.map_like = new_like
-                logging.debug('Iteration %s: new MAP tree with likelihood %s',
-                              iteration,
-                              self.map_like)
+            self._update_map(iteration)
             if iteration % self.reporting_interval == 0 and iteration != 0:
                 logging.info(
                     'Iteration %s: acceptance rate: %s\tcurrent like: %s'
@@ -99,12 +91,33 @@ class MCMCRunner:
                 self.agg.add_attachment_log_likes(self.calc)
             pbar.update()
 
-    def _mh_acceptance(self, new_like, mh_correction):
+    def _update_map(self, iteration):
+        if self.new_like > self.map_like:
+            self.map_g = self.g.copy()
+            self.map_like = self.new_like
+            logging.debug('Iteration %s: new MAP tree with likelihood %s',
+                          iteration,
+                          self.map_like)
+
+    def _mh_step(self):
+        """Propose tree and MH reject proposal"""
+        self.mover.available_moves[
+            random.choices(self.mcmc_moves, weights=self.tree_move_weights)[0]]()
+        self.calc.expire_likes()
+        self.new_like = self.calc.sample_marginalized_log_likelihood()
+        accepted = self._mh_acceptance()
+        if not accepted:
+            self.mover.undo(self.mover.memento)
+        else:
+            self.current_like = self.new_like
+        return accepted
+
+    def _mh_acceptance(self):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
         accept = False
-        if new_like >= self.current_like:
+        if self.new_like >= self.current_like:
             accept = True
-        elif random.random() > self.current_like / new_like * mh_correction:
+        elif random.random() > self.current_like / self.new_like * self.mover.mh_correction:
             accept = True
         return accept
 
@@ -128,19 +141,17 @@ class MCMCRunner:
 
 class MoveExecutor:
     def __init__(self, g):
-        self.g = None
-        self.interactor = None
-        self.set_g(g)
+        self.g = g
+        self.interactor = TreeInteractor(self.g)
+        self.memento = None
         self.available_moves = [
             self.prune_and_reattach,
             self.swap_node,
             self.swap_subtree
         ]
+        self.changed_nodes = set(roots_of_tree(g))
 
-    def set_g(self, g):
-        self.g = g
-        self.interactor = TreeInteractor(self.g)
-
+    @property
     def mh_correction(self):
         return self.interactor.mh_correction
 
@@ -151,21 +162,23 @@ class MoveExecutor:
         if self._is_tree_too_small():
             return
         node = random.randrange(len(self.g) - 1)
-        memento = self.interactor.prune(node)
-        memento.append(self.interactor.uniform_attach(node))
-        return memento
+        self.memento = self.interactor.prune(node)
+        self.memento.append(self.interactor.uniform_attach(node))
+        self.changed_nodes = {node}
 
     def swap_node(self):
         if self._is_tree_too_small():
             return
         n1, n2 = self._get_two_distinct_nodes()
-        return self.interactor.swap_labels(n1, n2)
+        self.memento = self.interactor.swap_labels(n1, n2)
+        self.changed_nodes = {n1, n2}
 
     def swap_subtree(self):
         if self._is_tree_too_small():
             return
         n1, n2 = self._get_two_distinct_nodes()
-        return self.interactor.swap_subtrees(n1, n2)
+        self.memento = self.interactor.swap_subtrees(n1, n2)
+        self.changed_nodes = {n1, n2}
 
     def _get_two_distinct_nodes(self):
         assert len(self.g) > 2

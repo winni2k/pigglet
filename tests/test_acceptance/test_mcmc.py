@@ -96,12 +96,12 @@ class TestMoveExecutor:
         original_tree = exe.g.copy()
 
         for idx in range(num_moves):
-            res = exe.available_moves[
+            exe.available_moves[
                 data.draw(strategies.integers(min_value=0, max_value=2))]()
             if idx == 0:
-                memento = res
+                memento = exe.memento
             else:
-                memento.append(res)
+                memento.append(exe.memento)
 
         # when
         exe.undo(memento)
