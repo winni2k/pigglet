@@ -103,7 +103,7 @@ class MCMCRunner:
         """Propose tree and MH reject proposal"""
         self.mover.available_moves[
             random.choices(self.mcmc_moves, weights=self.tree_move_weights)[0]]()
-        self.calc.expire_likes()
+        self.calc.recalculate_attachment_log_like_from_nodes(-1)
         self.new_like = self.calc.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
         if not accepted:

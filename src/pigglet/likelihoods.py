@@ -63,9 +63,6 @@ class TreeLikelihoodCalculator:
         assert len(roots) == 1
         self.root = roots[0]
         self.g = g
-        self.expire_likes()
-
-    def expire_likes(self):
         self._attachment_log_like = None
         self._summed_attachment_log_like = None
 
@@ -78,7 +75,7 @@ class TreeLikelihoodCalculator:
         i-1, where i=0 is the root node"""
 
         if self._attachment_log_like is None:
-            self.recalculate_attachment_log_like_from(self.root)
+            self._recalculate_attachment_log_like_from(self.root)
         return self._attachment_log_like
 
     def attachment_marginaziled_sample_log_likelihoods(self):
@@ -122,7 +119,12 @@ class TreeLikelihoodCalculator:
     def ml_sample_attachments(self):
         return np.argmax(self.attachment_log_like, axis=0)
 
-    def recalculate_attachment_log_like_from(self, start):
+    def recalculate_attachment_log_like_from_nodes(self, *nodes):
+        for node in nodes:
+            self._summed_attachment_log_like = None
+            self._recalculate_attachment_log_like_from(node)
+
+    def _recalculate_attachment_log_like_from(self, start):
         if start == self.root:
             attachment_log_like = np.zeros(
                 (self.n_sites + 1, self.n_samples),
