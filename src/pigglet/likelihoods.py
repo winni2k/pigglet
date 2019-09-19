@@ -62,6 +62,9 @@ class TreeLikelihoodCalculator:
         assert len(roots) == 1
         self.root = roots[0]
         self.g = g
+        self.expire_log_like()
+
+    def expire_log_like(self):
         self._attachment_log_like = None
 
     @property

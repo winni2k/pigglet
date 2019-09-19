@@ -27,6 +27,8 @@ class MCMCRunner:
         self.map_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
+        self.mcmc_moves = list(range(NUM_MCMC_MOVES))
+        self.mover = MoveExecutor(self.g)
 
     @classmethod
     def from_gls(
@@ -61,53 +63,49 @@ class MCMCRunner:
 
     def run(self):
         iteration = 0
-        mcmc_moves = list(range(NUM_MCMC_MOVES))
-        mover = MoveExecutor(self.g)
         tries = 0
         pbar = self._get_progress_bar(type='burnin')
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             if iteration == self.num_burnin_iter:
                 logging.info('Entering sampling iterations')
                 pbar = self._get_progress_bar(type='sampling')
-            mover.set_g(self.g.copy())
-            mover.available_moves[random.choices(mcmc_moves, weights=self.tree_move_weights)[0]]()
-            new_g = mover.g
-            self.calc.set_g(new_g)
+            memento = self.mover.available_moves[
+                random.choices(self.mcmc_moves, weights=self.tree_move_weights)[0]]()
+            self.calc.expire_log_like()
             new_like = self.calc.sample_marginalized_log_likelihood()
-            if new_like > self.current_like:
-                self.map_g = new_g
+            accepted = self._mh_acceptance(new_like, self.mover.mh_correction())
+            tries += 1
+            if not accepted:
+                self.mover.undo(memento)
+                continue
+            if new_like > self.map_like:
+                self.map_g = self.g.copy()
                 self.map_like = new_like
                 logging.debug('Iteration %s: new MAP tree with likelihood %s',
                               iteration,
                               self.map_like)
-            accepted = self._choose_g(new_g, new_like, mover.mh_correction())
-            tries += 1
-            if accepted:
-                if iteration % self.reporting_interval == 0 and iteration != 0:
-                    logging.info(
-                        'Iteration %s: acceptance rate: %s\tcurrent like: %s'
-                        '\tMAP like: %s',
-                        iteration,
-                        self.reporting_interval / tries,
-                        self.current_like,
-                        self.map_like
-                    )
-                    tries = 0
-                iteration += 1
-                if iteration > self.num_burnin_iter:
-                    self.agg.add_attachment_log_likes(self.calc)
-                pbar.update()
+            if iteration % self.reporting_interval == 0 and iteration != 0:
+                logging.info(
+                    'Iteration %s: acceptance rate: %s\tcurrent like: %s'
+                    '\tMAP like: %s',
+                    iteration,
+                    self.reporting_interval / tries,
+                    self.current_like,
+                    self.map_like
+                )
+                tries = 0
+            iteration += 1
+            if iteration > self.num_burnin_iter:
+                self.agg.add_attachment_log_likes(self.calc)
+            pbar.update()
 
-    def _choose_g(self, new_g, new_like, mh_correction):
+    def _mh_acceptance(self, new_like, mh_correction):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
         accept = False
         if new_like >= self.current_like:
             accept = True
         elif random.random() > self.current_like / new_like * mh_correction:
             accept = True
-        if accept:
-            self.g = new_g
-            self.current_like = new_like
         return accept
 
     def _get_progress_bar(self, type):
