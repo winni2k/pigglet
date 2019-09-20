@@ -3,7 +3,7 @@ import random
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import NUM_GLS
+from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import TreeLikelihoodCalculator
 from pigglet.mcmc import MCMCRunner, MoveExecutor
@@ -135,9 +135,9 @@ class MCMCBuilder(LikelihoodBuilder):
 def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):
     mutations = set(nx.ancestors(rand_g, attachment_point))
     mutations.add(attachment_point)
-    mutations.remove(-1)
+    mutations.remove(ROOT_LABEL)
     for mutation in mutations:
         b.with_mutated_gl_at(sample, mutation)
     for non_mutation in set(rand_g) - mutations:
-        if non_mutation != -1:
+        if non_mutation != ROOT_LABEL:
             b.with_unmutated_gl_at(sample, non_mutation)

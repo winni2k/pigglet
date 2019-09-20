@@ -125,6 +125,7 @@ class TreeLikelihoodCalculator:
             self._recalculate_attachment_log_like_from(node)
 
     def _recalculate_attachment_log_like_from(self, start):
+        attachment_log_like = self._attachment_log_like
         if start == self.root:
             attachment_log_like = np.zeros(
                 (self.n_sites + 1, self.n_samples),
@@ -134,9 +135,13 @@ class TreeLikelihoodCalculator:
                 self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
                 0
             )
+            attachment_log_like[start + 1] = current_log_like
         else:
-            raise NotImplementedError
-        attachment_log_like[start + 1] = current_log_like
+            parent = list(self.g.pred[start])[0]
+            current_log_like = (attachment_log_like[parent + 1]
+                                + self.gls[start, HET_NUM, :]
+                                - self.gls[start, HOM_REF_NUM, :])
+            attachment_log_like[start + 1] = current_log_like
         diffs = []
         for u, v, label in nx.dfs_labeled_edges(self.g, start):
             if u == v:

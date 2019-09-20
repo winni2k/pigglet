@@ -5,7 +5,7 @@ import networkx as nx
 from tqdm import tqdm
 
 from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
-from pigglet.tree import TreeInteractor
+from pigglet.tree import TreeInteractor, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
@@ -101,9 +101,8 @@ class MCMCRunner:
 
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
-        self.mover.available_moves[
-            random.choices(self.mcmc_moves, weights=self.tree_move_weights)[0]]()
-        self.calc.recalculate_attachment_log_like_from_nodes(-1)
+        self.mover.random_move(weights=self.tree_move_weights)
+        self.calc.recalculate_attachment_log_like_from_nodes(*self.mover.changed_nodes)
         self.new_like = self.calc.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
         if not accepted:
@@ -149,7 +148,7 @@ class MoveExecutor:
             self.swap_node,
             self.swap_subtree
         ]
-        self.changed_nodes = set(roots_of_tree(g))
+        self.changed_nodes = list(roots_of_tree(g))
 
     @property
     def mh_correction(self):
@@ -160,25 +159,33 @@ class MoveExecutor:
 
     def prune_and_reattach(self):
         if self._is_tree_too_small():
+            self.memento = TreeMoveMemento()
             return
         node = random.randrange(len(self.g) - 1)
         self.memento = self.interactor.prune(node)
         self.memento.append(self.interactor.uniform_attach(node))
-        self.changed_nodes = {node}
+        self.changed_nodes = [node]
 
     def swap_node(self):
         if self._is_tree_too_small():
+            self.memento = TreeMoveMemento()
             return
         n1, n2 = self._get_two_distinct_nodes()
         self.memento = self.interactor.swap_labels(n1, n2)
-        self.changed_nodes = {n1, n2}
+        self.changed_nodes = [n1, n2]
 
     def swap_subtree(self):
         if self._is_tree_too_small():
+            self.memento = TreeMoveMemento()
             return
         n1, n2 = self._get_two_distinct_nodes()
         self.memento = self.interactor.swap_subtrees(n1, n2)
-        self.changed_nodes = {n1, n2}
+        self.changed_nodes = [n1, n2]
+
+    def random_move(self, weights=None):
+        if weights is None:
+            weights = [1, 1, 1]
+        random.choices(self.available_moves, weights=weights)[0]()
 
     def _get_two_distinct_nodes(self):
         assert len(self.g) > 2

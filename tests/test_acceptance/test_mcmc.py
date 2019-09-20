@@ -56,7 +56,7 @@ def test_arbitrary_trees(n_mutations):
     nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
 
     b = MCMCBuilder()
-    b.with_n_burnin_iter(10 * 2 ** n_mutations)
+    b.with_n_burnin_iter(20 * 2 ** n_mutations)
 
     for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
         add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
@@ -64,6 +64,8 @@ def test_arbitrary_trees(n_mutations):
     mcmc = b.build()
 
     # when
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
     mcmc.run()
 
     # then
@@ -87,11 +89,12 @@ def test_aggregates_the_correct_number_of_runs(burnin, sampling):
 
 class TestMoveExecutor:
     @given(strategies.data(),
-           strategies.integers(min_value=1, max_value=3), )
-    def test_undoes_any_move(self, data, num_moves):
+           strategies.integers(min_value=1, max_value=3),
+           strategies.integers(min_value=1, max_value=10))
+    def test_undoes_any_move(self, data, num_moves, n_mutations):
         # given
         b = MoveExecutorBuilder()
-        b.with_balanced_tree(3)
+        b.with_random_tree(n_mutations)
         exe = b.build()
         original_tree = exe.g.copy()
 

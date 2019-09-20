@@ -10,7 +10,10 @@ from pigglet.tree_utils import roots_of_tree
 class TreeMoveMemento:
     """This memento stores the information necessary to undo a TreeInteractor move"""
 
-    def __init__(self, commands, args):
+    def __init__(self, commands=None, args=None):
+        if commands is None:
+            commands = []
+            args = []
         self.commands = commands
         self.args = args
 
