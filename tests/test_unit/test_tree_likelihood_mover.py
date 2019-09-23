@@ -2,36 +2,9 @@ import networkx as nx
 import numpy as np
 from hypothesis import given, strategies
 
-from pigglet.likelihoods import TreeLikelihoodCalculator
-from pigglet.mcmc import MoveExecutor
+from pigglet.mcmc import TreeLikelihoodMover
 from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
     add_gl_at_ancestor_mutations_for
-
-
-class TreeLikelihoodMover:
-    def __init__(self, g, gls):
-        self.mover = MoveExecutor(g)
-        self.calc = TreeLikelihoodCalculator(g, gls)
-
-    def random_move(self, weights=None):
-        self.mover.random_move(weights=weights)
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-
-    def undo(self):
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-        self.mover.undo(memento=self.mover.memento)
-
-    @property
-    def changed_nodes(self):
-        return self.mover.changed_nodes
-
-    @property
-    def attachment_log_like(self):
-        return self.calc.attachment_log_like
-
-    @property
-    def memento(self):
-        return self.mover.memento
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
@@ -48,7 +21,7 @@ class TestRecalculateAttachmentLogLikeFromNodes:
 
         mcmc = b.build()
         mover = mcmc.mover
-        calc = mcmc.calc
+        calc = mover.calc
 
         # when
         mover.random_move()

@@ -14,7 +14,7 @@ NUM_MCMC_MOVES = 3
 class MCMCRunner:
 
     def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
-                 tree_move_weights, tree_interactor, likelihood_calculator,
+                 tree_move_weights, tree_interactor, mover,
                  current_like, reporting_interval):
         self.g = graph
         self.map_g = graph
@@ -23,14 +23,13 @@ class MCMCRunner:
         self.num_burnin_iter = num_burnin_iter
         self.tree_move_weights = tree_move_weights
         self.tree_interactor = tree_interactor
-        self.calc = likelihood_calculator
         self.current_like = current_like
         self.new_like = None
         self.map_like = current_like
         self.agg = AttachmentAggregator()
         self.reporting_interval = reporting_interval
         self.mcmc_moves = list(range(NUM_MCMC_MOVES))
-        self.mover = MoveExecutor(self.g)
+        self.mover = mover
 
     @classmethod
     def from_gls(
@@ -50,7 +49,7 @@ class MCMCRunner:
         ]
         assert len(tree_move_weights) == NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
-        like_calc = TreeLikelihoodCalculator(graph, gls)
+        mover = TreeLikelihoodMover(graph, gls)
         return cls(
             gls,
             graph,
@@ -58,8 +57,8 @@ class MCMCRunner:
             num_burnin_iter=num_burnin_iter,
             tree_move_weights=tree_move_weights,
             tree_interactor=tree_interactor,
-            likelihood_calculator=like_calc,
-            current_like=like_calc.sample_marginalized_log_likelihood(),
+            mover=mover,
+            current_like=mover.calc.sample_marginalized_log_likelihood(),
             reporting_interval=reporting_interval,
         )
 
@@ -88,7 +87,7 @@ class MCMCRunner:
                 tries = 0
             iteration += 1
             if iteration > self.num_burnin_iter:
-                self.agg.add_attachment_log_likes(self.calc)
+                self.agg.add_attachment_log_likes(self.mover.calc)
             pbar.update()
 
     def _update_map(self, iteration):
@@ -102,12 +101,10 @@ class MCMCRunner:
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
         self.mover.random_move(weights=self.tree_move_weights)
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-        self.new_like = self.calc.sample_marginalized_log_likelihood()
+        self.new_like = self.mover.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
         if not accepted:
-            self.calc.register_changed_nodes(*self.mover.changed_nodes)
-            self.mover.undo(self.mover.memento)
+            self.mover.undo()
         else:
             self.current_like = self.new_like
         return accepted
@@ -210,3 +207,36 @@ def build_random_mutation_tree(num_sites):
     assert max(dag.nodes) + 1 == num_sites
     assert min(dag.nodes) == -1
     return dag
+
+
+class TreeLikelihoodMover:
+    def __init__(self, g, gls):
+        self.mover = MoveExecutor(g)
+        self.calc = TreeLikelihoodCalculator(g, gls)
+
+    def random_move(self, weights=None):
+        self.mover.random_move(weights=weights)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+
+    def undo(self):
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+        self.mover.undo(memento=self.mover.memento)
+
+    def sample_marginalized_log_likelihood(self):
+        return self.calc.sample_marginalized_log_likelihood()
+
+    @property
+    def mh_correction(self):
+        return self.mover.mh_correction
+
+    @property
+    def changed_nodes(self):
+        return self.mover.changed_nodes
+
+    @property
+    def attachment_log_like(self):
+        return self.calc.attachment_log_like
+
+    @property
+    def memento(self):
+        return self.mover.memento
