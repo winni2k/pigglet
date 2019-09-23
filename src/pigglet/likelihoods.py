@@ -51,20 +51,14 @@ class TreeLikelihoodCalculator:
         self.gls = glstmp
         self.n_sites = self.gls.shape[0]
         self.n_samples = self.gls.shape[2]
-        self.g = None
-        self.root = None
         self.paths = None
         self._attachment_log_like = None
         self._summed_attachment_log_like = None
-        self.set_g(g)
-
-    def set_g(self, g):
+        self.g = g
         roots = roots_of_tree(g)
         assert len(roots) == 1
         self.root = roots[0]
-        self.g = g
-        self._attachment_log_like = None
-        self._summed_attachment_log_like = None
+        self._changed_nodes = {self.root}
 
     @property
     def attachment_log_like(self):
@@ -74,17 +68,16 @@ class TreeLikelihoodCalculator:
         the cell at row i and column j is the probability of sample j attaching to site
         i-1, where i=0 is the root node"""
 
-        if self._attachment_log_like is None:
-            self._recalculate_attachment_log_like_from(self.root)
+        if self.has_changed_nodes():
+            for node in self._changed_nodes:
+                self._recalculate_attachment_log_like_from(node)
+            self._changed_nodes.clear()
         return self._attachment_log_like
 
     def attachment_marginaziled_sample_log_likelihoods(self):
         """Calculate the marginal likelihoods of all possible sample attachments"""
-        if self._summed_attachment_log_like is None:
-            self._summed_attachment_log_like = np.logaddexp.reduce(
+        self._summed_attachment_log_like = np.logaddexp.reduce(
                 self.attachment_log_like, axis=0)
-        else:
-            pass
         return self._summed_attachment_log_like
 
     def sample_marginalized_log_likelihood(self):
@@ -119,10 +112,15 @@ class TreeLikelihoodCalculator:
     def ml_sample_attachments(self):
         return np.argmax(self.attachment_log_like, axis=0)
 
-    def recalculate_attachment_log_like_from_nodes(self, *nodes):
+    def register_changed_nodes(self, *nodes):
+        """Marks these nodes and all ancestors of these nodes to have changed position
+        in the graph"""
         for node in nodes:
-            self._summed_attachment_log_like = None
-            self._recalculate_attachment_log_like_from(node)
+            self._changed_nodes.add(node)
+        return self
+
+    def has_changed_nodes(self):
+        return len(self._changed_nodes) != 0
 
     def _recalculate_attachment_log_like_from(self, start):
         attachment_log_like = self._attachment_log_like
@@ -175,3 +173,18 @@ class AttachmentAggregator:
 
     def normalized_attachment_probabilities(self):
         return self.attachment_scores - math.log(self.num_additions)
+
+#    def attachment_marginalized_sample_log_likelihoods_from_nodes(self, *nodes):
+#         if self._summed_attachment_log_like is None:
+#             self.calculate_attachment_log_like_from_nodes(*nodes)
+#             return self.attachment_marginalized_sample_log_likelihoods
+#         for node in nodes:
+#             for attachment_point, log_like in self._recalculate_attachment_log_like_from(
+#                     node):
+#                 self._summed_attachment_log_like = (
+#                     np.log(
+#                         np.exp(np.logaddexp(self._summed_attachment_log_like, log_like))
+#                         - np.exp(self._attachment_log_like[attachment_point])
+#                     )
+#                 )
+#         return self.attachment_marginalized_sample_log_likelihoods

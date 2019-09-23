@@ -76,6 +76,7 @@ def test_arbitrary_trees(n_mutations):
 def test_aggregates_the_correct_number_of_runs(burnin, sampling):
     b = MCMCBuilder()
     b.with_mutated_gl_at(0, 0)
+    b.with_mutated_gl_at(0, 1)
     b.with_n_burnin_iter(burnin)
     b.with_n_sampling_iter(sampling)
     mcmc = b.build()
@@ -90,7 +91,7 @@ def test_aggregates_the_correct_number_of_runs(burnin, sampling):
 class TestMoveExecutor:
     @given(strategies.data(),
            strategies.integers(min_value=1, max_value=3),
-           strategies.integers(min_value=1, max_value=10))
+           strategies.integers(min_value=2, max_value=10))
     def test_undoes_any_move(self, data, num_moves, n_mutations):
         # given
         b = MoveExecutorBuilder()

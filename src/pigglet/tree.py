@@ -70,7 +70,7 @@ class TreeInteractor:
 
     def swap_labels(self, n1, n2):
         self.mh_correction = 1
-        if n1 == n2:
+        if n1 == n2 or n1 == self.root or n2 == self.root:
             raise ValueError
         nx.relabel_nodes(self.g, {n1: TMP_LABEL}, copy=False)
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)

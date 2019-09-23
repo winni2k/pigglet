@@ -12,7 +12,7 @@ class TreeBuilder:
         return self
 
     def with_random_tree(self, n_mutations):
-        self.g = nx.gnr_graph(n_mutations, 0).reverse()
+        self.g = nx.gnr_graph(n_mutations + 1, 0).reverse()
         self._relabel_nodes()
 
     def _relabel_nodes(self):

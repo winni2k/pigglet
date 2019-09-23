@@ -9,14 +9,11 @@ Call build() to obtain the constructed object.
 """
 import math
 
-import networkx as nx
 import numpy as np
 import pytest
-from hypothesis import given, strategies
 from pytest import approx
 
-from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder, \
-    MCMCBuilder, add_gl_at_ancestor_mutations_for
+from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
 
 
 def get_sample_likelihood(calc, sample_idx):
@@ -288,28 +285,3 @@ class TestMLAttachments:
 
         # then
         assert list(attachments) == [2, 1]
-
-
-class TestRecalculateAttachmentLogLikeFromNodes:
-    @given(strategies.integers(min_value=1, max_value=10))
-    def test_arbitrary_trees(self, n_mutations):
-        # given
-        rand_g = nx.gnr_graph(n_mutations, 0).reverse()
-        nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
-
-        b = MCMCBuilder()
-
-        for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
-            add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
-
-        mcmc = b.build()
-        mover = mcmc.mover
-        calc = mcmc.calc
-
-        # when
-        mover.random_move()
-        root_like = calc.recalculate_attachment_log_like_from_nodes(-1)
-        like = calc.recalculate_attachment_log_like_from_nodes(*mover.changed_nodes)
-
-        # then
-        assert root_like == like

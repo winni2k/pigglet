@@ -102,10 +102,11 @@ class MCMCRunner:
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
         self.mover.random_move(weights=self.tree_move_weights)
-        self.calc.recalculate_attachment_log_like_from_nodes(*self.mover.changed_nodes)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
         self.new_like = self.calc.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
         if not accepted:
+            self.calc.register_changed_nodes(*self.mover.changed_nodes)
             self.mover.undo(self.mover.memento)
         else:
             self.current_like = self.new_like
@@ -138,6 +139,10 @@ class MCMCRunner:
         raise ValueError
 
 
+class TreeIsTooSmallError(ValueError):
+    pass
+
+
 class MoveExecutor:
     def __init__(self, g):
         self.g = g
@@ -158,16 +163,15 @@ class MoveExecutor:
         self.interactor.undo(memento)
 
     def prune_and_reattach(self):
-        if self._is_tree_too_small():
-            self.memento = TreeMoveMemento()
-            return
+        if len(self.g) < 2:
+            raise TreeIsTooSmallError
         node = random.randrange(len(self.g) - 1)
         self.memento = self.interactor.prune(node)
         self.memento.append(self.interactor.uniform_attach(node))
         self.changed_nodes = [node]
 
     def swap_node(self):
-        if self._is_tree_too_small():
+        if self._tree_is_too_small_for_advanced_moves():
             self.memento = TreeMoveMemento()
             return
         n1, n2 = self._get_two_distinct_nodes()
@@ -175,7 +179,7 @@ class MoveExecutor:
         self.changed_nodes = [n1, n2]
 
     def swap_subtree(self):
-        if self._is_tree_too_small():
+        if self._tree_is_too_small_for_advanced_moves():
             self.memento = TreeMoveMemento()
             return
         n1, n2 = self._get_two_distinct_nodes()
@@ -188,14 +192,13 @@ class MoveExecutor:
         random.choices(self.available_moves, weights=weights)[0]()
 
     def _get_two_distinct_nodes(self):
-        assert len(self.g) > 2
         n1 = n2 = 0
         while n1 == n2:
             n1 = random.randrange(len(self.g) - 1)
             n2 = random.randrange(len(self.g) - 1)
         return n1, n2
 
-    def _is_tree_too_small(self):
+    def _tree_is_too_small_for_advanced_moves(self):
         if len(self.g) < 3:
             return True
         return False
