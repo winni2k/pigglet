@@ -111,12 +111,13 @@ class MCMCRunner:
 
     def _mh_acceptance(self):
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
-        accept = False
         if self.new_like >= self.current_like:
-            accept = True
-        elif random.random() > self.current_like / self.new_like * self.mover.mh_correction:
-            accept = True
-        return accept
+            return True
+        ratio = self.current_like / self.new_like * self.mover.mh_correction
+        rand_val = random.random()
+        if rand_val < ratio:
+            return True
+        return False
 
     def _get_progress_bar(self, type):
         if type == 'burnin':
