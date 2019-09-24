@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 
 import networkx as nx
@@ -17,7 +18,7 @@ class MCMCRunner:
                  tree_move_weights, tree_interactor, mover,
                  current_like, reporting_interval):
         self.g = graph
-        self.map_g = graph
+        self.map_g = graph.copy()
         self.gls = gls
         self.num_sampling_iter = num_sampling_iter
         self.num_burnin_iter = num_burnin_iter
@@ -113,7 +114,8 @@ class MCMCRunner:
         """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
         if self.new_like >= self.current_like:
             return True
-        ratio = self.current_like / self.new_like * self.mover.mh_correction
+        ratio = math.exp(self.new_like - self.current_like) * self.mover.mh_correction
+
         rand_val = random.random()
         if rand_val < ratio:
             return True
