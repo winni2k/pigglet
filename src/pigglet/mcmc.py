@@ -223,6 +223,8 @@ class TreeLikelihoodMover:
     def __init__(self, mover, calc):
         self.mover = mover
         self.calc = calc
+        self.move_counter = 0
+        self.refresh_count = 100
 
     @classmethod
     def from_g_and_gls(cls, g, gls):
@@ -233,8 +235,12 @@ class TreeLikelihoodMover:
         return cls(MoveExecutor(calc.g), calc)
 
     def random_move(self, weights=None):
+        if self.move_counter == self.refresh_count:
+            self.refresh_attachment_marginalized_sample_log_likelihoods()
+            self.move_counter = 0
         self.mover.random_move(weights=weights)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
+        self.move_counter += 1
 
     def undo(self):
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
