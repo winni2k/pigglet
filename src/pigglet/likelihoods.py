@@ -115,13 +115,10 @@ class TreeLikelihoodCalculator:
             attachment_log_like[start + 1] = (attachment_log_like[parent + 1]
                                               + self.gls[start, HET_NUM, :]
                                               - self.gls[start, HOM_REF_NUM, :])
-        for u, v, label in nx.dfs_labeled_edges(self.g, start):
-            if label == 'forward':
-                if u == v:
-                    continue
-                attachment_log_like[v + 1] = (attachment_log_like[u + 1]
-                                              + self.gls[v, HET_NUM, :]
-                                              - self.gls[v, HOM_REF_NUM, :])
+        for u, v in nx.dfs_edges(self.g, start):
+            attachment_log_like[v + 1] = (attachment_log_like[u + 1]
+                                          + self.gls[v, HET_NUM, :]
+                                          - self.gls[v, HOM_REF_NUM, :])
         self._attachment_log_like = attachment_log_like
 
 
