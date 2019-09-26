@@ -64,7 +64,7 @@ if __name__ == '__main__':
         for number, mutations in [(10, 100), (10, 300), (10, 1000), (10, 3000),
                                   (1000, 10)]:
             print(f'number={number}, repeats={repeats}, mutations={mutations}')
-            timings = timeit.repeat('mcmc.calc.sample_marginalized_log_likelihood()',
+            timings = timeit.repeat('mcmc.mover.sample_marginalized_log_likelihood()',
                                     number=number,
                                     repeat=repeats,
                                     globals=globals(),

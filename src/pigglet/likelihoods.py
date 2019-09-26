@@ -106,29 +106,22 @@ class TreeLikelihoodCalculator:
                 (self.n_sites + 1, self.n_samples),
                 dtype=LOG_LIKE_DTYPE
             )
-            current_log_like = np.sum(
+            attachment_log_like[start + 1] = np.sum(
                 self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
                 0
             )
-            attachment_log_like[start + 1] = current_log_like
         else:
             parent = list(self.g.pred[start])[0]
-            current_log_like = (attachment_log_like[parent + 1]
-                                + self.gls[start, HET_NUM, :]
-                                - self.gls[start, HOM_REF_NUM, :])
-            attachment_log_like[start + 1] = current_log_like
-        diffs = []
+            attachment_log_like[start + 1] = (attachment_log_like[parent + 1]
+                                              + self.gls[start, HET_NUM, :]
+                                              - self.gls[start, HOM_REF_NUM, :])
         for u, v, label in nx.dfs_labeled_edges(self.g, start):
-            if u == v:
-                continue
             if label == 'forward':
-                diffs.append(self.gls[v, HET_NUM, :] - self.gls[v, HOM_REF_NUM, :])
-                current_log_like += diffs[-1]
-                attachment_log_like[v + 1] = current_log_like
-            elif label == 'reverse':
-                current_log_like -= diffs.pop()
-            else:
-                raise ValueError(f'Unexpected label: {label}')
+                if u == v:
+                    continue
+                attachment_log_like[v + 1] = (attachment_log_like[u + 1]
+                                              + self.gls[v, HET_NUM, :]
+                                              - self.gls[v, HOM_REF_NUM, :])
         self._attachment_log_like = attachment_log_like
 
 
