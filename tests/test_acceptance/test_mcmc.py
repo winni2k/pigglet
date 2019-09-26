@@ -24,6 +24,7 @@ def test_finds_two_samples_two_sites():
     b.with_unmutated_gl_at(1, 0)
     b.with_mutated_gl_at(1, 1)
     b.with_unmutated_gl_at(0, 1)
+    b.with_n_burnin_iter(20)
     mcmc = b.build()
 
     # when

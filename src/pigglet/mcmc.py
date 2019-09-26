@@ -50,7 +50,7 @@ class MCMCRunner:
         ]
         assert len(tree_move_weights) == NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
-        mover = TreeLikelihoodMover(graph, gls)
+        mover = TreeLikelihoodMover.from_g_and_gls(g=graph, gls=gls)
         return cls(
             gls,
             graph,
@@ -71,9 +71,11 @@ class MCMCRunner:
             if iteration == self.num_burnin_iter:
                 logging.info('Entering sampling iterations')
                 pbar = self._get_progress_bar(type='sampling')
-            accepted = self._mh_step()
+            accepted = self._mh_step(iteration >= self.num_burnin_iter)
             tries += 1
             if not accepted:
+                if tries == 100:
+                    logging.warning('Acceptance rate has fallen below 1/100')
                 continue
             self._update_map(iteration)
             if iteration % self.reporting_interval == 0 and iteration != 0:
@@ -99,9 +101,11 @@ class MCMCRunner:
                           iteration,
                           self.map_like)
 
-    def _mh_step(self):
+    def _mh_step(self, sampling=False):
         """Propose tree and MH reject proposal"""
         self.mover.random_move(weights=self.tree_move_weights)
+        if sampling:
+            self.mover.refresh_attachment_marginalized_sample_log_likelihoods()
         self.new_like = self.mover.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
         if not accepted:
@@ -115,7 +119,6 @@ class MCMCRunner:
         if self.new_like >= self.current_like:
             return True
         ratio = math.exp(self.new_like - self.current_like) * self.mover.mh_correction
-
         rand_val = random.random()
         if rand_val < ratio:
             return True
@@ -162,12 +165,16 @@ class MoveExecutor:
     def undo(self, memento):
         self.interactor.undo(memento)
 
-    def prune_and_reattach(self):
+    def prune_and_reattach(self, node=None, target=None):
         if len(self.g) < 2:
             raise TreeIsTooSmallError
-        node = random.randrange(len(self.g) - 1)
+        if node is None:
+            node = random.randrange(len(self.g) - 1)
         self.memento = self.interactor.prune(node)
-        self.memento.append(self.interactor.uniform_attach(node))
+        if target is None:
+            self.memento.append(self.interactor.uniform_attach(node))
+        else:
+            self.memento.append(self.interactor.attach(node, target))
         self.changed_nodes = [node]
 
     def swap_node(self):
@@ -213,9 +220,17 @@ def build_random_mutation_tree(num_sites):
 
 
 class TreeLikelihoodMover:
-    def __init__(self, g, gls):
-        self.mover = MoveExecutor(g)
-        self.calc = TreeLikelihoodCalculator(g, gls)
+    def __init__(self, mover, calc):
+        self.mover = mover
+        self.calc = calc
+
+    @classmethod
+    def from_g_and_gls(cls, g, gls):
+        return cls(MoveExecutor(g), TreeLikelihoodCalculator(g, gls))
+
+    @classmethod
+    def from_calc(cls, calc):
+        return cls(MoveExecutor(calc.g), calc)
 
     def random_move(self, weights=None):
         self.mover.random_move(weights=weights)
@@ -225,8 +240,15 @@ class TreeLikelihoodMover:
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
         self.mover.undo(memento=self.mover.memento)
 
+    def refresh_attachment_marginalized_sample_log_likelihoods(self):
+        self.calc.refresh_attachment_marginalized_sample_log_likelihoods()
+
     def sample_marginalized_log_likelihood(self):
         return self.calc.sample_marginalized_log_likelihood()
+
+    def prune_and_reattach(self, node=None, target=None):
+        self.mover.prune_and_reattach(node=node, target=target)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
     @property
     def mh_correction(self):
@@ -239,7 +261,3 @@ class TreeLikelihoodMover:
     @property
     def attachment_log_like(self):
         return self.calc.attachment_log_like
-
-    @property
-    def memento(self):
-        return self.mover.memento

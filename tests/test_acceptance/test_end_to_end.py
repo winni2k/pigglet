@@ -20,7 +20,7 @@ def test_single_mutation_one_sample_creates_trivial_graph(tmpdir):
     out_h5 = str(prefix) + '.h5'
 
     # when
-    result = runner.invoke(cli.cli, [str(vcf_file), str(prefix)])
+    result = runner.invoke(cli.cli, [str(vcf_file), str(prefix), '-b', '10', '-s', '100'])
     assert result.exit_code == 0
 
     # then

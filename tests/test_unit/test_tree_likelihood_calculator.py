@@ -17,7 +17,7 @@ from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBui
 
 
 def get_sample_likelihood(calc, sample_idx):
-    return np.exp(calc.attachment_marginaziled_sample_log_likelihoods()[sample_idx])
+    return np.exp(calc.attachment_marginalized_sample_log_likelihoods[sample_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):
@@ -36,6 +36,21 @@ class TestSampleLikelihood:
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
+
+        # when
+        like = get_sample_likelihood(calc, 0)
+
+        # then
+        assert like == approx(sum_of_exp_of(0, 1))
+
+    def test_one_sample_one_site_no_mutation_after_site_recalc(self):
+        # given
+        b = TreeLikelihoodCalculatorBuilder()
+        b.with_gl_dimensions(1, 1)
+        b.with_likelihood_peak_at_all_hom_ref()
+        calc = b.build()
+        get_sample_likelihood(calc, 0)
+        calc.register_changed_nodes(0)
 
         # when
         like = get_sample_likelihood(calc, 0)

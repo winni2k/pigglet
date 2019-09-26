@@ -100,7 +100,7 @@ def store_results(gls, out_prefix, output_store, runner):
 
     calc = TreeLikelihoodCalculator(runner.map_g, gls)
     map_tree_mut_probs = calc \
-        .mutation_probabilites(runner.agg.normalized_attachment_probabilities())
+        .mutation_probabilities(runner.agg.normalized_attachment_probabilities())
     map_tree_map_attachments = calc.ml_sample_attachments() - 1
     with h5py.File(output_store, mode='a') as fh:
         fh.create_dataset('map_tree/mutation_probabilities',

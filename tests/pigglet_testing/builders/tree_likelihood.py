@@ -22,6 +22,7 @@ class LikelihoodBuilder:
         self.num_sites = 0
         self.num_samples = 0
         self.gls = None
+        self.normalize_gls = False
 
     def _mutate_gls(self):
         for sample_id, site_idx in self.mutated_gls:
@@ -40,6 +41,8 @@ class LikelihoodBuilder:
         self.gls = np.zeros((self.num_sites, self.num_samples, NUM_GLS))
         self._add_likelihood_peaks()
         self._mutate_gls()
+        if self.normalize_gls:
+            self.gls = GLManipulator(self.gls).normalize().gls
         return self.gls
 
     def with_likelihood_peak_at_all_hom_ref(self):
@@ -62,6 +65,10 @@ class LikelihoodBuilder:
     def with_gl_dimensions(self, n_sites, n_samples):
         self.num_sites = n_sites
         self.num_samples = n_samples
+        return self
+
+    def with_normalized_gls(self):
+        self.normalize_gls = True
         return self
 
 

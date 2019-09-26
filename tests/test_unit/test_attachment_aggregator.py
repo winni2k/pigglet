@@ -102,7 +102,7 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilities(agg.normalized_attachment_probabilities())
 
         # then
         assert mutation_probs.shape == (1, 1)
@@ -118,7 +118,7 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilities(agg.normalized_attachment_probabilities())
 
         # then
         assert mutation_probs.shape == (1, 1)
@@ -134,7 +134,7 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilities(agg.normalized_attachment_probabilities())
 
         # then
         assert mutation_probs.shape == (1, 2)
@@ -154,7 +154,7 @@ class TestConvertToMutationProbs:
             agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilities(agg.normalized_attachment_probabilities())
 
         # then
         raw_likes = [1, math.e, math.e ** 2]
