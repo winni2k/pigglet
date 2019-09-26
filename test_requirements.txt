@@ -1,4 +1,6 @@
 pytest
 pytest_flake8
+pytest-cov
 hypothesis
 -e tests
+
