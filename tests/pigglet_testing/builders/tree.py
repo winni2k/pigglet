@@ -18,7 +18,7 @@ class TreeBuilder:
     def _relabel_nodes(self):
         nx.relabel_nodes(self.g, {n: n - 1 for n in self.g.nodes}, copy=False)
 
-    def with_mutation_at(self, attachment_node, new_node_id):
+    def with_tree_edge_between(self, attachment_node, new_node_id):
         self.g.add_edge(attachment_node, new_node_id)
         return self
 

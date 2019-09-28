@@ -70,30 +70,40 @@ class TreeLikelihoodBuilder:
     def __init__(self):
         self.tree_builder = TreeBuilder()
         self.likelihood_builder = LikelihoodBuilder()
+        self.phylogenetic_tree = False
 
     def __getattr__(self, attr):
         return getattr(self.likelihood_builder, attr)
 
     def build(self):
         tree = self.tree_builder.build()
-        num_sites = len(tree) - 1
-        gls = self.likelihood_builder.build(num_sites)
+        gls = self.likelihood_builder.build()
         return tree, gls
+
+    def with_phylogenetic_tree(self):
+        self.phylogenetic_tree = True
+        return self
 
     def with_balanced_tree(self, height=2, n_branches=2):
         self.tree_builder.with_balanced_tree(height=height, n_branches=n_branches)
         return self
 
-    def with_mutation_at(self, attachment_node, new_node_id):
-        self.tree_builder.with_mutation_at(attachment_node, new_node_id)
+    def with_tree_edge_between(self, attachment_node, new_node_id):
+        self.tree_builder.with_tree_edge_between(attachment_node, new_node_id)
         return self
 
 
 class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
+    def __init__(self):
+        super().__init__()
 
     def build(self):
         g, gls = super().build()
-        return TreeLikelihoodCalculator(g, gls)
+        return TreeLikelihoodCalculator.from_site_sample_genotype_gls(
+            g=g,
+            gls=gls,
+            phylogenetic_tree=self.phylogenetic_tree
+        )
 
 
 class MoveExecutorBuilder(TreeBuilder):

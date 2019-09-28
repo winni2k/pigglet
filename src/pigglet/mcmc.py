@@ -215,7 +215,7 @@ def build_random_mutation_tree(num_sites):
 class TreeLikelihoodMover:
     def __init__(self, g, gls):
         self.mover = MoveExecutor(g)
-        self.calc = TreeLikelihoodCalculator(g, gls)
+        self.calc = TreeLikelihoodCalculator.from_site_sample_genotype_gls(g=g, gls=gls)
 
     def random_move(self, weights=None):
         self.mover.random_move(weights=weights)

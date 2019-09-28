@@ -21,13 +21,10 @@ class TreeLikelihoodCalculator:
     mutation and GL matrices.
     """
 
-    def __init__(self, g, gls):
-        glstmp = np.zeros((gls.shape[0], gls.shape[2], gls.shape[1]))
-        for genotype_idx in range(gls.shape[2]):
-            glstmp[:, genotype_idx, :] = gls[:, :, genotype_idx]
-        self.gls = glstmp
-        self.n_sites = self.gls.shape[0]
-        self.n_samples = self.gls.shape[2]
+    def __init__(self, g, gls, n_sites, n_samples):
+        self.gls = gls
+        self.n_sites = n_sites
+        self.n_samples = n_samples
         self.paths = None
         self._attachment_log_like = None
         self._summed_attachment_log_like = None
@@ -36,6 +33,22 @@ class TreeLikelihoodCalculator:
         assert len(roots) == 1
         self.root = roots[0]
         self._changed_nodes = {self.root}
+
+    @classmethod
+    def from_site_sample_genotype_gls(cls, gls, g, phylogenetic_tree=False):
+        """Creates a Likelihood calculator from gls with shape (m, n, G),
+        where m is the number of sites, n is the number of samples, and G is the number of genotype
+        likelihoods."""
+        if phylogenetic_tree:
+            glstmp = np.zeros((gls.shape[1], gls.shape[2], gls.shape[0]))
+            for site_idx in range(gls.shape[0]):
+                for genotype_idx in range(gls.shape[2]):
+                    glstmp[:, genotype_idx, site_idx] = gls[site_idx, :, genotype_idx]
+        else:
+            glstmp = np.zeros((gls.shape[0], gls.shape[2], gls.shape[1]))
+            for genotype_idx in range(gls.shape[2]):
+                glstmp[:, genotype_idx, :] = gls[:, :, genotype_idx]
+        return cls(g=g, gls=glstmp, n_sites=glstmp.shape[0], n_samples=glstmp.shape[2])
 
     @property
     def attachment_log_like(self):
@@ -53,9 +66,7 @@ class TreeLikelihoodCalculator:
 
     def attachment_marginaziled_sample_log_likelihoods(self):
         """Calculate the marginal likelihoods of all possible sample attachments"""
-        self._summed_attachment_log_like = logsumexp(
-            self.attachment_log_like, axis=0)
-        return self._summed_attachment_log_like
+        return logsumexp(self.attachment_log_like, axis=0, keepdims=True)[0]
 
     def sample_marginalized_log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample attachments"""

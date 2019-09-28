@@ -98,7 +98,7 @@ def store_results(gls, out_prefix, output_store, runner):
     import h5py
     import numpy as np
 
-    calc = TreeLikelihoodCalculator(runner.map_g, gls)
+    calc = TreeLikelihoodCalculator.from_site_sample_genotype_gls(g=runner.map_g, gls=gls)
     map_tree_mut_probs = calc \
         .mutation_probabilites(runner.agg.normalized_attachment_probabilities())
     map_tree_map_attachments = calc.ml_sample_attachments() - 1

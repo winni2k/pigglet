@@ -19,7 +19,7 @@ class TestPrune:
     def test_removes_single_mutation(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         interactor = b.build()
 
         # when
@@ -34,7 +34,7 @@ class TestAttach:
     def test_reattaches_single_mutation(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         interactor = b.build()
 
         # when
@@ -69,7 +69,7 @@ class TestUniformAttach:
     def test_also_reattaches_to_root(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         inter = b.build()
 
         inter.prune(0)
@@ -146,10 +146,10 @@ class TestSwapSubtrees:
     def test_swaps_two_nodes_in_line_from_unbalanced_tree(self, swap_nodes):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
-        b.with_mutation_at(1, 2)
-        b.with_mutation_at(1, 3)
+        b.with_tree_edge_between(-1, 0)
+        b.with_tree_edge_between(0, 1)
+        b.with_tree_edge_between(1, 2)
+        b.with_tree_edge_between(1, 3)
         inter = b.build()
 
         # when
@@ -174,11 +174,11 @@ class TestSwapSubtrees:
         """
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
-        b.with_mutation_at(1, 2)
-        b.with_mutation_at(2, 3)
-        b.with_mutation_at(2, 4)
+        b.with_tree_edge_between(-1, 0)
+        b.with_tree_edge_between(0, 1)
+        b.with_tree_edge_between(1, 2)
+        b.with_tree_edge_between(2, 3)
+        b.with_tree_edge_between(2, 4)
         inter = b.build()
 
         # when
@@ -194,7 +194,7 @@ class TestSwapSubtrees:
     def test_raises_when_swapping_with_root(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         inter = b.build()
 
         # when/then
@@ -206,7 +206,7 @@ class TestUndo:
     def test_prune_of_single_mutation(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         interactor = b.build()
 
         # when
@@ -219,7 +219,7 @@ class TestUndo:
     def test_attach_of_single_mutation(self):
         # given
         b = TreeInteractorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_tree_edge_between(-1, 0)
         interactor = b.build()
 
         # when
