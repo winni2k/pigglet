@@ -8,7 +8,7 @@ def configure_logger(log_level, log_file):
         format="%(process)d|pigglet|%(asctime)s|%(levelname)s  %(message)s",
         datefmt='%Y-%m-%dT%H:%M:%S',
         handlers=[
-            logging.FileHandler(log_file),
+            logging.FileHandler(log_file, mode='w'),
             logging.StreamHandler()
         ])
 
