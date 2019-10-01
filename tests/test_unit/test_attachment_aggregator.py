@@ -19,6 +19,7 @@ class TestAddAttachmentlogLikes:
     def test_one_sample_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -35,7 +36,7 @@ class TestAddAttachmentlogLikes:
     def test_one_sample_one_site_one_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
         agg = AttachmentAggregator()
@@ -51,6 +52,7 @@ class TestAddAttachmentlogLikes:
     def test_two_samples_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -70,8 +72,8 @@ class TestAddAttachmentlogLikes:
     def test_one_sample_two_private_mutations(self, num_additions):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
@@ -95,6 +97,7 @@ class TestConvertToMutationProbs:
     def test_one_sample_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -111,7 +114,7 @@ class TestConvertToMutationProbs:
     def test_one_sample_one_site_one_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
         agg = AttachmentAggregator()
@@ -127,6 +130,7 @@ class TestConvertToMutationProbs:
     def test_two_samples_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -144,8 +148,8 @@ class TestConvertToMutationProbs:
     def test_one_sample_two_private_mutations(self, num_additions):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()

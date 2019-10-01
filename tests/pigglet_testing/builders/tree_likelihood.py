@@ -84,7 +84,7 @@ class TreeLikelihoodBuilder:
         self.tree_builder.with_balanced_tree(height=height, n_branches=n_branches)
         return self
 
-    def with_mutation_at(self, attachment_node, new_node_id):
+    def with_mutation_site_at(self, attachment_node, new_node_id):
         self.tree_builder.with_mutation_at(attachment_node, new_node_id)
         return self
 

@@ -33,6 +33,7 @@ class TestSampleLikelihood:
     def test_one_sample_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -46,6 +47,7 @@ class TestSampleLikelihood:
     def test_two_samples_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
@@ -62,7 +64,7 @@ class TestSampleLikelihood:
         # given
 
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
 
@@ -72,8 +74,8 @@ class TestSampleLikelihood:
     def test_one_sample_two_private_mutations(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
@@ -97,7 +99,7 @@ class TestSampleLikelihood:
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
 
         b.with_mutated_gl_at(sample_id_to_mutate, 0)
@@ -122,8 +124,8 @@ class TestSampleLikelihood:
     def test_with_two_private_mutations(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(-1, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(-1, 1)
 
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 1)
@@ -155,7 +157,7 @@ class TestSampleMarginalizedLikelihood:
     def test_single_mutation_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
 
@@ -168,7 +170,7 @@ class TestSampleMarginalizedLikelihood:
     def test_single_mutation_two_samples(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 0)
         calc = b.build()
@@ -196,8 +198,8 @@ class TestSampleMarginalizedLikelihood:
     def test_two_mutations_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
@@ -211,8 +213,8 @@ class TestSampleMarginalizedLikelihood:
     def test_two_mutations_two_samples(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         b.with_mutated_gl_at(1, 0)
@@ -231,7 +233,7 @@ class TestMLAttachments:
     def test_single_mutation_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
 
@@ -244,7 +246,7 @@ class TestMLAttachments:
     def test_single_mutation_two_samples(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
+        b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 0)
         calc = b.build()
@@ -258,8 +260,8 @@ class TestMLAttachments:
     def test_two_mutations_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
@@ -273,8 +275,8 @@ class TestMLAttachments:
     def test_two_mutations_two_samples(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
-        b.with_mutation_at(-1, 0)
-        b.with_mutation_at(0, 1)
+        b.with_mutation_site_at(-1, 0)
+        b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         b.with_mutated_gl_at(1, 0)

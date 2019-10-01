@@ -119,3 +119,10 @@ class TreeInteractor:
         target_nodes = list(target_nodes)
         attach_idx = random.randrange(len(target_nodes))
         return self.attach(node, target_nodes[attach_idx])
+
+    def merge_mutation_nodes(self, keep, merge):
+        self.g.node[keep]['mutations'] = self.g.node[keep]['mutations'] \
+                                         | self.g.node[merge]['mutations']
+        for merge_child in self.g.succ[merge]:
+            self.g.add_edge(keep, merge_child)
+        self.g.remove_node(merge)
