@@ -5,6 +5,28 @@ from pigglet_testing.builders.tree import PhylogeneticTreeConverterBuilder, \
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 
+def test_raises_without_attachments():
+    # given
+    b = PhylogeneticTreeConverterTestDriver()
+    b.with_mutation_at(0, 1)
+    b.with_sample_attachments()
+
+    # when/ then
+    with pytest.raises(ValueError):
+        b.build()
+
+
+def test_raises_without_valid_attachments():
+    # given
+    b = PhylogeneticTreeConverterTestDriver()
+    b.with_mutation_at(0, 1)
+    b.with_sample_attachments(-1)
+
+    # when/ then
+    with pytest.raises(ValueError):
+        b.build()
+
+
 class TestPathTree:
     def test_leaves_single_private_mutation_unchanged(self):
         b = PhylogeneticTreeConverterTestDriver()

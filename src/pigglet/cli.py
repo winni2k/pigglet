@@ -13,25 +13,34 @@ def configure_logger(log_level, log_file):
         ])
 
 
-@click.command()
+@click.group()
 @click.version_option()
+def cli():
+    pass
+
+
+@cli.command()
 @click.argument('gl_vcf', type=click.Path(exists=True))
 @click.argument('out_prefix', type=click.Path())
+@click.option('--normal', 'log_level', flag_value='INFO', default=True,
+              help='Set normal log level')
+@click.option('--silent', 'log_level', flag_value='WARNING',
+              help='Only report warnings and errors')
+@click.option('--verbose', 'log_level', flag_value='DEBUG',
+              help='Report lots of debugging information')
 @click.option('-b', '--burnin', type=int, default=10, show_default=True,
               help='Number of burn-in iterations to run')
 @click.option('-s', '--sampling', type=int, default=10, show_default=True,
               help='Number of sampling iterations to run')
-@click.option('--normal', 'log_level', flag_value='INFO', default=True)
-@click.option('--silent', 'log_level', flag_value='WARNING')
-@click.option('--verbose', 'log_level', flag_value='DEBUG')
 @click.option('--reporting-interval', type=int, default=1000, show_default=True,
               help='Report MCMC progress after this number of iterations')
 @click.option('--store-gls/--no-store-gls', default=False,
               help='Store the input GLs in the output h5 file.'
                    ' Probably only useful for debugging purposes')
-def cli(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, store_gls):
-    """Impute mutation tree from genotype likelihoods stored in GL_VCF and save the
-    resulting tree and mutation probabilities to OUT_PREFIX.
+def infer(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, store_gls):
+    """Impute mutation tree from genotype likelihoods stored in GL_VCF.
+
+    Save the resulting tree and mutation probabilities to OUT_PREFIX.
 
     Mutations and samples are ordered in the output according to their order in GL_VCF.
     """
@@ -66,6 +75,39 @@ def cli(gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, sto
 
     logging.info('Storing results')
     store_results(gls, out_prefix, output_store, runner)
+
+
+@cli.command()
+@click.argument('out_prefix', type=click.Path(resolve_path=True))
+@click.option('--mutation-tree', type=click.Path(exists=True), required=True)
+@click.option('--hdf5', type=click.Path(exists=True), required=True)
+@click.option('--hdf5-sample-attachment-descriptor', type=str, required=True)
+@click.option('--hdf5-mutation-attachment-descriptor', type=str, required=True)
+def convert(out_prefix, mutation_tree, hdf5, hdf5_sample_attachment_descriptor,
+            hdf5_mutation_attachment_descriptor):
+    """Convert mutation tree to phylogenetic tree"""
+    import networkx as nx
+    import numpy as np
+    import h5py
+    from pigglet.tree import PhylogeneticTreeConverter, strip_tree
+
+    g = nx.read_gml(mutation_tree)
+    g = nx.relabel_nodes(g, int)
+    converter = PhylogeneticTreeConverter(g)
+    with h5py.File(hdf5, 'r') as fh:
+        sample_attachments = fh[hdf5_sample_attachment_descriptor][:]
+    phylo_g = converter.convert(sample_attachments)
+    phylo_g = strip_tree(phylo_g)
+    with h5py.File(out_prefix + '.h5', 'a') as fh:
+        mut_ids = np.zeros(len(converter.mutation_attachments), dtype=np.int64)
+        attachments = np.zeros(len(converter.mutation_attachments), dtype=np.int64)
+        for idx, key_val in enumerate(sorted(converter.mutation_attachments.items())):
+            mut_ids[idx] = key_val[0]
+            attachments[idx] = key_val[1]
+        mut_ids -= len(converter.sample_ids)
+        fh.create_dataset(hdf5_mutation_attachment_descriptor + '/mutation_ids', data=mut_ids)
+        fh.create_dataset(hdf5_mutation_attachment_descriptor + '/attachments', data=attachments)
+    nx.write_gml(phylo_g, out_prefix + '.gml')
 
 
 def get_version():

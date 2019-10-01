@@ -43,7 +43,7 @@ class TreeInteractor:
     def __init__(self, g):
         self.g = g
         self.root = roots_of_tree(g)
-        assert len(self.root) == 1
+        assert len(self.root) == 1, self.root
         self.root = self.root[0]
         self.mh_correction = None
 
@@ -136,10 +136,13 @@ class PhylogeneticTreeConverter:
         self.mutation_ids = None
         self.sample_ids = set()
         self.mutation_attachments = {}
-        self.root = -1
+        roots = roots_of_tree(self.g)
+        assert len(roots) == 1
+        self.root = roots[0]
 
     def convert(self, sample_attachments):
         self.sample_attachments = sample_attachments
+        self._test_prerequisites()
         self._relabel_nodes_and_move_mutations_into_attribute()
         self._merge_tree()
 
@@ -198,3 +201,18 @@ class PhylogeneticTreeConverter:
             if 'mutations' in self.phylo_g.node[node]:
                 for mut in self.phylo_g.node[node]['mutations']:
                     self.mutation_attachments[mut] = node
+
+    def _test_prerequisites(self):
+        if len(self.sample_attachments) == 0:
+            raise ValueError('sample_attachments cannot be empty')
+        for attach_point in self.sample_attachments:
+            if attach_point not in self.g:
+                raise ValueError(f'Could not find sample attachment point {attach_point} in tree')
+
+
+def strip_tree(g):
+    g = g.copy()
+    g.graph.clear()
+    for node in g:
+        g.node[node].clear()
+    return g
