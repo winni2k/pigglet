@@ -101,24 +101,23 @@ class TreeLikelihoodCalculator:
         return len(self._changed_nodes) != 0
 
     def _recalculate_attachment_log_like_from(self, start):
-        attachment_log_like = self._attachment_log_like
+        # attachment_log_like = self._attachment_log_like
         if start == self.root:
-            attachment_log_like = np.zeros(
+            self._attachment_log_like = np.zeros(
                 (self.n_sites + 1, self.n_samples),
                 dtype=LOG_LIKE_DTYPE
             )
-            attachment_log_like[start + 1] = np.sum(
+            self._attachment_log_like[start + 1] = np.sum(
                 self.gls[:, HOM_REF_NUM, :].reshape((self.n_sites, self.n_samples)),
                 0
             )
         else:
             parent = list(self.g.pred[start])[0]
-            attachment_log_like[start + 1] = (attachment_log_like[parent + 1]
-                                              + self.gl_ratios[start, :])
+            self._attachment_log_like[start + 1] = (self._attachment_log_like[parent + 1]
+                                                    + self.gl_ratios[start, :])
         for u, v in nx.dfs_edges(self.g, start):
-            attachment_log_like[v + 1] = (attachment_log_like[u + 1]
-                                          + self.gl_ratios[v, :])
-        self._attachment_log_like = attachment_log_like
+            self._attachment_log_like[v + 1] = (self._attachment_log_like[u + 1]
+                                                + self.gl_ratios[v, :])
 
 
 class AttachmentAggregator:
