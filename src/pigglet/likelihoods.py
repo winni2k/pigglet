@@ -26,6 +26,7 @@ class TreeLikelihoodCalculator:
         for genotype_idx in range(gls.shape[2]):
             glstmp[:, genotype_idx, :] = gls[:, :, genotype_idx]
         self.gls = glstmp
+        self.gl_ratios = self.gls[:, HET_NUM, :] - self.gls[:, HOM_REF_NUM, :]
         self.n_sites = self.gls.shape[0]
         self.n_samples = self.gls.shape[2]
         self.paths = None
@@ -107,18 +108,16 @@ class TreeLikelihoodCalculator:
                 dtype=LOG_LIKE_DTYPE
             )
             attachment_log_like[start + 1] = np.sum(
-                self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
+                self.gls[:, HOM_REF_NUM, :].reshape((self.n_sites, self.n_samples)),
                 0
             )
         else:
             parent = list(self.g.pred[start])[0]
             attachment_log_like[start + 1] = (attachment_log_like[parent + 1]
-                                              + self.gls[start, HET_NUM, :]
-                                              - self.gls[start, HOM_REF_NUM, :])
+                                              + self.gl_ratios[start, :])
         for u, v in nx.dfs_edges(self.g, start):
             attachment_log_like[v + 1] = (attachment_log_like[u + 1]
-                                          + self.gls[v, HET_NUM, :]
-                                          - self.gls[v, HOM_REF_NUM, :])
+                                          + self.gl_ratios[v, :])
         self._attachment_log_like = attachment_log_like
 
 
