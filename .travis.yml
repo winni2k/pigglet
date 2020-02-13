@@ -6,10 +6,8 @@ python:
   - "3.7"
 # command to install dependencies
 install:
-  - pip install -r test_requirements.txt
-  - python3 setup.py install
+  - pip install tox-travis
 
 # command to run tests
 script:
-  - pytest
-
+  - tox

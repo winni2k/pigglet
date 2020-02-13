@@ -27,7 +27,8 @@ setup(
     author='Warren Kretzschmar',
     author_email='warren.kretzschmar@ki.se',
     url='https://github.com/winni2k',
-    install_requires=['networkx', 'numpy', 'pysam'],
+    # Relying on the main project to install these dependencies (let's be DRY)
+    # install_requires=['networkx==2.3', 'numpy', 'pysam==0.15.3'],
     packages=find_packages(exclude=['contrib', 'docs', 'test*']),  # Required
     python_requires='>=3.6, <4',
 

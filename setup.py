@@ -27,7 +27,7 @@ setup(
     author='Warren Kretzschmar',
     author_email='warren.kretzschmar@ki.se',
     url='https://github.com/winni2k',
-    install_requires=['networkx', 'numpy', 'pysam', 'click', 'h5py', 'tqdm', 'scipy'],
+    install_requires=['networkx==2.3', 'numpy', 'pysam==0.15.3', 'click', 'h5py', 'tqdm', 'scipy'],
     packages=find_packages('src', exclude=['contrib', 'docs', 'tests', 'test_utils']),
     python_requires='>=3.6, <4',
     package_dir={'': 'src'},
