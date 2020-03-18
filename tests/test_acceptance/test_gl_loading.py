@@ -3,8 +3,10 @@ import pytest
 from pigglet_testing.builders.vcf import VCFLoadedGLBuilder, VCFLoaderBuilder
 
 
-def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
+@pytest.mark.parametrize("gl_tag", ["GL", "PL"])
+def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir, gl_tag):
     b = VCFLoadedGLBuilder(tmpdir)
+    b.with_tag(gl_tag)
     b.with_site_gls([1, 2, 4], [3, 7, 8])
     gls = b.build()
 
@@ -14,8 +16,10 @@ def test_loads_gls_of_single_site_and_two_samples_from_vcf(tmpdir):
     assert list(first_row[1]) == [3, 7, 8]
 
 
-def test_loads_gls_of_two_sites_and_two_samples_from_vcf(tmpdir):
+@pytest.mark.parametrize("gl_tag", ["GL", "PL"])
+def test_loads_gls_of_two_sites_and_two_samples_from_vcf(tmpdir, gl_tag):
     b = VCFLoadedGLBuilder(tmpdir)
+    b.with_tag(gl_tag)
     b.with_site_gls([1, 2, 3], [4, 5, 6])
     b.with_site_gls([7, 8, 9], [10, 11, 12])
     gls = b.build()
@@ -34,7 +38,7 @@ def test_raises_on_vcf_with_unacceptable_likelihood_encoding(tmpdir):
     # given
     b = VCFLoaderBuilder(tmpdir)
     b.with_site_gls([1, 2, 4], [3, 7, 8])
-    b.header = b.header.replace('GL', 'PL')
+    b.gl_header_line = b.gl_header_line.replace("GL", "GP")
     loader = b.build()
 
     # when/then
