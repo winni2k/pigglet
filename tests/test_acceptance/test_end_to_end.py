@@ -15,7 +15,7 @@ def test_single_mutation_one_sample_creates_trivial_graph(tmpdir, gl_tag):
     # given
     b = VCFBuilder(tmpdir)
     b.with_tag(gl_tag)
-    b.with_site_gls([0, 1, 0])
+    b.with_site_gls([-1, 0, -1])
     vcf_file = b.build()
     prefix = tmpdir / "out"
     runner = CliRunner()

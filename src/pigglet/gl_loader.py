@@ -12,7 +12,7 @@ class LikelihoodLoader:
     def __init__(self, vcf_file=None):
         self.vcf_file = vcf_file
         self.bcf_in = None
-        self.gl_field_preference = ['GL', 'PL']
+        self.gl_field_preference = ["GL", "PL"]
         self.gl_field_idx = 1
         self.gl_field_name = None
         self.gl_field = 1
@@ -42,8 +42,8 @@ class LikelihoodLoader:
             except ValueError:
                 pass
         raise ValueError(
-            f'Could not find a genotype likelihood format field in VCF (%s)',
-            self.vcf_file
+            f"Could not find a genotype likelihood format field in VCF (%s)",
+            self.vcf_file,
         )
 
     def _extract_gls(self):
@@ -53,12 +53,17 @@ class LikelihoodLoader:
         for site_info, gls in site_gl_iter(self.bcf_in.fetch(), self.gl_field_idx):
             if site_info[0] != current_chrom:
                 current_chrom = site_info[0]
-                logging.info('Loading chromosome %s', current_chrom)
+                logging.info("Loading chromosome %s", current_chrom)
             self.infos.append(site_info)
             site_gls.append(gls)
         self.gls = np.array(site_gls, dtype=GL_DTYPE)
-        if self.gl_field_name == 'PL':
-            self.gls = self.gls / 10
+        if self.gl_field_name == "PL":
+            self.gls = self.gls / -10
+        if not np.all(self.gls <= 0):
+            raise ValueError(
+                "Not all input genotype likelihoods are in the"
+                " interval [0, 1] (inclusive)"
+            )
 
 
 def site_gl_iter(records, record_idx):
