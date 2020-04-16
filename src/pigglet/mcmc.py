@@ -5,7 +5,7 @@ import random
 import networkx as nx
 from tqdm import tqdm
 
-from pigglet.likelihoods import TreeLikelihoodCalculator, AttachmentAggregator
+from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
 from pigglet.tree import TreeInteractor, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
 

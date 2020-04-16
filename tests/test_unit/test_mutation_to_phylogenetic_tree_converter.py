@@ -1,9 +1,7 @@
 import pytest
 
-from pigglet_testing.builders.tree import (
-    PhylogeneticTreeConverterBuilder,
-    PhylogeneticTreeConverterTestDriver,
-)
+from pigglet_testing.builders.tree import (PhylogeneticTreeConverterBuilder,
+                                           PhylogeneticTreeConverterTestDriver)
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 

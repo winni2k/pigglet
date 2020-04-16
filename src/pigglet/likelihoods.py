@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 from scipy.special import logsumexp
 
-from pigglet.constants import HET_NUM, LOG_LIKE_DTYPE, HOM_REF_NUM
+from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
 from pigglet.tree_utils import roots_of_tree
 
 

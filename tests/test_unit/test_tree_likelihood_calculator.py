@@ -13,7 +13,8 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
+from pigglet_testing.builders.tree_likelihood import \
+    TreeLikelihoodCalculatorBuilder
 
 
 def get_sample_likelihood(calc, sample_idx):
