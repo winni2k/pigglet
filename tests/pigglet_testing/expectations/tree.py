@@ -7,17 +7,17 @@ class PhyloTreeExpectation:
         return self
 
     def only_has_mutations(self, *mutations):
-        assert self.g.graph['mutations'] == set(mutations)
+        assert self.g.graph["mutations"] == set(mutations)
         return self
 
     def has_mutation_at_node(self, mutation, node):
-        assert mutation in self.g.node[node]['mutations']
+        assert mutation in self.g.node[node]["mutations"]
         return self
 
     def has_node_mutations(self, node, mutations):
-        assert self.g.node[node]['mutations'] == set(mutations)
+        assert self.g.node[node]["mutations"] == set(mutations)
         return self
 
     def has_mutation_attachments(self, attachments):
-        assert self.g.graph['mutation_attachments'] == attachments
+        assert self.g.graph["mutation_attachments"] == attachments
         return self

@@ -11,7 +11,6 @@ from pigglet_testing.builders.tree import TreeBuilder
 
 
 class LikelihoodBuilder:
-
     def __init__(self):
         self.mutated_gls = set()
         self.unmutated_gls = set()
@@ -66,7 +65,6 @@ class LikelihoodBuilder:
 
 
 class TreeLikelihoodBuilder:
-
     def __init__(self):
         self.tree_builder = TreeBuilder()
         self.likelihood_builder = LikelihoodBuilder()
@@ -90,7 +88,6 @@ class TreeLikelihoodBuilder:
 
 
 class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
-
     def build(self):
         g, gls = super().build()
         return TreeLikelihoodCalculator(g, gls)
@@ -128,8 +125,11 @@ class MCMCBuilder(LikelihoodBuilder):
         gls = super().build()
         if self.normalize_gls:
             gls = GLManipulator(gls).normalize().gls
-        return MCMCRunner.from_gls(gls, num_burnin_iter=self.n_burnin_iter,
-                                   num_sampling_iter=self.n_sampling_iter)
+        return MCMCRunner.from_gls(
+            gls,
+            num_burnin_iter=self.n_burnin_iter,
+            num_sampling_iter=self.n_sampling_iter,
+        )
 
 
 def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):

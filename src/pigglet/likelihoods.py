@@ -53,8 +53,7 @@ class TreeLikelihoodCalculator:
 
     def attachment_marginaziled_sample_log_likelihoods(self):
         """Calculate the marginal likelihoods of all possible sample attachments"""
-        self._summed_attachment_log_like = logsumexp(
-            self.attachment_log_like, axis=0)
+        self._summed_attachment_log_like = logsumexp(self.attachment_log_like, axis=0)
         return self._summed_attachment_log_like
 
     def sample_marginalized_log_likelihood(self):
@@ -77,13 +76,13 @@ class TreeLikelihoodCalculator:
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
             if u == v:
                 continue
-            if label == 'forward':
+            if label == "forward":
                 seen_muts.append(v)
                 mut_probs[seen_muts] += attach_prob[v]
-            elif label == 'reverse':
+            elif label == "reverse":
                 seen_muts.pop()
             else:
-                raise ValueError(f'Unexpected label: {label}')
+                raise ValueError(f"Unexpected label: {label}")
         return mut_probs
 
     def ml_sample_attachments(self):
@@ -103,22 +102,24 @@ class TreeLikelihoodCalculator:
         attachment_log_like = self._attachment_log_like
         if start == self.root:
             attachment_log_like = np.zeros(
-                (self.n_sites + 1, self.n_samples),
-                dtype=LOG_LIKE_DTYPE
+                (self.n_sites + 1, self.n_samples), dtype=LOG_LIKE_DTYPE
             )
             attachment_log_like[start + 1] = np.sum(
-                self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)),
-                0
+                self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)), 0
             )
         else:
             parent = list(self.g.pred[start])[0]
-            attachment_log_like[start + 1] = (attachment_log_like[parent + 1]
-                                              + self.gls[start, HET_NUM, :]
-                                              - self.gls[start, HOM_REF_NUM, :])
+            attachment_log_like[start + 1] = (
+                attachment_log_like[parent + 1]
+                + self.gls[start, HET_NUM, :]
+                - self.gls[start, HOM_REF_NUM, :]
+            )
         for u, v in nx.dfs_edges(self.g, start):
-            attachment_log_like[v + 1] = (attachment_log_like[u + 1]
-                                          + self.gls[v, HET_NUM, :]
-                                          - self.gls[v, HOM_REF_NUM, :])
+            attachment_log_like[v + 1] = (
+                attachment_log_like[u + 1]
+                + self.gls[v, HET_NUM, :]
+                - self.gls[v, HOM_REF_NUM, :]
+            )
         self._attachment_log_like = attachment_log_like
 
 

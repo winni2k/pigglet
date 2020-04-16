@@ -3,8 +3,10 @@ import numpy as np
 from hypothesis import given, strategies
 
 from pigglet.mcmc import TreeLikelihoodMover
-from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
-    add_gl_at_ancestor_mutations_for
+from pigglet_testing.builders.tree_likelihood import (
+    MCMCBuilder,
+    add_gl_at_ancestor_mutations_for,
+)
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
@@ -25,9 +27,9 @@ class TestRecalculateAttachmentLogLikeFromNodes:
 
         # when
         mover.random_move()
-        like = calc \
-            .register_changed_nodes(*mover.changed_nodes) \
-            .attachment_log_like.copy()
+        like = calc.register_changed_nodes(
+            *mover.changed_nodes
+        ).attachment_log_like.copy()
         root_like = calc.register_changed_nodes(-1).attachment_log_like.copy()
 
         # then

@@ -19,15 +19,15 @@ class TreeMoveMemento:
 
     @classmethod
     def of_prune(cls, edge):
-        return cls(commands=['attach'], args=[{'target': edge[0], 'node': edge[1]}])
+        return cls(commands=["attach"], args=[{"target": edge[0], "node": edge[1]}])
 
     @classmethod
     def of_attach(cls, node, target):
-        return cls(commands=['prune'], args=[{'node': node}])
+        return cls(commands=["prune"], args=[{"node": node}])
 
     @classmethod
     def of_swap_labels(cls, n1, n2):
-        return cls(commands=['swap_labels'], args=[{'n1': n1, 'n2': n2}])
+        return cls(commands=["swap_labels"], args=[{"n1": n1, "n2": n2}])
 
     def append(self, other):
         self.commands += other.commands
@@ -63,8 +63,7 @@ class TreeInteractor:
     def uniform_attach(self, node):
         self.mh_correction = 1
         valid_attachment_points = itertools.chain(
-            nx.descendants(self.g, self.root),
-            [self.root]
+            nx.descendants(self.g, self.root), [self.root]
         )
         return self._uniform_attach_to_nodes(node, valid_attachment_points)
 
@@ -108,9 +107,11 @@ class TreeInteractor:
         anc_descendants = set(nx.descendants(self.g, ancestor))
 
         memento.append(self.prune(ancestor))
-        memento.append(self._uniform_attach_to_nodes(ancestor,
-                                                     itertools.chain(dec_descendants,
-                                                                     [descendant])))
+        memento.append(
+            self._uniform_attach_to_nodes(
+                ancestor, itertools.chain(dec_descendants, [descendant])
+            )
+        )
 
         self.mh_correction = (len(dec_descendants) + 1) / (len(anc_descendants) + 1)
         return memento
@@ -121,8 +122,9 @@ class TreeInteractor:
         return self.attach(node, target_nodes[attach_idx])
 
     def merge_mutation_nodes(self, keep, merge):
-        self.g.node[keep]['mutations'] = self.g.node[keep]['mutations'] \
-                                         | self.g.node[merge]['mutations']
+        self.g.node[keep]["mutations"] = (
+            self.g.node[keep]["mutations"] | self.g.node[merge]["mutations"]
+        )
         for merge_child in self.g.succ[merge]:
             self.g.add_edge(keep, merge_child)
         self.g.remove_node(merge)
@@ -149,27 +151,29 @@ class PhylogeneticTreeConverter:
         self._find_mutation_attachments()
         redundant_nodes = set()
         for node in self.phylo_g.nodes():
-            if node not in self.sample_ids \
-                    and len(nx.descendants(self.phylo_g, node) & self.sample_ids) == 0:
+            if (
+                node not in self.sample_ids
+                and len(nx.descendants(self.phylo_g, node) & self.sample_ids) == 0
+            ):
                 redundant_nodes.add(node)
         for node in redundant_nodes:
-            for mutation in self.phylo_g.node[node]['mutations']:
+            for mutation in self.phylo_g.node[node]["mutations"]:
                 del self.mutation_attachments[mutation]
         self.phylo_g.remove_nodes_from(redundant_nodes)
-        self.phylo_g.graph['mutation_attachments'] = self.mutation_attachments.copy()
+        self.phylo_g.graph["mutation_attachments"] = self.mutation_attachments.copy()
         return self.phylo_g
 
     def _relabel_nodes_and_move_mutations_into_attribute(self):
         first_mutation = len(self.sample_attachments)
-        self.phylo_g = nx.relabel_nodes(self.g,
-                                        {n: n + first_mutation for n in self.g.nodes() if
-                                         n != self.root})
+        self.phylo_g = nx.relabel_nodes(
+            self.g, {n: n + first_mutation for n in self.g.nodes() if n != self.root}
+        )
 
         self.mutation_ids = frozenset(n for n in self.phylo_g.nodes() if n != self.root)
         for node in self.mutation_ids:
-            self.phylo_g.node[node]['mutations'] = {node}
-        self.phylo_g.node[self.root]['mutations'] = set()
-        self.phylo_g.graph['mutations'] = self.mutation_ids
+            self.phylo_g.node[node]["mutations"] = {node}
+        self.phylo_g.node[self.root]["mutations"] = set()
+        self.phylo_g.graph["mutations"] = self.mutation_ids
         assert len(self.sample_ids) == 0
         for idx, attachment in enumerate(self.sample_attachments):
             self.sample_ids.add(idx)
@@ -198,16 +202,18 @@ class PhylogeneticTreeConverter:
     def _find_mutation_attachments(self):
         assert len(self.mutation_attachments) == 0
         for node in self.phylo_g.nodes():
-            if 'mutations' in self.phylo_g.node[node]:
-                for mut in self.phylo_g.node[node]['mutations']:
+            if "mutations" in self.phylo_g.node[node]:
+                for mut in self.phylo_g.node[node]["mutations"]:
                     self.mutation_attachments[mut] = node
 
     def _test_prerequisites(self):
         if len(self.sample_attachments) == 0:
-            raise ValueError('sample_attachments cannot be empty')
+            raise ValueError("sample_attachments cannot be empty")
         for attach_point in self.sample_attachments:
             if attach_point not in self.g:
-                raise ValueError(f'Could not find sample attachment point {attach_point} in tree')
+                raise ValueError(
+                    f"Could not find sample attachment point {attach_point} in tree"
+                )
 
 
 def strip_tree(g):

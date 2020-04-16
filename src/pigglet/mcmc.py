@@ -13,10 +13,18 @@ NUM_MCMC_MOVES = 3
 
 
 class MCMCRunner:
-
-    def __init__(self, gls, graph, num_sampling_iter, num_burnin_iter,
-                 tree_move_weights, tree_interactor, mover,
-                 current_like, reporting_interval):
+    def __init__(
+        self,
+        gls,
+        graph,
+        num_sampling_iter,
+        num_burnin_iter,
+        tree_move_weights,
+        tree_interactor,
+        mover,
+        current_like,
+        reporting_interval,
+    ):
         self.g = graph
         self.map_g = graph.copy()
         self.gls = gls
@@ -34,19 +42,20 @@ class MCMCRunner:
 
     @classmethod
     def from_gls(
-            cls, gls,
-            num_sampling_iter=10,
-            num_burnin_iter=10,
-            prune_and_reattach_weight=1,
-            swap_node_weight=1,
-            swap_subtree_weight=1,
-            reporting_interval=1,
+        cls,
+        gls,
+        num_sampling_iter=10,
+        num_burnin_iter=10,
+        prune_and_reattach_weight=1,
+        swap_node_weight=1,
+        swap_subtree_weight=1,
+        reporting_interval=1,
     ):
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [
             prune_and_reattach_weight,
             swap_node_weight,
-            swap_subtree_weight
+            swap_subtree_weight,
         ]
         assert len(tree_move_weights) == NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
@@ -66,11 +75,11 @@ class MCMCRunner:
     def run(self):
         iteration = 0
         tries = 0
-        pbar = self._get_progress_bar(type='burnin')
+        pbar = self._get_progress_bar(type="burnin")
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             if iteration == self.num_burnin_iter:
-                logging.info('Entering sampling iterations')
-                pbar = self._get_progress_bar(type='sampling')
+                logging.info("Entering sampling iterations")
+                pbar = self._get_progress_bar(type="sampling")
             accepted = self._mh_step()
             tries += 1
             if not accepted:
@@ -78,12 +87,12 @@ class MCMCRunner:
             self._update_map(iteration)
             if iteration % self.reporting_interval == 0 and iteration != 0:
                 logging.info(
-                    'Iteration %s: acceptance rate: %s\tcurrent like: %s'
-                    '\tMAP like: %s',
+                    "Iteration %s: acceptance rate: %s\tcurrent like: %s"
+                    "\tMAP like: %s",
                     iteration,
                     self.reporting_interval / tries,
                     self.current_like,
-                    self.map_like
+                    self.map_like,
                 )
                 tries = 0
             iteration += 1
@@ -95,9 +104,11 @@ class MCMCRunner:
         if self.new_like > self.map_like:
             self.map_g = self.g.copy()
             self.map_like = self.new_like
-            logging.debug('Iteration %s: new MAP tree with likelihood %s',
-                          iteration,
-                          self.map_like)
+            logging.debug(
+                "Iteration %s: new MAP tree with likelihood %s",
+                iteration,
+                self.map_like,
+            )
 
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
@@ -122,18 +133,18 @@ class MCMCRunner:
         return False
 
     def _get_progress_bar(self, type):
-        if type == 'burnin':
+        if type == "burnin":
             return tqdm(
                 total=self.num_burnin_iter,
-                desc='Burnin iterations',
-                unit='iterations',
+                desc="Burnin iterations",
+                unit="iterations",
                 mininterval=5.0,
             )
-        elif type == 'sampling':
+        elif type == "sampling":
             return tqdm(
                 total=self.num_sampling_iter,
-                desc='Sampling iterations',
-                unit='iterations',
+                desc="Sampling iterations",
+                unit="iterations",
                 mininterval=5.0,
             )
         raise ValueError
@@ -151,7 +162,7 @@ class MoveExecutor:
         self.available_moves = [
             self.prune_and_reattach,
             self.swap_node,
-            self.swap_subtree
+            self.swap_subtree,
         ]
         self.changed_nodes = list(roots_of_tree(g))
 

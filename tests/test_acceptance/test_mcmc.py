@@ -2,8 +2,11 @@ import networkx as nx
 import pytest
 from hypothesis import given, strategies
 
-from pigglet_testing.builders.tree_likelihood import MCMCBuilder, \
-    add_gl_at_ancestor_mutations_for, MoveExecutorBuilder
+from pigglet_testing.builders.tree_likelihood import (
+    MCMCBuilder,
+    add_gl_at_ancestor_mutations_for,
+    MoveExecutorBuilder,
+)
 
 
 def test_finds_one_sample_one_site():
@@ -48,7 +51,7 @@ def test_finds_two_samples_two_sites_in_line():
     assert set(mcmc.map_g.edges()) == {(-1, 0), (0, 1)}
 
 
-@pytest.mark.parametrize('n_mutations', [3, 4])
+@pytest.mark.parametrize("n_mutations", [3, 4])
 def test_arbitrary_trees(n_mutations):
     # given
     # n_mutations = 4
@@ -65,6 +68,7 @@ def test_arbitrary_trees(n_mutations):
 
     # when
     import logging
+
     logging.basicConfig(level=logging.DEBUG)
     mcmc.run()
 
@@ -72,7 +76,7 @@ def test_arbitrary_trees(n_mutations):
     assert set(mcmc.map_g.edges()) == set(rand_g.edges())
 
 
-@pytest.mark.parametrize('burnin,sampling', [(0, 3), (3, 0), (3, 3)])
+@pytest.mark.parametrize("burnin,sampling", [(0, 3), (3, 0), (3, 3)])
 def test_aggregates_the_correct_number_of_runs(burnin, sampling):
     b = MCMCBuilder()
     b.with_mutated_gl_at(0, 0)
@@ -89,9 +93,11 @@ def test_aggregates_the_correct_number_of_runs(burnin, sampling):
 
 
 class TestMoveExecutor:
-    @given(strategies.data(),
-           strategies.integers(min_value=1, max_value=3),
-           strategies.integers(min_value=2, max_value=10))
+    @given(
+        strategies.data(),
+        strategies.integers(min_value=1, max_value=3),
+        strategies.integers(min_value=2, max_value=10),
+    )
     def test_undoes_any_move(self, data, num_moves, n_mutations):
         # given
         b = MoveExecutorBuilder()
@@ -101,7 +107,8 @@ class TestMoveExecutor:
 
         for idx in range(num_moves):
             exe.available_moves[
-                data.draw(strategies.integers(min_value=0, max_value=2))]()
+                data.draw(strategies.integers(min_value=0, max_value=2))
+            ]()
             if idx == 0:
                 memento = exe.memento
             else:

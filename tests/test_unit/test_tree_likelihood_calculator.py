@@ -29,7 +29,6 @@ def log_sum_of_exp_of(*log_likelihoods):
 
 
 class TestSampleLikelihood:
-
     def test_one_sample_one_site_no_mutation(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
@@ -95,7 +94,7 @@ class TestSampleLikelihood:
         for sample in range(4):
             assert get_sample_likelihood(calc, sample) == approx(sum_of_exp_of(2, 1, 1))
 
-    @pytest.mark.parametrize('sample_id_to_mutate', [0, 1])
+    @pytest.mark.parametrize("sample_id_to_mutate", [0, 1])
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate):
         # given
         b = TreeLikelihoodCalculatorBuilder()
@@ -107,9 +106,11 @@ class TestSampleLikelihood:
 
         # when/then
         assert get_sample_likelihood(calc, sample_id_to_mutate) == approx(
-            sum_of_exp_of(0, 1))
+            sum_of_exp_of(0, 1)
+        )
         assert get_sample_likelihood(calc, abs(sample_id_to_mutate - 1)) == approx(
-            sum_of_exp_of(0, 0))
+            sum_of_exp_of(0, 0)
+        )
 
     def test_raises_on_invalid_sample_idx(self):
         # given
@@ -153,7 +154,6 @@ class TestSampleLikelihood:
 
 
 class TestSampleMarginalizedLikelihood:
-
     def test_single_mutation_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()
@@ -229,7 +229,6 @@ class TestSampleMarginalizedLikelihood:
 
 
 class TestMLAttachments:
-
     def test_single_mutation_one_sample(self):
         # given
         b = TreeLikelihoodCalculatorBuilder()

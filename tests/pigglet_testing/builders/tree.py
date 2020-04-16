@@ -39,7 +39,6 @@ class TreeBuilder:
 
 
 class PhylogeneticTreeConverterBuilder(TreeBuilder):
-
     def build(self):
         return PhylogeneticTreeConverter(super().build())
 
@@ -55,4 +54,6 @@ class PhylogeneticTreeConverterTestDriver(PhylogeneticTreeConverterBuilder):
 
     def build(self):
         converter = super().build()
-        return PhyloTreeExpectation(converter.convert(sample_attachments=self.sample_attachments))
+        return PhyloTreeExpectation(
+            converter.convert(sample_attachments=self.sample_attachments)
+        )

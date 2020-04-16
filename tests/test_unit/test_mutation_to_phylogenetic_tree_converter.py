@@ -1,7 +1,9 @@
 import pytest
 
-from pigglet_testing.builders.tree import PhylogeneticTreeConverterBuilder, \
-    PhylogeneticTreeConverterTestDriver
+from pigglet_testing.builders.tree import (
+    PhylogeneticTreeConverterBuilder,
+    PhylogeneticTreeConverterTestDriver,
+)
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 
@@ -96,7 +98,7 @@ class TestPathTree:
         expect.only_has_mutations(2, 3)
         expect.consists_of_edges((-1, 0), (-1, 1))
 
-    @pytest.mark.parametrize('n_muts', list(range(4)))
+    @pytest.mark.parametrize("n_muts", list(range(4)))
     def test_converts_two_samples_with_n_mutations(self, n_muts):
         # given
         b = PhylogeneticTreeConverterBuilder()

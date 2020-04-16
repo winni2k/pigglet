@@ -8,7 +8,6 @@ from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBui
 
 
 class TestAddAttachmentlogLikes:
-
     def test_no_attachment_scores(self):
         # given
         agg = AttachmentAggregator()
@@ -66,9 +65,10 @@ class TestAddAttachmentlogLikes:
         sum_like = math.e + 1
         for samp_idx in [0, 1]:
             assert list(likes[:, samp_idx]) == pytest.approx(
-                [math.e / sum_like, 1 / sum_like])
+                [math.e / sum_like, 1 / sum_like]
+            )
 
-    @pytest.mark.parametrize('num_additions', [1, 2, 3])
+    @pytest.mark.parametrize("num_additions", [1, 2, 3])
     def test_one_sample_two_private_mutations(self, num_additions):
         # given
         b = TreeLikelihoodCalculatorBuilder()
@@ -105,7 +105,9 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilites(
+            agg.normalized_attachment_probabilities()
+        )
 
         # then
         assert mutation_probs.shape == (1, 1)
@@ -121,7 +123,9 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilites(
+            agg.normalized_attachment_probabilities()
+        )
 
         # then
         assert mutation_probs.shape == (1, 1)
@@ -138,13 +142,15 @@ class TestConvertToMutationProbs:
         agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilites(
+            agg.normalized_attachment_probabilities()
+        )
 
         # then
         assert mutation_probs.shape == (1, 2)
         assert mutation_probs[0] == pytest.approx([1 / (math.e + 1), 1 / (math.e + 1)])
 
-    @pytest.mark.parametrize('num_additions', [1, 2, 3])
+    @pytest.mark.parametrize("num_additions", [1, 2, 3])
     def test_one_sample_two_private_mutations(self, num_additions):
         # given
         b = TreeLikelihoodCalculatorBuilder()
@@ -158,12 +164,13 @@ class TestConvertToMutationProbs:
             agg.add_attachment_log_likes(calc)
 
         # when
-        mutation_probs = calc.mutation_probabilites(agg.normalized_attachment_probabilities())
+        mutation_probs = calc.mutation_probabilites(
+            agg.normalized_attachment_probabilities()
+        )
 
         # then
         raw_likes = [1, math.e, math.e ** 2]
         assert mutation_probs.shape == (2, 1)
         assert mutation_probs[:, 0] == pytest.approx(
-            [(math.e + math.e ** 2) / sum(raw_likes),
-             math.e ** 2 / sum(raw_likes)]
+            [(math.e + math.e ** 2) / sum(raw_likes), math.e ** 2 / sum(raw_likes)]
         )
