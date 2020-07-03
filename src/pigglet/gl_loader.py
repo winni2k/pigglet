@@ -42,7 +42,7 @@ class LikelihoodLoader:
             except ValueError:
                 pass
         raise ValueError(
-            f"Could not find a genotype likelihood format field in VCF (%s)",
+            "Could not find a genotype likelihood format field in VCF (%s)",
             self.vcf_file,
         )
 
