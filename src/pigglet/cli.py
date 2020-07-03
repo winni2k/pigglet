@@ -69,8 +69,22 @@ def cli():
     help="Store the input GLs in the output h5 file."
     " Probably only useful for debugging purposes",
 )
+@click.option(
+    "--logsumexp-refresh-rate",
+    default=1000,
+    help="Refresh log sum exponent calculation every n calculations. "
+)
+@click.option("--check-logsumexp-accuracy/--no-check-logsumexp-accuracy", default=False)
 def infer(
-    gl_vcf, out_prefix, burnin, sampling, log_level, reporting_interval, store_gls
+    gl_vcf,
+    out_prefix,
+    burnin,
+    sampling,
+    log_level,
+    reporting_interval,
+    store_gls,
+    logsumexp_refresh_rate,
+    check_logsumexp_accuracy,
 ):
     """Impute mutation tree from genotype likelihoods stored in GL_VCF.
 
@@ -108,6 +122,8 @@ def infer(
         num_sampling_iter=sampling,
         reporting_interval=reporting_interval,
     )
+    runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
+    runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     runner.run()
 
     logging.info("Storing results")

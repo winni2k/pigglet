@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     name="pigglet",
     description="The Phylogenetic Inference and genotyping from Genotype Likelihoods Tool",
-    version="0.8.1",
+    version="0.9.4",
     classifiers=[  # Optional
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -31,7 +31,7 @@ setup(
         "click",
         "h5py",
         "tqdm",
-        "scipy",
+        "scipy==1.5.*",
     ],
     packages=find_packages("src", exclude=["contrib", "docs", "tests", "test_utils"]),
     python_requires=">=3.6, <4",

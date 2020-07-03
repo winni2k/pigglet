@@ -86,7 +86,8 @@ class MCMCRunner:
             tries += 1
             if not accepted:
                 continue
-            self._update_map(iteration)
+            if iteration >= self.num_burnin_iter:
+                self._update_map(iteration)
             if iteration % self.reporting_interval == 0 and iteration != 0:
                 logging.info(
                     "Iteration %s: acceptance rate: %s\tcurrent like: %s"
