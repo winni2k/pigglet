@@ -62,7 +62,7 @@ class LikelihoodLoader:
         if not np.all(self.gls <= 0):
             raise ValueError(
                 "Not all input genotype likelihoods are in the"
-                " interval [0, 1] (inclusive)"
+                " interval [0, 1] (inclusive, log likelihoods have been exponentiated)"
             )
 
 

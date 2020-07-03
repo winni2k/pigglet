@@ -1,4 +1,5 @@
 import random
+from dataclasses import dataclass
 
 import networkx as nx
 import numpy as np
@@ -10,13 +11,12 @@ from pigglet.mcmc import MCMCRunner, MoveExecutor
 from pigglet_testing.builders.tree import TreeBuilder
 
 
+@dataclass
 class LikelihoodBuilder:
     def __init__(self):
         self.mutated_gls = set()
         self.unmutated_gls = set()
         self.likelihood_peaks = set()
-        self.mutated_gls = set()
-        self.unmutated_gls = set()
         self.mutation_gl = 1
         self.num_sites = 0
         self.num_samples = 0
