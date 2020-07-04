@@ -2,9 +2,12 @@ import networkx as nx
 import numpy as np
 from hypothesis import given, strategies
 
+
 from pigglet.mcmc import TreeLikelihoodMover
 from pigglet_testing.builders.tree_likelihood import (
-    MCMCBuilder, add_gl_at_ancestor_mutations_for)
+    MCMCBuilder,
+    add_gl_at_ancestor_mutations_for,
+)
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:

@@ -17,7 +17,7 @@ class LikelihoodBuilder:
         self.mutated_gls = set()
         self.unmutated_gls = set()
         self.likelihood_peaks = set()
-        self.mutation_gl = 1
+        self.mutation_gl = 0
         self.num_sites = 0
         self.num_samples = 0
         self.gls = None
@@ -36,7 +36,7 @@ class LikelihoodBuilder:
         if num_sites is not None:
             assert num_sites >= self.num_sites
             self.num_sites = num_sites
-        self.gls = np.zeros((self.num_sites, self.num_samples, NUM_GLS))
+        self.gls = np.ones((self.num_sites, self.num_samples, NUM_GLS)) * -1
         self._add_likelihood_peaks()
         self._mutate_gls()
         return self.gls

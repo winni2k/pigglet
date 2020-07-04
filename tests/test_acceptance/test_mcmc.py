@@ -3,7 +3,10 @@ import pytest
 from hypothesis import given, strategies
 
 from pigglet_testing.builders.tree_likelihood import (
-    MCMCBuilder, MoveExecutorBuilder, add_gl_at_ancestor_mutations_for)
+    MCMCBuilder,
+    MoveExecutorBuilder,
+    add_gl_at_ancestor_mutations_for,
+)
 
 
 def test_finds_one_sample_one_site():

@@ -3,6 +3,7 @@ import math
 import random
 
 import networkx as nx
+import numpy as np
 from tqdm import tqdm
 
 from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
@@ -51,6 +52,7 @@ class MCMCRunner:
         swap_subtree_weight=1,
         reporting_interval=1,
     ):
+        assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [
             prune_and_reattach_weight,

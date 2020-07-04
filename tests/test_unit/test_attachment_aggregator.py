@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 
 from pigglet.likelihoods import AttachmentAggregator
-from pigglet_testing.builders.tree_likelihood import \
-    TreeLikelihoodCalculatorBuilder
+from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
 
 
 class TestAddAttachmentlogLikes:
