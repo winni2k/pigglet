@@ -24,6 +24,7 @@ setup(
     author_email="warren.kretzschmar@ki.se",
     url="https://github.com/winni2k",
     install_requires=[
+        "dataclasses",
         "networkx==2.3",
         "numpy",
         "pysam==0.15.3",
