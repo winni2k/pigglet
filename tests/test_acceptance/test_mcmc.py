@@ -55,7 +55,7 @@ def test_finds_two_samples_two_sites_in_line():
 def test_arbitrary_trees(n_mutations):
     # given
     # n_mutations = 4
-    rand_g = nx.gnr_graph(n_mutations, 0).reverse()
+    rand_g = nx.gnr_graph(n_mutations, 0, seed=42).reverse()
     nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
 
     b = MCMCBuilder()
