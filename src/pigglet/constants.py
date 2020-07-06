@@ -9,3 +9,7 @@ ROOT_LABEL = -1
 TMP_LABEL = -2
 LOG_LIKE_DTYPE = np.float128
 GL_DTYPE = np.float32
+
+
+class TreeIsTooSmallError(ValueError):
+    pass

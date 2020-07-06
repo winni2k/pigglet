@@ -1,21 +1,26 @@
 import itertools
 import random
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Dict
 
 import networkx as nx
 
-from pigglet.constants import TMP_LABEL
+from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
 from pigglet.tree_utils import roots_of_tree
 
 
+class RandomWalkStopType(Enum):
+    CONSTRAINED = 0
+    UNCONSTRAINED = 1
+
+
+@dataclass
 class TreeMoveMemento:
     """This memento stores the information necessary to undo a TreeInteractor move"""
 
-    def __init__(self, commands=None, args=None):
-        if commands is None:
-            commands = []
-            args = []
-        self.commands = commands
-        self.args = args
+    commands: List[str] = field(default_factory=list)
+    args: List[Dict[str, int]] = field(default_factory=list)
 
     @classmethod
     def of_prune(cls, edge):
@@ -32,6 +37,26 @@ class TreeMoveMemento:
     def append(self, other):
         self.commands += other.commands
         self.args += other.args
+
+
+def random_graph_walk_with_memory_from(g, start):
+    """Walks the graph starting from start
+
+    Does not yield start node.
+
+    :yields: current node, number of unvisited neighbors of current node
+    """
+    current_node = start
+    seen = {current_node}
+    neighbors = [n for n in nx.all_neighbors(g, current_node) if n not in seen]
+    current_node = random.choice(neighbors)
+    while True:
+        seen.add(current_node)
+        neighbors = [n for n in nx.all_neighbors(g, current_node) if n not in seen]
+        yield current_node, neighbors
+        if not neighbors:
+            return
+        current_node = random.choice(neighbors)
 
 
 class TreeInteractor:
@@ -66,6 +91,36 @@ class TreeInteractor:
             nx.descendants(self.g, self.root), [self.root]
         )
         return self._uniform_attach_to_nodes(node, valid_attachment_points)
+
+    def extend_attach(self, node, start, prop_attach):
+        assert 0 <= prop_attach < 1
+        assert node != start
+
+        if len(list(nx.all_neighbors(self.g, start))) == 0:
+            raise TreeIsTooSmallError
+        if len(list(nx.all_neighbors(self.g, start))) == 1:
+            start_constraint = RandomWalkStopType.CONSTRAINED
+        else:
+            start_constraint = RandomWalkStopType.UNCONSTRAINED
+        for attach_node, neighbors in random_graph_walk_with_memory_from(self.g, start):
+            if random.random() < prop_attach:
+                break
+
+        constraint = RandomWalkStopType.UNCONSTRAINED
+        if not neighbors:
+            constraint = RandomWalkStopType.CONSTRAINED
+
+        memento = self.attach(node, attach_node)
+        assert self.mh_correction == 1
+        if start_constraint == constraint:
+            self.mh_correction = 1
+        elif start_constraint == RandomWalkStopType.CONSTRAINED:
+            self.mh_correction = 1 - prop_attach
+        elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
+            self.mh_correction = 1 / (1 - prop_attach)
+        else:
+            raise Exception("Programmer error")
+        return memento
 
     def swap_labels(self, n1, n2):
         self.mh_correction = 1

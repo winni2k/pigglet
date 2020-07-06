@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
+from pigglet.constants import TreeIsTooSmallError
 from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
 from pigglet.tree import TreeInteractor, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
@@ -153,21 +154,19 @@ class MCMCRunner:
         raise ValueError
 
 
-class TreeIsTooSmallError(ValueError):
-    pass
-
-
 class MoveExecutor:
     def __init__(self, g):
         self.g = g
         self.interactor = TreeInteractor(self.g)
         self.memento = None
         self.available_moves = [
-            self.prune_and_reattach,
+            # self.prune_and_reattach,
+            self.extending_subtree_prune_and_regraft,
             self.swap_node,
             self.swap_subtree,
         ]
         self.changed_nodes = list(roots_of_tree(g))
+        self.ext_choice_prob = 0.5
 
     @property
     def mh_correction(self):
@@ -175,6 +174,20 @@ class MoveExecutor:
 
     def undo(self, memento):
         self.interactor.undo(memento)
+
+    def extending_subtree_prune_and_regraft(self):
+        """AKA eSPR, as described in Lakner et al. 2008"""
+        if len(self.g) < 2:
+            raise TreeIsTooSmallError
+        node = random.randrange(len(self.g) - 1)
+        parent = parent_node_of(self.g, node)
+        self.memento = self.interactor.prune(node)
+        try:
+            memento = self.interactor.extend_attach(node, parent, self.ext_choice_prob)
+        except TreeIsTooSmallError:
+            memento = self.interactor.attach(node, parent)
+        self.memento.append(memento)
+        self.changed_nodes = [node]
 
     def prune_and_reattach(self):
         if len(self.g) < 2:
@@ -257,3 +270,9 @@ class TreeLikelihoodMover:
     @property
     def memento(self):
         return self.mover.memento
+
+
+def parent_node_of(g, n):
+    parents = list(g.pred[n])
+    assert len(parents) == 1
+    return parents[0]

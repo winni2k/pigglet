@@ -1,5 +1,6 @@
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Set
 
 import networkx as nx
 import numpy as np
@@ -13,14 +14,14 @@ from pigglet_testing.builders.tree import TreeBuilder
 
 @dataclass
 class LikelihoodBuilder:
-    def __init__(self):
-        self.mutated_gls = set()
-        self.unmutated_gls = set()
-        self.likelihood_peaks = set()
-        self.mutation_gl = 0
-        self.num_sites = 0
-        self.num_samples = 0
-        self.gls = None
+
+    mutated_gls: Set = field(default_factory=set)
+    unmutated_gls: Set = field(default_factory=set)
+    likelihood_peaks: Set = field(default_factory=set)
+    mutation_gl = 0
+    num_sites = 0
+    num_samples = 0
+    gls = None
 
     def _mutate_gls(self):
         for sample_id, site_idx in self.mutated_gls:
