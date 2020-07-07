@@ -72,7 +72,7 @@ def cli():
 @click.option(
     "--logsumexp-refresh-rate",
     default=1000,
-    help="Refresh log sum exponent calculation every n calculations. "
+    help="Refresh log sum exponent calculation every n calculations. ",
 )
 @click.option("--check-logsumexp-accuracy/--no-check-logsumexp-accuracy", default=False)
 def infer(

@@ -90,7 +90,7 @@ class TreeLikelihoodSummer:
         gold = self._calculate_gold(attach_ll)
         gold_diff = np.abs(gold - self._ll_sum)
         sd = np.std(gold_diff)
-        max_diff = np.max(gold_diff/np.abs(gold))
+        max_diff = np.max(gold_diff / np.abs(gold))
         logger.log(
             log_level,
             f"logsumexp drift|"

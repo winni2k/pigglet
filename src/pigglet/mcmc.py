@@ -1,6 +1,8 @@
 import logging
 import math
 import random
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 import networkx as nx
 import numpy as np
@@ -12,6 +14,8 @@ from pigglet.tree import TreeInteractor, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
+
+logger = logging.getLogger(__name__)
 
 
 class MCMCRunner:
@@ -77,28 +81,38 @@ class MCMCRunner:
 
     def run(self):
         iteration = 0
-        tries = 0
         pbar = self._get_progress_bar(type="burnin")
         while iteration < self.num_burnin_iter + self.num_sampling_iter:
             if iteration == self.num_burnin_iter:
-                logging.info("Entering sampling iterations")
+                logger.info("Entering sampling iterations")
                 pbar = self._get_progress_bar(type="sampling")
             accepted = self._mh_step()
-            tries += 1
             if not accepted:
                 continue
             if iteration >= self.num_burnin_iter:
                 self._update_map(iteration)
+
             if iteration % self.reporting_interval == 0 and iteration != 0:
-                logging.info(
-                    "Iteration %s: acceptance rate: %s\tcurrent like: %s"
-                    "\tMAP like: %s",
-                    iteration,
-                    self.reporting_interval / tries,
-                    self.current_like,
-                    self.map_like,
-                )
-                tries = 0
+                tracker = self.mover.mover.move_tracker
+                if logger.isEnabledFor(logging.INFO):
+                    logger.info(
+                        f"Iteration {iteration} "
+                        f"| current like: {self.current_like} "
+                        f"| MAP like: {self.map_like}"
+                    )
+
+                    logger.info(
+                        f"Iteration {iteration} "
+                        f"| acceptance rate: {self.reporting_interval / tracker.n_tries:.1%}"
+                    )
+                    acceptance_ratios = tracker.get_acceptance_ratios()
+                    for move_idx, move in enumerate(self.mover.mover.available_moves):
+                        logger.info(
+                            f"Iteration {iteration} "
+                            f"| function: {move.__name__} "
+                            f"| acceptance rate: {acceptance_ratios[move_idx]:.1%}"
+                        )
+                tracker.flush()
             iteration += 1
             if iteration > self.num_burnin_iter:
                 self.agg.add_attachment_log_likes(self.mover.calc)
@@ -119,6 +133,7 @@ class MCMCRunner:
         self.mover.random_move(weights=self.tree_move_weights)
         self.new_like = self.mover.sample_marginalized_log_likelihood()
         accepted = self._mh_acceptance()
+        self.mover.mover.move_tracker.register_mh_result(accepted)
         if not accepted:
             self.mover.undo()
         else:
@@ -154,6 +169,41 @@ class MCMCRunner:
         raise ValueError
 
 
+@dataclass
+class MoveTracker:
+    n_moves: int
+    _move_tries: List[int] = field(default_factory=list)
+    _move_acceptances: List[int] = field(default_factory=list)
+    _current_try: Optional[int] = None
+    n_tries: int = 0
+
+    def __post_init__(self):
+        self.flush()
+
+    def register_try(self, move_idx: int):
+        assert self._current_try is None
+        self._current_try = move_idx
+
+    def register_mh_result(self, accepted: bool):
+        assert self._current_try is not None
+        self.n_tries += 1
+        self._move_tries[self._current_try] += 1
+        if accepted:
+            self._move_acceptances[self._current_try] += 1
+        self._current_try = None
+
+    def get_acceptance_ratios(self) -> List[float]:
+        return [
+            a / t if t else np.nan
+            for a, t in zip(self._move_acceptances, self._move_tries)
+        ]
+
+    def flush(self):
+        self._move_tries = [0] * self.n_moves
+        self._move_acceptances = [0] * self.n_moves
+        self.n_tries = 0
+
+
 class MoveExecutor:
     def __init__(self, g):
         self.g = g
@@ -165,6 +215,7 @@ class MoveExecutor:
             self.swap_node,
             self.swap_subtree,
         ]
+        self.move_tracker = MoveTracker(len(self.available_moves))
         self.changed_nodes = list(roots_of_tree(g))
         self.ext_choice_prob = 0.5
 
@@ -216,7 +267,9 @@ class MoveExecutor:
     def random_move(self, weights=None):
         if weights is None:
             weights = [1, 1, 1]
-        random.choices(self.available_moves, weights=weights)[0]()
+        choice = random.choices(range(len(self.available_moves)), weights=weights)[0]
+        self.move_tracker.register_try(choice)
+        self.available_moves[choice]()
 
     def _get_two_distinct_nodes(self):
         n1 = n2 = 0
