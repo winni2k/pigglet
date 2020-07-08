@@ -75,6 +75,11 @@ def cli():
     help="Refresh log sum exponent calculation every n calculations. ",
 )
 @click.option("--check-logsumexp-accuracy/--no-check-logsumexp-accuracy", default=False)
+@click.option(
+    "--mutation-tree/--no-mutation-tree",
+    default=False,
+    help="Use a mutation tree instead of a phylogenetic tree for inference",
+)
 def infer(
     gl_vcf,
     out_prefix,
@@ -85,8 +90,9 @@ def infer(
     store_gls,
     logsumexp_refresh_rate,
     check_logsumexp_accuracy,
+    mutation_tree,
 ):
-    """Impute mutation tree from genotype likelihoods stored in GL_VCF.
+    """Infer phylogenetic or mutation tree from genotype likelihoods stored in GL_VCF.
 
     Save the resulting tree and mutation probabilities to OUT_PREFIX.
 
@@ -112,16 +118,24 @@ def infer(
     del loader
 
     logging.info("Loaded %s sites and %s samples", gls.shape[0], gls.shape[1])
-
     logging.info(
         "Running MCMC with %s burnin and %s sampling iterations", burnin, sampling
     )
-    runner = MCMCRunner.from_gls(
-        gls=gls,
-        num_burnin_iter=burnin,
-        num_sampling_iter=sampling,
-        reporting_interval=reporting_interval,
-    )
+    if mutation_tree:
+        runner = MCMCRunner.mutation_tree_from_gls(
+            gls=gls,
+            num_burnin_iter=burnin,
+            num_sampling_iter=sampling,
+            reporting_interval=reporting_interval,
+        )
+    else:
+        runner = MCMCRunner.phylogenetic_tree_from_gls(
+            gls=gls,
+            num_burnin_iter=burnin,
+            num_sampling_iter=sampling,
+            reporting_interval=reporting_interval,
+        )
+
     runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
     runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     runner.run()

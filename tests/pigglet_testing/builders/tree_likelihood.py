@@ -126,7 +126,7 @@ class MCMCBuilder(LikelihoodBuilder):
         gls = super().build()
         if self.normalize_gls:
             gls = GLManipulator(gls).normalize().gls
-        return MCMCRunner.from_gls(
+        return MCMCRunner.mutation_tree_from_gls(
             gls,
             num_burnin_iter=self.n_burnin_iter,
             num_sampling_iter=self.n_sampling_iter,

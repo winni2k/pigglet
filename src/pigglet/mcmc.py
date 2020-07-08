@@ -18,64 +18,76 @@ NUM_MCMC_MOVES = 3
 logger = logging.getLogger(__name__)
 
 
+class TreeLikelihoodMover:
+    def __init__(self, g, gls):
+        self.mover = MoveExecutor(g)
+        self.calc = TreeLikelihoodCalculator(g, gls)
+
+    def random_move(self, weights=None):
+        self.mover.random_move(weights=weights)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+
+    def undo(self):
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+        self.mover.undo(memento=self.mover.memento)
+
+    def sample_marginalized_log_likelihood(self):
+        return self.calc.sample_marginalized_log_likelihood()
+
+    @property
+    def mh_correction(self):
+        return self.mover.mh_correction
+
+    @property
+    def changed_nodes(self):
+        return self.mover.changed_nodes
+
+    @property
+    def attachment_log_like(self):
+        return self.calc.attachment_log_like
+
+    @property
+    def memento(self):
+        return self.mover.memento
+
+
+@dataclass
 class MCMCRunner:
-    def __init__(
-        self,
-        gls,
-        graph,
-        num_sampling_iter,
-        num_burnin_iter,
-        tree_move_weights,
-        tree_interactor,
-        mover,
-        current_like,
-        reporting_interval,
-    ):
-        self.g = graph
-        self.map_g = graph.copy()
-        self.gls = gls
-        self.num_sampling_iter = num_sampling_iter
-        self.num_burnin_iter = num_burnin_iter
-        self.tree_move_weights = tree_move_weights
-        self.tree_interactor = tree_interactor
-        self.current_like = current_like
-        self.new_like = None
-        self.map_like = current_like
-        self.agg = AttachmentAggregator()
-        self.reporting_interval = reporting_interval
-        self.mcmc_moves = list(range(NUM_MCMC_MOVES))
-        self.mover = mover
+    gls: np.ndarray
+    map_g: nx.DiGraph
+    num_sampling_iter: int
+    num_burnin_iter: int
+    tree_move_weights: List[float]
+    tree_interactor: TreeInteractor
+    reporting_interval: int
+    mover: TreeLikelihoodMover
+    new_like: Optional[float] = None
+    current_like: Optional[float] = None
+    map_like: Optional[float] = None
+    agg: AttachmentAggregator = field(default_factory=AttachmentAggregator)
+    mcmc_moves: List[int] = field(default_factory=lambda: list(range(NUM_MCMC_MOVES)))
+
+    def __post_init__(self):
+        self.current_like = self.mover.calc.sample_marginalized_log_likelihood()
+        self.map_like = self.current_like
 
     @classmethod
-    def from_gls(
-        cls,
-        gls,
-        num_sampling_iter=10,
-        num_burnin_iter=10,
-        prune_and_reattach_weight=1,
-        swap_node_weight=1,
-        swap_subtree_weight=1,
-        reporting_interval=1,
+    def mutation_tree_from_gls(
+        cls, gls, num_sampling_iter, num_burnin_iter, reporting_interval=1,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
-        tree_move_weights = [
-            prune_and_reattach_weight,
-            swap_node_weight,
-            swap_subtree_weight,
-        ]
-        assert len(tree_move_weights) == NUM_MCMC_MOVES
+        tree_move_weights = [1] * NUM_MCMC_MOVES
         tree_interactor = TreeInteractor(graph)
         mover = TreeLikelihoodMover(graph, gls)
         return cls(
-            gls,
-            graph,
+            gls=gls,
+            map_g=graph.copy(),
             num_sampling_iter=num_sampling_iter,
             num_burnin_iter=num_burnin_iter,
             tree_move_weights=tree_move_weights,
             tree_interactor=tree_interactor,
             mover=mover,
-            current_like=mover.calc.sample_marginalized_log_likelihood(),
             reporting_interval=reporting_interval,
         )
 
@@ -100,12 +112,15 @@ class MCMCRunner:
                         f"| current like: {self.current_like} "
                         f"| MAP like: {self.map_like}"
                     )
+                    percentiles = np.percentile(
+                        self.mover.calc.n_node_update_list,
+                        [50, 95, 99],
+                        interpolation="higher",
+                    )
                     logger.info(
                         f"Iteration {iteration} "
                         f"| median, 95, 99 percentile of nodes updated per move:"
-                        f" {np.percentile(self.mover.calc.n_node_update_list, 50, interpolation='higher')}"
-                        f" {np.percentile(self.mover.calc.n_node_update_list, 95, interpolation='higher')}"
-                        f" {np.percentile(self.mover.calc.n_node_update_list, 99, interpolation='higher')}"
+                        f" {percentiles}"
                     )
                     self.mover.calc.n_node_update_list.clear()
                     logger.info(
@@ -124,6 +139,10 @@ class MCMCRunner:
             if iteration > self.num_burnin_iter:
                 self.agg.add_attachment_log_likes(self.mover.calc)
             pbar.update()
+
+    @property
+    def g(self):
+        return self.mover.mover.g
 
     def _update_map(self, iteration):
         if self.new_like > self.map_like:
@@ -297,39 +316,6 @@ def build_random_mutation_tree(num_sites):
     assert max(dag.nodes) + 1 == num_sites
     assert min(dag.nodes) == -1
     return dag
-
-
-class TreeLikelihoodMover:
-    def __init__(self, g, gls):
-        self.mover = MoveExecutor(g)
-        self.calc = TreeLikelihoodCalculator(g, gls)
-
-    def random_move(self, weights=None):
-        self.mover.random_move(weights=weights)
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-
-    def undo(self):
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-        self.mover.undo(memento=self.mover.memento)
-
-    def sample_marginalized_log_likelihood(self):
-        return self.calc.sample_marginalized_log_likelihood()
-
-    @property
-    def mh_correction(self):
-        return self.mover.mh_correction
-
-    @property
-    def changed_nodes(self):
-        return self.mover.changed_nodes
-
-    @property
-    def attachment_log_like(self):
-        return self.calc.attachment_log_like
-
-    @property
-    def memento(self):
-        return self.mover.memento
 
 
 def parent_node_of(g, n):
