@@ -229,7 +229,8 @@ class AttachmentAggregator:
         if self.attachment_scores is None:
             self.attachment_scores = log_likes
         else:
-            self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
+            with np.errstate(under="ignore"):
+                self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
         self.num_additions += 1
 
     def normalized_attachment_probabilities(self):
