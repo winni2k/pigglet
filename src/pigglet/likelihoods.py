@@ -205,13 +205,13 @@ class TreeLikelihoodCalculator:
             a = attachment_log_like[parent + 1]
             b = self.gls[start, HET_NUM, :]
             c = self.gls[start, HOM_REF_NUM, :]
-            attachment_log_like[start + 1] = ne.evaluate("a + b -c")
+            attachment_log_like[start + 1] = ne.evaluate("a + b - c")
         for u, v in nx.dfs_edges(self.g, start):
             self.summer.register_changed_node(v)
             a = attachment_log_like[u + 1]  # noqa
             b = self.gls[v, HET_NUM, :]  # noqa
             c = self.gls[v, HOM_REF_NUM, :]  # noqa
-            attachment_log_like[v + 1] = ne.evaluate("a + b -c")
+            attachment_log_like[v + 1] = ne.evaluate("a + b - c")
         self._attachment_log_like = attachment_log_like
 
 
