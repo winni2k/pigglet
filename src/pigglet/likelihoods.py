@@ -1,6 +1,7 @@
 import logging
 import math
 from dataclasses import dataclass
+import numexpr as ne
 
 import networkx as nx
 import numpy as np
@@ -201,18 +202,16 @@ class TreeLikelihoodCalculator:
             )
         else:
             parent = list(self.g.pred[start])[0]
-            attachment_log_like[start + 1] = (
-                attachment_log_like[parent + 1]
-                + self.gls[start, HET_NUM, :]
-                - self.gls[start, HOM_REF_NUM, :]
-            )
+            a = attachment_log_like[parent + 1]
+            b = self.gls[start, HET_NUM, :]
+            c = self.gls[start, HOM_REF_NUM, :]
+            attachment_log_like[start + 1] = ne.evaluate("a + b -c")
         for u, v in nx.dfs_edges(self.g, start):
             self.summer.register_changed_node(v)
-            attachment_log_like[v + 1] = (
-                attachment_log_like[u + 1]
-                + self.gls[v, HET_NUM, :]
-                - self.gls[v, HOM_REF_NUM, :]
-            )
+            a = attachment_log_like[u + 1]  # noqa
+            b = self.gls[v, HET_NUM, :]  # noqa
+            c = self.gls[v, HOM_REF_NUM, :]  # noqa
+            attachment_log_like[v + 1] = ne.evaluate("a + b -c")
         self._attachment_log_like = attachment_log_like
 
 
