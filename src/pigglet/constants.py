@@ -7,7 +7,7 @@ HET_NUM = 1
 HOM_REF_NUM = 0
 ROOT_LABEL = -1
 TMP_LABEL = -2
-LOG_LIKE_DTYPE = np.float128
+LOG_LIKE_DTYPE = np.float64
 GL_DTYPE = np.float32
 
 

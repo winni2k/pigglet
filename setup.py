@@ -27,6 +27,7 @@ setup(
         "dataclasses",
         "networkx==2.3",
         "numpy",
+        "numexpr",
         "pysam==0.15.3",
         "click",
         "h5py",
