@@ -160,7 +160,8 @@ class TreeLikelihoodCalculator:
         """
 
         attach_prob = attach_prob[1:]
-        attach_prob = np.exp(attach_prob)
+        with np.errstate(under="ignore"):
+            attach_prob = np.exp(attach_prob)
         mut_probs = np.zeros_like(attach_prob)
         seen_muts = []
         for u, v, label in nx.dfs_labeled_edges(self.g, self.root):
