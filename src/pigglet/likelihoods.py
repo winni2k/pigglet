@@ -128,6 +128,8 @@ class TreeLikelihoodCalculator:
         assert len(roots) == 1
         self.root = roots[0]
         self._changed_nodes = {self.root}
+        self.n_node_updates = None
+        self.n_node_update_list = []
 
     @property
     def attachment_log_like(self):
@@ -137,10 +139,14 @@ class TreeLikelihoodCalculator:
         the cell at row i and column j is the probability of sample j attaching to site
         i-1, where i=0 is the root node"""
 
+        n_node_updates = 0
         if self.has_changed_nodes():
             for node in self._changed_nodes:
                 self._recalculate_attachment_log_like_from(node)
+                n_node_updates += self.n_node_updates
             self._changed_nodes.clear()
+        self.n_node_update_list.append(n_node_updates)
+
         return self._attachment_log_like
 
     def attachment_marginalized_sample_log_likelihoods(self):
@@ -192,6 +198,7 @@ class TreeLikelihoodCalculator:
 
     def _recalculate_attachment_log_like_from(self, start):
         attachment_log_like = self._attachment_log_like
+        self.n_node_updates = 1
         self.summer.register_changed_node(start)
         if start == self.root:
             attachment_log_like = np.zeros(
@@ -207,6 +214,7 @@ class TreeLikelihoodCalculator:
             c = self.gls[start, HOM_REF_NUM, :]
             attachment_log_like[start + 1] = ne.evaluate("a + b - c")
         for u, v in nx.dfs_edges(self.g, start):
+            self.n_node_updates += 1
             self.summer.register_changed_node(v)
             a = attachment_log_like[u + 1]  # noqa
             b = self.gls[v, HET_NUM, :]  # noqa

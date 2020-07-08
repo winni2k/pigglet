@@ -100,7 +100,14 @@ class MCMCRunner:
                         f"| current like: {self.current_like} "
                         f"| MAP like: {self.map_like}"
                     )
-
+                    logger.info(
+                        f"Iteration {iteration} "
+                        f"| median, 95, 99 percentile of nodes updated per move:"
+                        f" {np.percentile(self.mover.calc.n_node_update_list, 50, interpolation='higher')}"
+                        f" {np.percentile(self.mover.calc.n_node_update_list, 95, interpolation='higher')}"
+                        f" {np.percentile(self.mover.calc.n_node_update_list, 99, interpolation='higher')}"
+                    )
+                    self.mover.calc.n_node_update_list.clear()
                     logger.info(
                         f"Iteration {iteration} "
                         f"| acceptance rate: {self.reporting_interval / tracker.n_tries:.1%}"
