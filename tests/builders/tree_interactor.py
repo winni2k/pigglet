@@ -1,8 +1,14 @@
-from pigglet.tree import TreeInteractor
-from pigglet_testing.builders.tree import TreeBuilder
+from pigglet.tree import MutationTreeInteractor, PhyloTreeInteractor
+from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 
-class TreeInteractorBuilder(TreeBuilder):
+class MutationTreeInteractorBuilder(MutationTreeBuilder):
     def build(self):
         g = super().build()
-        return TreeInteractor(g)
+        return MutationTreeInteractor(g)
+
+
+class PhyloTreeInteractorBuilder(PhyloTreeBuilder):
+    def build(self):
+        g = super().build()
+        return PhyloTreeInteractor(g)

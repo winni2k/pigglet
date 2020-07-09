@@ -1,13 +1,13 @@
 import networkx as nx
 import pytest
 
-from builders.tree_interactor import TreeInteractorBuilder
+from builders.tree_interactor import MutationTreeInteractorBuilder
 
 
 class TestSwapNodeLabels:
     def test_swaps_two_node_labels_in_balanced_tree(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(2)
         inter = b.build()
 
@@ -20,7 +20,7 @@ class TestSwapNodeLabels:
 
     def test_raises_if_node_label_is_identical(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(2)
         inter = b.build()
 

@@ -122,20 +122,13 @@ def infer(
         "Running MCMC with %s burnin and %s sampling iterations", burnin, sampling
     )
     if mutation_tree:
-        runner = MCMCRunner.mutation_tree_from_gls(
-            gls=gls,
-            num_burnin_iter=burnin,
-            num_sampling_iter=sampling,
-            reporting_interval=reporting_interval,
-        )
+        runner = MCMCRunner.mutation_tree_from_gls(gls)
     else:
-        runner = MCMCRunner.phylogenetic_tree_from_gls(
-            gls=gls,
-            num_burnin_iter=burnin,
-            num_sampling_iter=sampling,
-            reporting_interval=reporting_interval,
-        )
+        runner = MCMCRunner.phylogenetic_tree_from_gls(gls)
 
+    runner.num_burnin_iter = burnin
+    runner.num_sampling_iter = sampling
+    runner.reporting_interval = reporting_interval
     runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
     runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     runner.run()

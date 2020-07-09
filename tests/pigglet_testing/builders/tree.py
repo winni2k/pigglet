@@ -1,13 +1,36 @@
+from dataclasses import field, dataclass
+
 import networkx as nx
 
 from pigglet.tree import PhylogeneticTreeConverter
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 
-class TreeBuilder:
+@dataclass
+class PhyloTreeBuilder:
+    g: nx.DiGraph = field(default_factory=nx.DiGraph)
+
+    def with_branch(self, u, v):
+        self.g.add_edge(u, v)
+        return self
+
+    def with_path(self, *nodes):
+        self.g.add_path(nodes)
+        return self
+
+    def with_balanced_tree(self, height=2, n_branches=2):
+        self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
+        return self
+
+    def build(self):
+        if len(self.g.nodes()) == 0:
+            self.g.add_node(-1)
+        return self.g
+
+
+class MutationTreeBuilder:
     def __init__(self):
         self.g = nx.DiGraph()
-        self.sample_ids = []
 
     def with_balanced_tree(self, height=2, n_branches=2):
         self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
@@ -38,7 +61,7 @@ class TreeBuilder:
         return self.g
 
 
-class PhylogeneticTreeConverterBuilder(TreeBuilder):
+class PhylogeneticTreeConverterBuilder(MutationTreeBuilder):
     def build(self):
         return PhylogeneticTreeConverter(super().build())
 

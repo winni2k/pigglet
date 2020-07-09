@@ -9,7 +9,7 @@ from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import TreeLikelihoodCalculator
 from pigglet.mcmc import MCMCRunner, MoveExecutor
-from pigglet_testing.builders.tree import TreeBuilder
+from pigglet_testing.builders.tree import MutationTreeBuilder
 
 
 @dataclass
@@ -33,10 +33,7 @@ class LikelihoodBuilder:
         for peak in self.likelihood_peaks:
             self.gls[:, :, peak] = self.mutation_gl
 
-    def build(self, num_sites=None):
-        if num_sites is not None:
-            assert num_sites >= self.num_sites
-            self.num_sites = num_sites
+    def build(self):
         self.gls = np.ones((self.num_sites, self.num_samples, NUM_GLS)) * -1
         self._add_likelihood_peaks()
         self._mutate_gls()
@@ -67,7 +64,7 @@ class LikelihoodBuilder:
 
 class TreeLikelihoodBuilder:
     def __init__(self):
-        self.tree_builder = TreeBuilder()
+        self.tree_builder = MutationTreeBuilder()
         self.likelihood_builder = LikelihoodBuilder()
 
     def __getattr__(self, attr):
@@ -76,7 +73,8 @@ class TreeLikelihoodBuilder:
     def build(self):
         tree = self.tree_builder.build()
         num_sites = len(tree) - 1
-        gls = self.likelihood_builder.build(num_sites)
+        self.likelihood_builder.num_sites = num_sites
+        gls = self.likelihood_builder.build()
         return tree, gls
 
     def with_balanced_tree(self, height=2, n_branches=2):
@@ -94,7 +92,7 @@ class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
         return TreeLikelihoodCalculator(g, gls)
 
 
-class MoveExecutorBuilder(TreeBuilder):
+class MoveExecutorBuilder(MutationTreeBuilder):
     def build(self):
         g = super().build()
         return MoveExecutor(g)
@@ -107,6 +105,7 @@ class MCMCBuilder(LikelihoodBuilder):
         self.n_burnin_iter = 10
         self.n_sampling_iter = 10
         self.normalize_gls = False
+        self.mutation_tree = True
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
@@ -126,11 +125,13 @@ class MCMCBuilder(LikelihoodBuilder):
         gls = super().build()
         if self.normalize_gls:
             gls = GLManipulator(gls).normalize().gls
-        return MCMCRunner.mutation_tree_from_gls(
-            gls,
-            num_burnin_iter=self.n_burnin_iter,
-            num_sampling_iter=self.n_sampling_iter,
-        )
+        if self.mutation_tree:
+            runner = MCMCRunner.mutation_tree_from_gls(gls)
+        else:
+            runner = MCMCRunner.phylogenetic_tree_from_gls(gls)
+        runner.num_burnin_iter = self.n_burnin_iter
+        runner.num_sampling_iter = self.n_sampling_iter
+        return runner
 
 
 def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):

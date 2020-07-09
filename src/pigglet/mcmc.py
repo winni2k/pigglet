@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from pigglet.constants import TreeIsTooSmallError
 from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
-from pigglet.tree import TreeInteractor, TreeMoveMemento
+from pigglet.tree import MutationTreeInteractor, PhyloTreeInteractor, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
@@ -55,12 +55,12 @@ class TreeLikelihoodMover:
 class MCMCRunner:
     gls: np.ndarray
     map_g: nx.DiGraph
-    num_sampling_iter: int
-    num_burnin_iter: int
     tree_move_weights: List[float]
-    tree_interactor: TreeInteractor
-    reporting_interval: int
+    tree_interactor: MutationTreeInteractor
     mover: TreeLikelihoodMover
+    num_sampling_iter: int = 1
+    num_burnin_iter: int = 1
+    reporting_interval: int = 1
     new_like: Optional[float] = None
     current_like: Optional[float] = None
     map_like: Optional[float] = None
@@ -73,22 +73,38 @@ class MCMCRunner:
 
     @classmethod
     def mutation_tree_from_gls(
-        cls, gls, num_sampling_iter, num_burnin_iter, reporting_interval=1,
+        cls, gls, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
         tree_move_weights = [1] * NUM_MCMC_MOVES
-        tree_interactor = TreeInteractor(graph)
+        tree_interactor = MutationTreeInteractor(graph)
         mover = TreeLikelihoodMover(graph, gls)
         return cls(
             gls=gls,
             map_g=graph.copy(),
-            num_sampling_iter=num_sampling_iter,
-            num_burnin_iter=num_burnin_iter,
             tree_move_weights=tree_move_weights,
             tree_interactor=tree_interactor,
             mover=mover,
-            reporting_interval=reporting_interval,
+            **kwargs,
+        )
+
+    @classmethod
+    def phylogenetic_tree_from_gls(
+        cls, gls, **kwargs,
+    ):
+        assert np.alltrue(gls <= 0), gls
+        graph = build_random_mutation_tree(gls.shape[0])
+        tree_move_weights = [1] * NUM_MCMC_MOVES
+        tree_interactor = MutationTreeInteractor(graph)
+        mover = TreeLikelihoodMover(graph, gls)
+        return cls(
+            gls=gls,
+            map_g=graph.copy(),
+            tree_move_weights=tree_move_weights,
+            tree_interactor=tree_interactor,
+            mover=mover,
+            **kwargs,
         )
 
     def run(self):
@@ -233,7 +249,7 @@ class MoveTracker:
 class MoveExecutor:
     def __init__(self, g):
         self.g = g
-        self.interactor = TreeInteractor(self.g)
+        self.interactor = MutationTreeInteractor(self.g)
         self.memento = None
         self.available_moves = [
             # self.prune_and_reattach,

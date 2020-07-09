@@ -25,7 +25,7 @@ setup(
     url="https://github.com/winni2k",
     install_requires=[
         "dataclasses",
-        "networkx==2.3",
+        "networkx==2.4",
         "numpy",
         "numexpr",
         "pysam==0.15.3",

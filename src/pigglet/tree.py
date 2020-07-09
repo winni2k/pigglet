@@ -2,7 +2,7 @@ import itertools
 import random
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict
+from typing import Dict, List, Optional, Any, Tuple
 
 import networkx as nx
 
@@ -59,8 +59,67 @@ def random_graph_walk_with_memory_from(g, start):
         current_node = random.choice(neighbors)
 
 
-class TreeInteractor:
-    """Manipulates a tree
+@dataclass
+class PhyloTreeInteractor:
+    g: nx.DiGraph
+    mh_correction: Optional[float] = None
+    leaf_nodes: Optional[set] = None
+    root: Optional[int] = None
+    inner_g: Optional[nx.DiGraph] = None
+    _last_node_id: int = 0
+
+    def __post_init__(self):
+        self.leaf_nodes = {u for u in self.g if self.g.out_degree[u] == 0}
+        roots = [u for u in self.g if self.g.in_degree[u] == 0]
+        assert len(roots) == 1
+        self.root = roots[0]
+        self.inner_g = self.g.subgraph(u for u in self.g if u not in self.leaf_nodes)
+        self.check_binary_rooted_tree()
+
+    def attach_node_to_edge(self, node, edge: Tuple[Any, Any]):
+        """Attach node to edge and generate new nodes as necessary"""
+        new_node = self._generate_node_id()
+        nx.add_path(self.g, [edge[0], new_node, edge[1]])
+        self.g.add_edge(new_node, node)
+        self.g.remove_edge(*edge)
+
+    def prune_edge(self, u, v):
+        """Prunes an edge and suppresses u if necessary"""
+        if (u, v) not in self.inner_g.edges:
+            raise ValueError(
+                f"Edge {(u, v)} cannot be pruned because it is not an inner edge"
+            )
+        g = self.g
+        g.remove_edge(u, v)
+        if g.in_degree[u] == 0:
+            assert g.out_degree[u] == 1
+            g.remove_node(u)
+        else:
+            assert g.degree[u] == 2
+            g.add_edge(list(self.g.pred[u])[0], list(self.g.succ[u])[0])
+            g.remove_node(u)
+
+    def check_binary_rooted_tree(self):
+        assert nx.is_directed_acyclic_graph(self.g)
+        for node in self.g:
+            if node == self.root:
+                assert self.g.in_degree[node] == 0
+                assert self.g.out_degree[node] == 2
+            elif node in self.leaf_nodes:
+                assert self.g.in_degree[node] == 1
+                assert self.g.out_degree[node] == 0
+            else:
+                assert self.g.in_degree[node] == 1
+                assert self.g.out_degree[node] == 2
+
+    def _generate_node_id(self):
+        while self._last_node_id in self.g:
+            self._last_node_id += 1
+        return self._last_node_id
+
+
+class MutationTreeInteractor:
+    """Manipulates a mutation tree
 
     All public methods return a memento object that can be used to undo a move
     """
@@ -177,8 +236,8 @@ class TreeInteractor:
         return self.attach(node, target_nodes[attach_idx])
 
     def merge_mutation_nodes(self, keep, merge):
-        self.g.node[keep]["mutations"] = (
-            self.g.node[keep]["mutations"] | self.g.node[merge]["mutations"]
+        self.g.nodes[keep]["mutations"] = (
+            self.g.nodes[keep]["mutations"] | self.g.nodes[merge]["mutations"]
         )
         for merge_child in self.g.succ[merge]:
             self.g.add_edge(keep, merge_child)
@@ -212,7 +271,7 @@ class PhylogeneticTreeConverter:
             ):
                 redundant_nodes.add(node)
         for node in redundant_nodes:
-            for mutation in self.phylo_g.node[node]["mutations"]:
+            for mutation in self.phylo_g.nodes[node]["mutations"]:
                 del self.mutation_attachments[mutation]
         self.phylo_g.remove_nodes_from(redundant_nodes)
         self.phylo_g.graph["mutation_attachments"] = self.mutation_attachments.copy()
@@ -226,8 +285,8 @@ class PhylogeneticTreeConverter:
 
         self.mutation_ids = frozenset(n for n in self.phylo_g.nodes() if n != self.root)
         for node in self.mutation_ids:
-            self.phylo_g.node[node]["mutations"] = {node}
-        self.phylo_g.node[self.root]["mutations"] = set()
+            self.phylo_g.nodes[node]["mutations"] = {node}
+        self.phylo_g.nodes[self.root]["mutations"] = set()
         self.phylo_g.graph["mutations"] = self.mutation_ids
         assert len(self.sample_ids) == 0
         for idx, attachment in enumerate(self.sample_attachments):
@@ -239,7 +298,7 @@ class PhylogeneticTreeConverter:
 
     def _merge_tree(self):
         """"""
-        inter = TreeInteractor(self.phylo_g)
+        inter = MutationTreeInteractor(self.phylo_g)
         start_over = True
         while start_over:
             start_over = False
@@ -257,8 +316,8 @@ class PhylogeneticTreeConverter:
     def _find_mutation_attachments(self):
         assert len(self.mutation_attachments) == 0
         for node in self.phylo_g.nodes():
-            if "mutations" in self.phylo_g.node[node]:
-                for mut in self.phylo_g.node[node]["mutations"]:
+            if "mutations" in self.phylo_g.nodes[node]:
+                for mut in self.phylo_g.nodes[node]["mutations"]:
                     self.mutation_attachments[mut] = node
 
     def _test_prerequisites(self):
@@ -275,5 +334,5 @@ def strip_tree(g):
     g = g.copy()
     g.graph.clear()
     for node in g:
-        g.node[node].clear()
+        g.nodes[node].clear()
     return g

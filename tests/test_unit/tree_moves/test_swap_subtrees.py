@@ -1,14 +1,14 @@
 import networkx as nx
 import pytest
 
-from builders.tree_interactor import TreeInteractorBuilder
+from builders.tree_interactor import MutationTreeInteractorBuilder
 
 
 class TestSwapSubtrees:
     @pytest.mark.parametrize("swap_nodes", [(2, 4), (4, 2)])
     def test_swaps_two_nodes_in_different_lineages(self, swap_nodes):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(3)
         inter = b.build()
 
@@ -25,7 +25,7 @@ class TestSwapSubtrees:
     @pytest.mark.parametrize("swap_nodes", [(0, 2), (2, 0)])
     def test_swaps_two_nodes_in_line(self, swap_nodes):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(3)
         inter = b.build()
 
@@ -42,7 +42,7 @@ class TestSwapSubtrees:
     @pytest.mark.parametrize("swap_nodes", [(0, 1), (1, 0)])
     def test_swaps_two_nodes_in_line_from_unbalanced_tree(self, swap_nodes):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
         b.with_mutation_at(0, 1)
         b.with_mutation_at(1, 2)
@@ -71,7 +71,7 @@ class TestSwapSubtrees:
             |>4
         """
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
         b.with_mutation_at(0, 1)
         b.with_mutation_at(1, 2)
@@ -91,7 +91,7 @@ class TestSwapSubtrees:
 
     def test_raises_when_swapping_with_root(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
         inter = b.build()
 

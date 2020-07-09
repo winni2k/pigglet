@@ -23,7 +23,9 @@ def test_single_mutation_one_sample_creates_trivial_graph(tmpdir, gl_tag):
     out_h5 = str(prefix) + ".h5"
 
     # when
-    result = runner.invoke(cli.cli, ["infer", str(vcf_file), str(prefix), "--mutation-tree"])
+    result = runner.invoke(
+        cli.cli, ["infer", str(vcf_file), str(prefix), "--mutation-tree"]
+    )
     assert result.exit_code == 0, result.output
 
     # then

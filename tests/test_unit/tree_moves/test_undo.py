@@ -3,13 +3,13 @@ import random
 import networkx as nx
 import pytest
 
-from builders.tree_interactor import TreeInteractorBuilder
+from builders.tree_interactor import MutationTreeInteractorBuilder
 
 
 class TestUndo:
     def test_prune_of_single_mutation(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
         interactor = b.build()
 
@@ -22,7 +22,7 @@ class TestUndo:
 
     def test_attach_of_single_mutation(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_mutation_at(-1, 0)
         interactor = b.build()
 
@@ -37,7 +37,7 @@ class TestUndo:
     @pytest.mark.parametrize("seed", range(4))
     def test_uniform_attach_to_root_connected_nodes(self, seed):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(2)
         inter = b.build()
 
@@ -53,7 +53,7 @@ class TestUndo:
 
     def test_swap_label_of_two_node_labels_in_balanced_tree(self):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(2)
         inter = b.build()
 
@@ -68,7 +68,7 @@ class TestUndo:
     @pytest.mark.parametrize("swap_nodes", [(2, 4), (4, 2)])
     def test_swap_subtree_of_two_nodes_in_different_lineages(self, swap_nodes):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(3)
         inter = b.build()
 
@@ -85,7 +85,7 @@ class TestUndo:
     @pytest.mark.parametrize("swap_nodes", [(0, 2), (2, 0)])
     def test_swap_subtree_of_two_nodes_in_line(self, swap_nodes):
         # given
-        b = TreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder()
         b.with_balanced_tree(3)
         inter = b.build()
 

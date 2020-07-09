@@ -1,6 +1,6 @@
+import numexpr as ne
 import numpy as np
 from scipy._lib._util import _asarray_validated
-import numexpr as ne
 
 
 # copied from scipy and modified by adding numexpr

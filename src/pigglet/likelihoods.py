@@ -1,13 +1,13 @@
 import logging
 import math
 from dataclasses import dataclass
-import numexpr as ne
 
 import networkx as nx
+import numexpr as ne
 import numpy as np
-from pigglet.scipy_import import logsumexp
 
 from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
+from pigglet.scipy_import import logsumexp
 from pigglet.tree_utils import roots_of_tree
 
 logger = logging.getLogger(__name__)
