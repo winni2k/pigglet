@@ -154,7 +154,8 @@ def convert(
     import networkx as nx
     import numpy as np
     import h5py
-    from pigglet.tree import PhylogeneticTreeConverter, strip_tree
+    from pigglet.tree import strip_tree
+    from pigglet.tree_converter import PhylogeneticTreeConverter
 
     g = nx.read_gml(mutation_tree)
     g = nx.relabel_nodes(g, int)

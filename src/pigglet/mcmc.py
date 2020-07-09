@@ -10,7 +10,12 @@ from tqdm import tqdm
 
 from pigglet.constants import TreeIsTooSmallError
 from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
-from pigglet.tree import MutationTreeInteractor, PhyloTreeInteractor, TreeMoveMemento
+from pigglet.tree import TreeMoveMemento
+from pigglet.tree_interactor import (
+    PhyloTreeInteractor,
+    MutationTreeInteractor,
+    TreeInteractor,
+)
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
@@ -56,14 +61,14 @@ class MCMCRunner:
     gls: np.ndarray
     map_g: nx.DiGraph
     tree_move_weights: List[float]
-    tree_interactor: MutationTreeInteractor
+    tree_interactor: TreeInteractor
     mover: TreeLikelihoodMover
     num_sampling_iter: int = 1
     num_burnin_iter: int = 1
     reporting_interval: int = 1
-    new_like: Optional[float] = None
-    current_like: Optional[float] = None
-    map_like: Optional[float] = None
+    new_like: float = 0.0
+    current_like: float = 0.0
+    map_like: float = 0.0
     agg: AttachmentAggregator = field(default_factory=AttachmentAggregator)
     mcmc_moves: List[int] = field(default_factory=lambda: list(range(NUM_MCMC_MOVES)))
 
@@ -77,15 +82,12 @@ class MCMCRunner:
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
-        tree_move_weights = [1] * NUM_MCMC_MOVES
-        tree_interactor = MutationTreeInteractor(graph)
-        mover = TreeLikelihoodMover(graph, gls)
         return cls(
             gls=gls,
             map_g=graph.copy(),
-            tree_move_weights=tree_move_weights,
-            tree_interactor=tree_interactor,
-            mover=mover,
+            tree_move_weights=([1] * NUM_MCMC_MOVES),
+            tree_interactor=(MutationTreeInteractor(graph)),
+            mover=(TreeLikelihoodMover(graph, gls)),
             **kwargs,
         )
 
@@ -95,15 +97,12 @@ class MCMCRunner:
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_phylogenetic_tree(gls.shape[0])
-        tree_move_weights = [1] * NUM_MCMC_MOVES
-        tree_interactor = PhyloTreeInteractor(graph)
-        mover = TreeLikelihoodMover(graph, gls)
         return cls(
             gls=gls,
             map_g=graph.copy(),
-            tree_move_weights=tree_move_weights,
-            tree_interactor=tree_interactor,
-            mover=mover,
+            tree_move_weights=([1] * NUM_MCMC_MOVES),
+            tree_interactor=PhyloTreeInteractor(graph),
+            mover=TreeLikelihoodMover(graph, gls),
             **kwargs,
         )
 

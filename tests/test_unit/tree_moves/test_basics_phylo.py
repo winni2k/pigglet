@@ -1,7 +1,7 @@
 import pytest
 
 from builders.tree_interactor import PhyloTreeInteractorBuilder
-from pigglet.tree import PhyloTreeInteractor
+from pigglet.tree_interactor import PhyloTreeInteractor
 
 
 class TestPruneEdge:

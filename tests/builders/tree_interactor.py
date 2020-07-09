@@ -1,4 +1,4 @@
-from pigglet.tree import MutationTreeInteractor, PhyloTreeInteractor
+from pigglet.tree_interactor import PhyloTreeInteractor, MutationTreeInteractor
 from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 
