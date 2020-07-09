@@ -2,7 +2,7 @@ import itertools
 import random
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Any, Tuple
 
 import networkx as nx
 
@@ -61,31 +61,40 @@ def random_graph_walk_with_memory_from(g, start):
 
 @dataclass
 class PhyloTreeInteractor:
-    g: nx.DiGraph
-    mh_correction: Optional[float] = None
-    leaf_nodes: Optional[set] = None
-    root: Optional[int] = None
-    inner_g: Optional[nx.DiGraph] = None
+    g: nx.DiGraph = field(default_factory=nx.DiGraph)
+    leaf_nodes: set = field(default_factory=set)
+    root: int = 0
+    mh_correction: float = 0
+    _inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
     _last_node_id: int = 0
 
     def __post_init__(self):
+        if len(self.g) == 0:
+            self.g.add_edges_from([(0, 1), (0, 2)])
         self.leaf_nodes = {u for u in self.g if self.g.out_degree[u] == 0}
         roots = [u for u in self.g if self.g.in_degree[u] == 0]
-        assert len(roots) == 1
+        assert len(roots) == 1, roots
         self.root = roots[0]
-        self.inner_g = self.g.subgraph(u for u in self.g if u not in self.leaf_nodes)
+        self._inner_g = self.g.subgraph(u for u in self.g if u not in self.leaf_nodes)
         self.check_binary_rooted_tree()
 
     def attach_node_to_edge(self, node, edge: Tuple[Any, Any]):
         """Attach node to edge and generate new nodes as necessary"""
+        if node not in self.g:
+            raise ValueError(f"Node to attach ({node}) must already exist in tree")
         new_node = self._generate_node_id()
         nx.add_path(self.g, [edge[0], new_node, edge[1]])
         self.g.add_edge(new_node, node)
         self.g.remove_edge(*edge)
 
+    def create_sample_on_edge(self, sample_node, edge: Tuple[Any, Any]):
+        assert sample_node not in self.g
+        self.g.add_node(sample_node)
+        return self.attach_node_to_edge(sample_node, edge)
+
     def prune_edge(self, u, v):
         """Prunes an edge and suppresses u if necessary"""
-        if (u, v) not in self.inner_g.edges:
+        if (u, v) not in self._inner_g.edges:
             raise ValueError(
                 f"Edge {(u, v)} cannot be pruned because it is not an inner edge"
             )
@@ -98,6 +107,9 @@ class PhyloTreeInteractor:
             assert g.degree[u] == 2
             g.add_edge(list(self.g.pred[u])[0], list(self.g.succ[u])[0])
             g.remove_node(u)
+
+    def random_edge(self):
+        return random.choice(self.g.edges)
 
     def check_binary_rooted_tree(self):
         assert nx.is_directed_acyclic_graph(self.g)

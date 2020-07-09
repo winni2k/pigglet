@@ -94,9 +94,9 @@ class MCMCRunner:
         cls, gls, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
-        graph = build_random_mutation_tree(gls.shape[0])
+        graph = build_random_phylogenetic_tree(gls.shape[0])
         tree_move_weights = [1] * NUM_MCMC_MOVES
-        tree_interactor = MutationTreeInteractor(graph)
+        tree_interactor = PhyloTreeInteractor(graph)
         mover = TreeLikelihoodMover(graph, gls)
         return cls(
             gls=gls,
@@ -324,6 +324,16 @@ class MoveExecutor:
         if len(self.g) < 3:
             return True
         return False
+
+
+def build_random_phylogenetic_tree(num_samples):
+    assert num_samples > 1
+    interactor = PhyloTreeInteractor()
+    assert [0, 1] == sorted(interactor.leaf_nodes)
+    for sample_id in range(2, num_samples):
+        interactor.create_sample_on_edge(sample_id, interactor.random_edge())
+    assert num_samples == len(interactor.leaf_nodes)
+    return interactor.g
 
 
 def build_random_mutation_tree(num_sites):
