@@ -2,11 +2,11 @@ import math
 
 import numpy as np
 import pytest
-
-from pigglet.likelihoods import AttachmentAggregator
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
+
+from pigglet.likelihoods import AttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:
@@ -30,9 +30,9 @@ class TestAddAttachmentlogLikes:
         agg.add_attachment_log_likes(calc)
 
         # then
-        assert list(np.exp(agg.attachment_scores.reshape(-1))) == pytest.approx(
-            [math.e / (math.e + 1), 1 / (math.e + 1)]
-        )
+        assert list(
+            np.exp(agg.attachment_scores.reshape(-1))
+        ) == pytest.approx([math.e / (math.e + 1), 1 / (math.e + 1)])
 
     def test_one_sample_one_site_one_mutation(self):
         # given
@@ -46,9 +46,9 @@ class TestAddAttachmentlogLikes:
         agg.add_attachment_log_likes(calc)
 
         # then
-        assert list(np.exp(agg.attachment_scores.reshape(-1))) == pytest.approx(
-            [1 / (math.e + 1), math.e / (math.e + 1)]
-        )
+        assert list(
+            np.exp(agg.attachment_scores.reshape(-1))
+        ) == pytest.approx([1 / (math.e + 1), math.e / (math.e + 1)])
 
     def test_two_samples_one_site_no_mutation(self):
         # given
@@ -150,7 +150,9 @@ class TestConvertToMutationProbs:
 
         # then
         assert mutation_probs.shape == (1, 2)
-        assert mutation_probs[0] == pytest.approx([1 / (math.e + 1), 1 / (math.e + 1)])
+        assert mutation_probs[0] == pytest.approx(
+            [1 / (math.e + 1), 1 / (math.e + 1)]
+        )
 
     @pytest.mark.parametrize("num_additions", [1, 2, 3])
     def test_one_sample_two_private_mutations(self, num_additions):
@@ -174,5 +176,8 @@ class TestConvertToMutationProbs:
         raw_likes = [1, math.e, math.e ** 2]
         assert mutation_probs.shape == (2, 1)
         assert mutation_probs[:, 0] == pytest.approx(
-            [(math.e + math.e ** 2) / sum(raw_likes), math.e ** 2 / sum(raw_likes)]
+            [
+                (math.e + math.e ** 2) / sum(raw_likes),
+                math.e ** 2 / sum(raw_likes),
+            ]
         )

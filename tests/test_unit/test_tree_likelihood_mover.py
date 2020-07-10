@@ -1,13 +1,12 @@
 import networkx as nx
 import numpy as np
 from hypothesis import given, strategies
-
-
-from pigglet.mcmc import TreeLikelihoodMover
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     add_gl_at_ancestor_mutations_for,
 )
+
+from pigglet.mcmc import TreeLikelihoodMover
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
@@ -19,8 +18,12 @@ class TestRecalculateAttachmentLogLikeFromNodes:
 
         b = MCMCBuilder()
 
-        for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
-            add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
+        for sample, attachment_point in enumerate(
+            filter(lambda n: n != -1, rand_g)
+        ):
+            add_gl_at_ancestor_mutations_for(
+                attachment_point, b, rand_g, sample
+            )
 
         mcmc = b.build()
         mover = mcmc.mover
@@ -46,7 +49,9 @@ def test_arbitrary_trees_and_moves_undo_ok(n_mutations):
 
     b = MCMCBuilder()
 
-    for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
+    for sample, attachment_point in enumerate(
+        filter(lambda n: n != -1, rand_g)
+    ):
         add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
 
     mcmc = b.build()

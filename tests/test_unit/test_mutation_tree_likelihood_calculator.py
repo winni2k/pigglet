@@ -11,15 +11,16 @@ import math
 
 import numpy as np
 import pytest
-from pytest import approx
-
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
+from pytest import approx
 
 
 def get_sample_likelihood(calc, sample_idx):
-    return np.exp(calc.attachment_marginalized_sample_log_likelihoods()[sample_idx])
+    return np.exp(
+        calc.attachment_marginalized_sample_log_likelihoods()[sample_idx]
+    )
 
 
 def sum_of_exp_of(*log_likelihoods):
@@ -82,7 +83,9 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when/then
-        assert get_sample_likelihood(calc, 0) == approx(sum_of_exp_of(-2, -1, 0))
+        assert get_sample_likelihood(calc, 0) == approx(
+            sum_of_exp_of(-2, -1, 0)
+        )
 
     def test_four_samples_two_mutations_and_likelihood_one(self):
         # given
@@ -112,9 +115,9 @@ class TestSampleLikelihood:
         assert get_sample_likelihood(calc, sample_id_to_mutate) == approx(
             sum_of_exp_of(0, -1)
         )
-        assert get_sample_likelihood(calc, abs(sample_id_to_mutate - 1)) == approx(
-            sum_of_exp_of(-1, -1)
-        )
+        assert get_sample_likelihood(
+            calc, abs(sample_id_to_mutate - 1)
+        ) == approx(sum_of_exp_of(-1, -1))
 
     def test_raises_on_invalid_sample_idx(self):
         # given
@@ -153,10 +156,18 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        assert get_sample_likelihood(calc, 0) == approx(sum_of_exp_of(-2, -2, -2))
-        assert get_sample_likelihood(calc, 1) == approx(sum_of_exp_of(-2, -2, -2))
-        assert get_sample_likelihood(calc, 2) == approx(sum_of_exp_of(-2, -2, -1))
-        assert get_sample_likelihood(calc, 3) == approx(sum_of_exp_of(-2, -2, -1))
+        assert get_sample_likelihood(calc, 0) == approx(
+            sum_of_exp_of(-2, -2, -2)
+        )
+        assert get_sample_likelihood(calc, 1) == approx(
+            sum_of_exp_of(-2, -2, -2)
+        )
+        assert get_sample_likelihood(calc, 2) == approx(
+            sum_of_exp_of(-2, -2, -1)
+        )
+        assert get_sample_likelihood(calc, 3) == approx(
+            sum_of_exp_of(-2, -2, -1)
+        )
 
 
 class TestSampleMarginalizedLikelihood:
@@ -231,7 +242,9 @@ class TestSampleMarginalizedLikelihood:
         like = calc.sample_marginalized_log_likelihood()
 
         # then
-        assert like == approx(log_sum_of_exp_of(-4, -3, -2, -3, -2, -1, -2, -1, 0))
+        assert like == approx(
+            log_sum_of_exp_of(-4, -3, -2, -3, -2, -1, -2, -1, 0)
+        )
 
 
 class TestMLAttachments:

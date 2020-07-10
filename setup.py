@@ -2,7 +2,10 @@ from setuptools import find_packages, setup
 
 setup(
     name="pigglet",
-    description="The Phylogenetic Inference and genotyping from Genotype Likelihoods Tool",
+    description=(
+        "The Phylogenetic Inference and genotyping from"
+        " Genotype Likelihoods Tool"
+    ),
     version="0.10.6",
     classifiers=[  # Optional
         # How mature is this project? Common values are
@@ -34,7 +37,9 @@ setup(
         "tqdm",
         "scipy==1.5.*",
     ],
-    packages=find_packages("src", exclude=["contrib", "docs", "tests", "test_utils"]),
+    packages=find_packages(
+        "src", exclude=["contrib", "docs", "tests", "test_utils"]
+    ),
     python_requires=">=3.6, <4",
     package_dir={"": "src"},
     entry_points="""

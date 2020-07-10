@@ -5,9 +5,9 @@ import networkx as nx
 import numpy as np
 import pytest
 from click.testing import CliRunner
+from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
-from pigglet_testing.builders.vcf import VCFBuilder
 
 
 @pytest.mark.parametrize("gl_tag", ["GL", "PL"])
@@ -50,7 +50,9 @@ def test_converts_mutation_tree_to_phylogenetic_tree(tmpdir, invoke):
     )
     nx.write_gml(g, path=str(in_gml))
     with h5py.File(in_h5, "w") as fh:
-        fh.create_dataset("map_tree/map_sample_attachments", data=np.array([-1, 0, 5]))
+        fh.create_dataset(
+            "map_tree/map_sample_attachments", data=np.array([-1, 0, 5])
+        )
 
     runner = CliRunner()
 
@@ -80,13 +82,9 @@ def test_converts_mutation_tree_to_phylogenetic_tree(tmpdir, invoke):
         {("-1", "0"), ("-1", "3"), ("3", "1"), ("-1", "4"), ("4", "2")}
     )
     with h5py.File(out_prefix + ".h5", "r") as fh:
-        assert list(fh["map_phylogenetic_tree/mutation_attachments/mutation_ids"]) == [
-            0,
-            1,
-            5,
-        ]
-        assert list(fh["map_phylogenetic_tree/mutation_attachments/attachments"]) == [
-            3,
-            4,
-            4,
-        ]
+        assert list(
+            fh["map_phylogenetic_tree/mutation_attachments/mutation_ids"]
+        ) == [0, 1, 5,]
+        assert list(
+            fh["map_phylogenetic_tree/mutation_attachments/attachments"]
+        ) == [3, 4, 4,]

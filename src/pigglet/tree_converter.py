@@ -27,23 +27,29 @@ class PhylogeneticTreeConverter:
         for node in self.phylo_g.nodes():
             if (
                 node not in self.sample_ids
-                and len(nx.descendants(self.phylo_g, node) & self.sample_ids) == 0
+                and len(nx.descendants(self.phylo_g, node) & self.sample_ids)
+                == 0
             ):
                 redundant_nodes.add(node)
         for node in redundant_nodes:
             for mutation in self.phylo_g.nodes[node]["mutations"]:
                 del self.mutation_attachments[mutation]
         self.phylo_g.remove_nodes_from(redundant_nodes)
-        self.phylo_g.graph["mutation_attachments"] = self.mutation_attachments.copy()
+        self.phylo_g.graph[
+            "mutation_attachments"
+        ] = self.mutation_attachments.copy()
         return self.phylo_g
 
     def _relabel_nodes_and_move_mutations_into_attribute(self):
         first_mutation = len(self.sample_attachments)
         self.phylo_g = nx.relabel_nodes(
-            self.g, {n: n + first_mutation for n in self.g.nodes() if n != self.root}
+            self.g,
+            {n: n + first_mutation for n in self.g.nodes() if n != self.root},
         )
 
-        self.mutation_ids = frozenset(n for n in self.phylo_g.nodes() if n != self.root)
+        self.mutation_ids = frozenset(
+            n for n in self.phylo_g.nodes() if n != self.root
+        )
         for node in self.mutation_ids:
             self.phylo_g.nodes[node]["mutations"] = {node}
         self.phylo_g.nodes[self.root]["mutations"] = set()
@@ -86,5 +92,6 @@ class PhylogeneticTreeConverter:
         for attach_point in self.sample_attachments:
             if attach_point not in self.g:
                 raise ValueError(
-                    f"Could not find sample attachment point {attach_point} in tree"
+                    f"Could not find sample attachment point"
+                    f" {attach_point} in tree"
                 )

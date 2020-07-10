@@ -4,12 +4,15 @@ from typing import Set
 
 import networkx as nx
 import numpy as np
+from pigglet_testing.builders.tree import MutationTreeBuilder
 
 from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
-from pigglet.likelihoods import TreeLikelihoodCalculator, PhyloTreeLikelihoodCalculator
+from pigglet.likelihoods import (
+    PhyloTreeLikelihoodCalculator,
+    TreeLikelihoodCalculator,
+)
 from pigglet.mcmc import MCMCRunner, MoveExecutor
-from pigglet_testing.builders.tree import MutationTreeBuilder
 
 
 @dataclass
@@ -78,7 +81,9 @@ class TreeLikelihoodBuilder:
         return tree, gls
 
     def with_balanced_tree(self, height=2, n_branches=2):
-        self.tree_builder.with_balanced_tree(height=height, n_branches=n_branches)
+        self.tree_builder.with_balanced_tree(
+            height=height, n_branches=n_branches
+        )
         return self
 
     def with_mutation_site_at(self, attachment_node, new_node_id):

@@ -8,7 +8,10 @@ def configure_logger(log_level, log_file):
         level=log_level,
         format="%(process)d|pigglet|%(asctime)s|%(levelname)s  %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
-        handlers=[logging.FileHandler(log_file, mode="w"), logging.StreamHandler()],
+        handlers=[
+            logging.FileHandler(log_file, mode="w"),
+            logging.StreamHandler(),
+        ],
     )
 
 
@@ -74,7 +77,9 @@ def cli():
     default=1000,
     help="Refresh log sum exponent calculation every n calculations. ",
 )
-@click.option("--check-logsumexp-accuracy/--no-check-logsumexp-accuracy", default=False)
+@click.option(
+    "--check-logsumexp-accuracy/--no-check-logsumexp-accuracy", default=False
+)
 @click.option(
     "--mutation-tree/--no-mutation-tree",
     default=False,
@@ -92,18 +97,20 @@ def infer(
     check_logsumexp_accuracy,
     mutation_tree,
 ):
-    """Infer phylogenetic or mutation tree from genotype likelihoods stored in GL_VCF.
+    """Infer phylogenetic or mutation tree from genotype likelihoods stored in
+    GL_VCF.
 
     Save the resulting tree and mutation probabilities to OUT_PREFIX.
 
-    Mutations and samples are ordered in the output according to their order in GL_VCF.
+    Mutations and samples are ordered in the output according to their order
+    in GL_VCF.
     """
 
     configure_logger(log_level=log_level, log_file=out_prefix + ".log")
     import logging
 
-    from pigglet.mcmc import MCMCRunner
     from pigglet.gl_loader import LikelihoodLoader
+    from pigglet.mcmc import MCMCRunner
 
     version = get_version()
     logging.info(f"The PIGGLET v{version}")
@@ -119,7 +126,9 @@ def infer(
 
     logging.info("Loaded %s sites and %s samples", gls.shape[0], gls.shape[1])
     logging.info(
-        "Running MCMC with %s burnin and %s sampling iterations", burnin, sampling
+        "Running MCMC with %s burnin and %s sampling iterations",
+        burnin,
+        sampling,
     )
     if mutation_tree:
         runner = MCMCRunner.mutation_tree_from_gls(gls)
@@ -151,9 +160,10 @@ def convert(
     hdf5_mutation_attachment_descriptor,
 ):
     """Convert mutation tree to phylogenetic tree"""
+    import h5py
     import networkx as nx
     import numpy as np
-    import h5py
+
     from pigglet.tree import strip_tree
     from pigglet.tree_converter import PhylogeneticTreeConverter
 
@@ -166,8 +176,12 @@ def convert(
     phylo_g = strip_tree(phylo_g)
     with h5py.File(out_prefix + ".h5", "a") as fh:
         mut_ids = np.zeros(len(converter.mutation_attachments), dtype=np.int64)
-        attachments = np.zeros(len(converter.mutation_attachments), dtype=np.int64)
-        for idx, key_val in enumerate(sorted(converter.mutation_attachments.items())):
+        attachments = np.zeros(
+            len(converter.mutation_attachments), dtype=np.int64
+        )
+        for idx, key_val in enumerate(
+            sorted(converter.mutation_attachments.items())
+        ):
             mut_ids[idx] = key_val[0]
             attachments[idx] = key_val[1]
         mut_ids -= len(converter.sample_ids)
@@ -175,7 +189,8 @@ def convert(
             hdf5_mutation_attachment_descriptor + "/mutation_ids", data=mut_ids
         )
         fh.create_dataset(
-            hdf5_mutation_attachment_descriptor + "/attachments", data=attachments
+            hdf5_mutation_attachment_descriptor + "/attachments",
+            data=attachments,
         )
     nx.write_gml(phylo_g, out_prefix + ".gml")
 
@@ -193,13 +208,16 @@ def store_input(gls, loader, output_store, store_gls):
     with h5py.File(output_store, "w") as fh:
         fh.create_dataset(
             "input/site_info",
-            data=np.array(loader.infos, dtype=h5py.string_dtype(encoding="utf-8")),
+            data=np.array(
+                loader.infos, dtype=h5py.string_dtype(encoding="utf-8")
+            ),
             compression="gzip",
         )
         fh.create_dataset(
             "input/samples",
             data=np.array(
-                loader.bcf_in.header.samples, dtype=h5py.string_dtype(encoding="utf-8")
+                loader.bcf_in.header.samples,
+                dtype=h5py.string_dtype(encoding="utf-8"),
             ),
             compression="gzip",
         )
@@ -208,10 +226,11 @@ def store_input(gls, loader, output_store, store_gls):
 
 
 def store_results(gls, out_prefix, output_store, runner):
-    import networkx as nx
-    from pigglet.likelihoods import TreeLikelihoodCalculator
     import h5py
+    import networkx as nx
     import numpy as np
+
+    from pigglet.likelihoods import TreeLikelihoodCalculator
 
     calc = TreeLikelihoodCalculator(runner.map_g, gls)
     map_tree_mut_probs = calc.mutation_probabilites(
@@ -231,7 +250,9 @@ def store_results(gls, out_prefix, output_store, runner):
         )
         fh.create_dataset(
             "map_tree/edge_list",
-            data=np.array([edge[0:2] for edge in nx.to_edgelist(runner.map_g)]),
+            data=np.array(
+                [edge[0:2] for edge in nx.to_edgelist(runner.map_g)]
+            ),
         )
     output_graph = out_prefix + ".map_tree.gml"
     nx.write_gml(runner.map_g, output_graph)

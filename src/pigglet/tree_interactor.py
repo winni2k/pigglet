@@ -24,7 +24,9 @@ def random_graph_walk_with_memory_from(g, start):
     current_node = random.choice(neighbors)
     while True:
         seen.add(current_node)
-        neighbors = [n for n in nx.all_neighbors(g, current_node) if n not in seen]
+        neighbors = [
+            n for n in nx.all_neighbors(g, current_node) if n not in seen
+        ]
         yield current_node, neighbors
         if not neighbors:
             return
@@ -51,7 +53,9 @@ class PhyloTreeInteractor(TreeInteractor):
         roots = [u for u in self.g if self.g.in_degree[u] == 0]
         assert len(roots) == 1, roots
         self.root = roots[0]
-        self._inner_g = self.g.subgraph(u for u in self.g if u not in self.leaf_nodes)
+        self._inner_g = self.g.subgraph(
+            u for u in self.g if u not in self.leaf_nodes
+        )
         self.check_binary_rooted_tree()
         if "leaves" not in self.g.nodes[self.root]:
             self.annotate_all_nodes_with_descendant_leaves()
@@ -59,7 +63,9 @@ class PhyloTreeInteractor(TreeInteractor):
     def attach_node_to_edge(self, node, edge: Tuple[Any, Any]):
         """Attach node to edge and generate new nodes as necessary"""
         if node not in self.g:
-            raise ValueError(f"Node to attach ({node}) must already exist in tree")
+            raise ValueError(
+                f"Node to attach ({node}) must already exist in tree"
+            )
         new_node = self._generate_node_id()
         nx.add_path(self.g, [edge[0], new_node, edge[1]])
         self.g.add_edge(new_node, node)
@@ -83,7 +89,8 @@ class PhyloTreeInteractor(TreeInteractor):
         """Prunes an edge and suppresses u if necessary"""
         if (u, v) not in self._inner_g.edges:
             raise ValueError(
-                f"Edge {(u, v)} cannot be pruned because it is not an inner edge"
+                f"Edge {(u, v)} cannot be pruned because it is"
+                f" not an inner edge"
             )
         g = self.g
         g.remove_edge(u, v)
@@ -187,7 +194,9 @@ class MutationTreeInteractor(TreeInteractor):
             start_constraint = RandomWalkStopType.CONSTRAINED
         else:
             start_constraint = RandomWalkStopType.UNCONSTRAINED
-        for attach_node, neighbors in random_graph_walk_with_memory_from(self.g, start):
+        for attach_node, neighbors in random_graph_walk_with_memory_from(
+            self.g, start
+        ):
             if random.random() < prop_attach:
                 break
 
@@ -232,7 +241,9 @@ class MutationTreeInteractor(TreeInteractor):
         return memento
 
     def undo(self, memento):
-        for command, args in zip(reversed(memento.commands), reversed(memento.args)):
+        for command, args in zip(
+            reversed(memento.commands), reversed(memento.args)
+        ):
             getattr(self, command)(**args)
 
     def _parent_of(self, n):
@@ -253,7 +264,9 @@ class MutationTreeInteractor(TreeInteractor):
             )
         )
 
-        self.mh_correction = (len(dec_descendants) + 1) / (len(anc_descendants) + 1)
+        self.mh_correction = (len(dec_descendants) + 1) / (
+            len(anc_descendants) + 1
+        )
         return memento
 
     def _uniform_attach_to_nodes(self, node, target_nodes):

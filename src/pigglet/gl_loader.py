@@ -22,13 +22,15 @@ class LikelihoodLoader:
     def load(self):
         """Extract GLs from a VCF
 
-        The VCF contains m sites, n samples, and g likelihoods per site and sample.
-        Converts to log10 space.
+        The VCF contains m sites, n samples, and g likelihoods per site and
+        sample. Converts to log10 space.
 
         :return numpy array of shape (m, n, g)"""
         self.bcf_in = VariantFile(self.vcf_file)
         self._determine_field()
-        logging.info('Extracting GLs from genotype field "%s"', self.gl_field_name)
+        logging.info(
+            'Extracting GLs from genotype field "%s"', self.gl_field_name
+        )
         self._extract_gls()
         return self.gls
 
@@ -50,7 +52,9 @@ class LikelihoodLoader:
         site_gls = []
         self.infos = []
         current_chrom = None
-        for site_info, gls in site_gl_iter(self.bcf_in.fetch(), self.gl_field_idx):
+        for site_info, gls in site_gl_iter(
+            self.bcf_in.fetch(), self.gl_field_idx
+        ):
             if site_info[0] != current_chrom:
                 current_chrom = site_info[0]
                 logging.info("Loading chromosome %s", current_chrom)
@@ -62,7 +66,8 @@ class LikelihoodLoader:
         if not np.all(self.gls <= 0):
             raise ValueError(
                 "Not all input genotype likelihoods are in the"
-                " interval [0, 1] (inclusive, log likelihoods have been exponentiated)"
+                " interval [0, 1] "
+                "(inclusive, log likelihoods have been exponentiated)"
             )
 
 

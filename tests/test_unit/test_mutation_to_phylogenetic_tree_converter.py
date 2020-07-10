@@ -1,5 +1,4 @@
 import pytest
-
 from pigglet_testing.builders.tree import (
     PhylogeneticTreeConverterBuilder,
     PhylogeneticTreeConverterTestDriver,
@@ -49,7 +48,9 @@ class TestPathTree:
         converter = b.build()
 
         # when
-        expect = PhyloTreeExpectation(converter.convert(sample_attachments=[0, 0]))
+        expect = PhyloTreeExpectation(
+            converter.convert(sample_attachments=[0, 0])
+        )
 
         # then
         expect.consists_of_edges((-1, 0), (-1, 1))
@@ -63,7 +64,9 @@ class TestPathTree:
         converter = b.build()
 
         # when
-        expect = PhyloTreeExpectation(converter.convert(sample_attachments=[1, 1]))
+        expect = PhyloTreeExpectation(
+            converter.convert(sample_attachments=[1, 1])
+        )
 
         # then
         expect.consists_of_edges((-1, 0), (-1, 1))
@@ -77,7 +80,9 @@ class TestPathTree:
         converter = b.build()
 
         # when
-        expect = PhyloTreeExpectation(converter.convert(sample_attachments=[0, 1]))
+        expect = PhyloTreeExpectation(
+            converter.convert(sample_attachments=[0, 1])
+        )
 
         # then
         expect.has_mutation_attachments({2: -1, 3: 3})
@@ -91,7 +96,9 @@ class TestPathTree:
         converter = b.build()
 
         # when
-        expect = PhyloTreeExpectation(converter.convert(sample_attachments=[0, 0]))
+        expect = PhyloTreeExpectation(
+            converter.convert(sample_attachments=[0, 0])
+        )
 
         # then
         expect.has_mutation_attachments({2: -1})
@@ -106,7 +113,9 @@ class TestPathTree:
         converter = b.build()
 
         # when
-        expect = PhyloTreeExpectation(converter.convert(sample_attachments=[-1, -1]))
+        expect = PhyloTreeExpectation(
+            converter.convert(sample_attachments=[-1, -1])
+        )
 
         # then
         expected_mutations = list(range(2, n_muts + 2))

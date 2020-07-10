@@ -39,7 +39,10 @@ class VCFBuilder:
                 fh.write(f"\tsample_{samp_num}")
             fh.write("\n")
             for idx, site_gls in enumerate(self.gls):
-                row = f"20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\tGT:{self.likelihood_tag}"
+                row = (
+                    f"20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\t"
+                    f"GT:{self.likelihood_tag}"
+                )
                 for tripple in site_gls:
                     if self.likelihood_tag == "PL":
                         tripple = [round(-gl * 10) for gl in tripple]

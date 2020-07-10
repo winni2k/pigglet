@@ -1,7 +1,6 @@
 import networkx as nx
 import pytest
 from hypothesis import given, strategies
-
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     MoveExecutorBuilder,
@@ -61,7 +60,9 @@ def test_arbitrary_trees(n_mutations):
     b = MCMCBuilder()
     b.with_n_burnin_iter(20 * 2 ** n_mutations)
 
-    for sample, attachment_point in enumerate(filter(lambda n: n != -1, rand_g)):
+    for sample, attachment_point in enumerate(
+        filter(lambda n: n != -1, rand_g)
+    ):
         add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
 
     mcmc = b.build()

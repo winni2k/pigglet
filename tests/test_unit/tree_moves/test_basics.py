@@ -2,8 +2,8 @@ import random
 
 import networkx as nx
 import pytest
-
 from builders.tree_interactor import MutationTreeInteractorBuilder
+
 from pigglet.constants import TreeIsTooSmallError
 
 
@@ -74,7 +74,7 @@ class TestUniformAttach:
 
 class TestExtendAttach:
     @pytest.mark.parametrize("seed", range(4))
-    def test_only_reattaches_to_root_connected_nodes_with_appropriate_mh_correction(
+    def test_only_reattaches_to_root_connected_nodes_with_appropriate_mh(
         self, seed
     ):
         # given

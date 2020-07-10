@@ -1,5 +1,6 @@
-from pigglet.tree_interactor import PhyloTreeInteractor, MutationTreeInteractor
 from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
+
+from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
 
 
 class MutationTreeInteractorBuilder(MutationTreeBuilder):

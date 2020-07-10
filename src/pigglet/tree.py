@@ -10,14 +10,17 @@ class RandomWalkStopType(Enum):
 
 @dataclass
 class TreeMoveMemento:
-    """This memento stores the information necessary to undo a TreeInteractor move"""
+    """This memento stores the information necessary to undo a TreeInteractor
+    move"""
 
     commands: List[str] = field(default_factory=list)
     args: List[Dict[str, int]] = field(default_factory=list)
 
     @classmethod
     def of_prune(cls, edge):
-        return cls(commands=["attach"], args=[{"target": edge[0], "node": edge[1]}])
+        return cls(
+            commands=["attach"], args=[{"target": edge[0], "node": edge[1]}]
+        )
 
     @classmethod
     def of_attach(cls, node, target):

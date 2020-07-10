@@ -1,6 +1,5 @@
 import networkx as nx
 import pytest
-
 from builders.tree_interactor import MutationTreeInteractorBuilder
 
 
@@ -33,7 +32,11 @@ class TestSwapSubtrees:
         inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) in [{-1, 2}, {-1, 2, 6}, {-1, 2, 7}]
+        assert set(nx.ancestors(inter.g, 0)) in [
+            {-1, 2},
+            {-1, 2, 6},
+            {-1, 2, 7},
+        ]
         assert set(nx.descendants(inter.g, 0)) == {3, 8, 9}
         assert set(nx.ancestors(inter.g, 2)) == {-1}
         assert set(nx.descendants(inter.g, 2)) == {0, 3, 6, 7, 8, 9}
@@ -53,7 +56,11 @@ class TestSwapSubtrees:
         inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) in [{-1, 1}, {-1, 1, 2}, {-1, 1, 3}]
+        assert set(nx.ancestors(inter.g, 0)) in [
+            {-1, 1},
+            {-1, 1, 2},
+            {-1, 1, 3},
+        ]
         assert set(nx.descendants(inter.g, 0)) == set()
         assert set(nx.ancestors(inter.g, 1)) == {-1}
         assert set(nx.descendants(inter.g, 1)) == {0, 2, 3}
@@ -83,7 +90,11 @@ class TestSwapSubtrees:
         inter.swap_subtrees(*swap_nodes)
 
         # then
-        assert set(nx.ancestors(inter.g, 0)) in [{-1, 2}, {-1, 2, 3}, {-1, 2, 4}]
+        assert set(nx.ancestors(inter.g, 0)) in [
+            {-1, 2},
+            {-1, 2, 3},
+            {-1, 2, 4},
+        ]
         assert set(nx.descendants(inter.g, 0)) == {1}
         assert set(nx.ancestors(inter.g, 2)) == {-1}
         assert set(nx.descendants(inter.g, 2)) == {0, 1, 3, 4}

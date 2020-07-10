@@ -1,9 +1,9 @@
-from dataclasses import field, dataclass
+from dataclasses import dataclass, field
 
 import networkx as nx
+from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 from pigglet.tree_converter import PhylogeneticTreeConverter
-from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 
 @dataclass

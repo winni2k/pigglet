@@ -1,6 +1,6 @@
 import pytest
-
 from builders.tree_interactor import PhyloTreeInteractorBuilder
+
 from pigglet.tree_interactor import PhyloTreeInteractor
 
 
@@ -43,7 +43,7 @@ class TestPruneEdge:
         # then
         assert 0 not in inter.g
         assert inter.g.in_degree[2] == 0
-        assert inter.g.nodes[2]['leaves'] == {5, 6}
+        assert inter.g.nodes[2]["leaves"] == {5, 6}
 
     def test_removes_redundant_internal_node(self):
         # given
@@ -57,8 +57,8 @@ class TestPruneEdge:
         # then
         assert 1 not in interactor.g
         assert (0, 4) in interactor.g.edges
-        assert interactor.g.nodes[0]['leaves'] == {9, 10, 11, 12, 13, 14}
-        assert interactor.g.nodes[4]['leaves'] == {9, 10}
+        assert interactor.g.nodes[0]["leaves"] == {9, 10, 11, 12, 13, 14}
+        assert interactor.g.nodes[4]["leaves"] == {9, 10}
 
 
 class TestAttachNodeToEdge:
@@ -133,6 +133,13 @@ class TestCalculateDescendantLeavesOf:
         new_edge2 = inter.create_sample_on_edge(*new_edge)
 
         # then
-        assert inter.g.nodes[new_edge[0]]["leaves"] == {1, new_edge[1], new_edge2[1]}
-        assert inter.g.nodes[new_edge2[0]]["leaves"] == {new_edge[1], new_edge2[1]}
+        assert inter.g.nodes[new_edge[0]]["leaves"] == {
+            1,
+            new_edge[1],
+            new_edge2[1],
+        }
+        assert inter.g.nodes[new_edge2[0]]["leaves"] == {
+            new_edge[1],
+            new_edge2[1],
+        }
         assert inter.g.nodes[0]["leaves"] == {1, 2, new_edge[1], new_edge2[1]}

@@ -9,10 +9,16 @@ import numpy as np
 from tqdm import tqdm
 
 from pigglet.constants import TreeIsTooSmallError
-from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
+from pigglet.likelihoods import (
+    AttachmentAggregator,
+    TreeLikelihoodCalculator,
+)
 from pigglet.tree import TreeMoveMemento
-from pigglet.tree_interactor import (MutationTreeInteractor,
-                                     PhyloTreeInteractor, TreeInteractor)
+from pigglet.tree_interactor import (
+    MutationTreeInteractor,
+    PhyloTreeInteractor,
+    TreeInteractor,
+)
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3
@@ -67,10 +73,14 @@ class MCMCRunner:
     current_like: float = 0.0
     map_like: float = 0.0
     agg: AttachmentAggregator = field(default_factory=AttachmentAggregator)
-    mcmc_moves: List[int] = field(default_factory=lambda: list(range(NUM_MCMC_MOVES)))
+    mcmc_moves: List[int] = field(
+        default_factory=lambda: list(range(NUM_MCMC_MOVES))
+    )
 
     def __post_init__(self):
-        self.current_like = self.mover.calc.sample_marginalized_log_likelihood()
+        self.current_like = (
+            self.mover.calc.sample_marginalized_log_likelihood()
+        )
         self.map_like = self.current_like
 
     @classmethod
@@ -131,20 +141,24 @@ class MCMCRunner:
                     )
                     logger.info(
                         f"Iteration {iteration} "
-                        f"| median, 95, 99 percentile of nodes updated per move:"
-                        f" {percentiles}"
+                        f"| median, 95, 99 percentile of nodes "
+                        f"updated per move: {percentiles}"
                     )
                     self.mover.calc.n_node_update_list.clear()
                     logger.info(
                         f"Iteration {iteration} "
-                        f"| acceptance rate: {self.reporting_interval / tracker.n_tries:.1%}"
+                        f"| acceptance rate: "
+                        f"{self.reporting_interval / tracker.n_tries:.1%}"
                     )
                     acceptance_ratios = tracker.get_acceptance_ratios()
-                    for move_idx, move in enumerate(self.mover.mover.available_moves):
+                    for move_idx, move in enumerate(
+                        self.mover.mover.available_moves
+                    ):
                         logger.info(
                             f"Iteration {iteration} "
                             f"| function: {move.__name__} "
-                            f"| acceptance rate: {acceptance_ratios[move_idx]:.1%}"
+                            f"| acceptance rate:"
+                            f" {acceptance_ratios[move_idx]:.1%}"
                         )
                 tracker.flush()
             iteration += 1
@@ -179,10 +193,14 @@ class MCMCRunner:
         return accepted
 
     def _mh_acceptance(self):
-        """Perform Metropolis Hastings rejection step. Return if proposal was accepted"""
+        """Perform Metropolis Hastings rejection step. Return if proposal was
+        accepted"""
         if self.new_like >= self.current_like:
             return True
-        ratio = math.exp(self.new_like - self.current_like) * self.mover.mh_correction
+        ratio = (
+            math.exp(self.new_like - self.current_like)
+            * self.mover.mh_correction
+        )
 
         rand_val = random.random()
         if rand_val < ratio:
@@ -272,7 +290,9 @@ class MoveExecutor:
         parent = parent_node_of(self.g, node)
         self.memento = self.interactor.prune(node)
         try:
-            memento = self.interactor.extend_attach(node, parent, self.ext_choice_prob)
+            memento = self.interactor.extend_attach(
+                node, parent, self.ext_choice_prob
+            )
         except TreeIsTooSmallError:
             memento = self.interactor.attach(node, parent)
         self.memento.append(memento)
@@ -305,7 +325,9 @@ class MoveExecutor:
     def random_move(self, weights=None):
         if weights is None:
             weights = [1, 1, 1]
-        choice = random.choices(range(len(self.available_moves)), weights=weights)[0]
+        choice = random.choices(
+            range(len(self.available_moves)), weights=weights
+        )[0]
         self.move_tracker.register_try(choice)
         self.available_moves[choice]()
 

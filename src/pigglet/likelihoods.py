@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
+from pigglet.constants import (
+    HET_NUM,
+    HOM_REF_NUM,
+    LOG_LIKE_DTYPE,
+)
 from pigglet.scipy_import import logsumexp
 from pigglet.tree_utils import roots_of_tree
 
@@ -43,8 +47,8 @@ class MutationTreeLikelihoodSummer:
         Update the log of the sum of exponentiated attachment likelihoods.
 
         Every self.n_diffs calculations, the complete summation is performed.
-        In between, only differences are calculated for the nodes that have been
-        updated in the tree.
+        In between, only differences are calculated for the nodes that have
+        been updated in the tree.
         """
         assert attach_ll.shape[0] == self.n_nodes, (
             attach_ll.shape,
@@ -55,7 +59,9 @@ class MutationTreeLikelihoodSummer:
             self._last_ll = attach_ll.copy()
             self._n_diffs = 0
         elif self._n_diffs == self.max_diffs:
-            self._ll_sum = self._calculate_and_report_gold(attach_ll, logging.INFO)
+            self._ll_sum = self._calculate_and_report_gold(
+                attach_ll, logging.INFO
+            )
             self._last_ll[:] = attach_ll[:]
             self._n_diffs = 0
         elif self._update_mask:
@@ -63,7 +69,9 @@ class MutationTreeLikelihoodSummer:
             try:
                 last_sum_delta = logsumexp(self._last_ll[mask, :], axis=0)
                 new_sum_delta = logsumexp(attach_ll[mask, :], axis=0)
-                stacked = np.vstack([self._ll_sum, new_sum_delta, last_sum_delta])
+                stacked = np.vstack(
+                    [self._ll_sum, new_sum_delta, last_sum_delta]
+                )
                 self._ll_sum = logsumexp(stacked, axis=0, b=self._weights)
                 self._last_ll[mask, :] = attach_ll[mask, :]
                 self._n_diffs += 1
@@ -72,7 +80,9 @@ class MutationTreeLikelihoodSummer:
                 self._last_ll[:] = attach_ll[:]
                 self._n_diffs = 0
             if self.check_calc:
-                self._calculate_and_report_gold(attach_ll, logger.getEffectiveLevel())
+                self._calculate_and_report_gold(
+                    attach_ll, logger.getEffectiveLevel()
+                )
             self._update_mask.clear()
         return self._ll_sum
 
@@ -93,8 +103,9 @@ class MutationTreeLikelihoodSummer:
         max_diff = np.max(gold_diff / np.abs(gold))
         logger.log(
             log_level,
-            f"logsumexp drift|"
-            f"mean(gold): {np.mean(gold)}|max(abs(diff)/abs(gold)): {max_diff}|SD: {sd}",
+            f"logsumexp drift"
+            f"|mean(gold): {np.mean(gold)}"
+            f"|max(abs(diff)/abs(gold)): {max_diff}|SD: {sd}",
         )
         return gold
 
@@ -107,9 +118,9 @@ class PhyloTreeLikelihoodCalculator:
     self.gls should have shape (m, n, NUM_GLS)
     self.mutation_matrix_mask has shape (m, n, NUM_GLS)
 
-    The tree is a binary rooted phylogenetic tree where all leaf nodes are samples
-    and mutations are unattached. The leaf node IDs are also the index of
-    the sample into the mutation and GL matrices.
+    The tree is a binary rooted phylogenetic tree where all leaf nodes are
+    samples and mutations are unattached. The leaf node IDs are also the
+    index of the sample into the mutation and GL matrices.
     """
 
     g: nx.DiGraph
@@ -135,7 +146,9 @@ class PhyloTreeLikelihoodCalculator:
         attaching to node i in the phylogenetic tree
         """
         start = roots_of_tree(self.g)[0]
-        attachment_log_like = np.zeros(len(self.g), self.n_sites, dtype=LOG_LIKE_DTYPE)
+        attachment_log_like = np.zeros(
+            len(self.g), self.n_sites, dtype=LOG_LIKE_DTYPE
+        )
 
         # If a site attaches to the root, then all samples have the mutation
         attachment_log_like[start] = np.sum(
@@ -153,7 +166,8 @@ class PhyloTreeLikelihoodCalculator:
         return attachment_log_like
 
     def attachment_marginalized_mutation_log_likelihoods(self):
-        """Calculate the marginal likelihoods of all possible mutation attachments"""
+        """Calculate the marginal likelihoods of all possible mutation
+        attachments"""
         return logsumexp(self.attachment_log_like, axis=0)
 
 
@@ -166,8 +180,8 @@ class TreeLikelihoodCalculator:
 
     The tree is a rooted mutation tree with unattached samples.
     This means that every node, except for the root node, represents
-    a single mutation. The mutation node IDs are also the index of the mutation into the
-    mutation and GL matrices.
+    a single mutation. The mutation node IDs are also the index of the
+    mutation into the mutation and GL matrices.
     """
 
     def __init__(self, g, gls):
@@ -176,7 +190,9 @@ class TreeLikelihoodCalculator:
         self.n_samples = self.gls.shape[1]
         self.paths = None
         self._attachment_log_like = None
-        self.summer = MutationTreeLikelihoodSummer(self.n_sites + 1, self.n_samples)
+        self.summer = MutationTreeLikelihoodSummer(
+            self.n_sites + 1, self.n_samples
+        )
         self.g = g
         roots = roots_of_tree(g)
         assert len(roots) == 1
@@ -190,8 +206,8 @@ class TreeLikelihoodCalculator:
         """Calculate the likelihoods of all possible sample attachments
 
         :returns (m+1) x n numpy array
-        the cell at row i and column j is the probability of sample j attaching to site
-        i-1, where i=0 is the root node"""
+        the cell at row i and column j is the probability of sample j
+        attaching to site i-1, where i=0 is the root node"""
 
         n_node_updates = 0
         if self.has_changed_nodes():
@@ -204,20 +220,23 @@ class TreeLikelihoodCalculator:
         return self._attachment_log_like
 
     def attachment_marginalized_sample_log_likelihoods(self):
-        """Calculate the marginal likelihoods of all possible sample attachments"""
+        """Calculate the marginal likelihoods of all possible sample
+        attachments"""
         return self.summer.calculate(self.attachment_log_like)
 
     def sample_marginalized_log_likelihood(self):
-        """Calculate the sum of the log likelihoods of all possible sample attachments"""
+        """Calculate the sum of the log likelihoods of all possible sample
+        attachments"""
         return np.sum(self.attachment_marginalized_sample_log_likelihoods())
 
     def mutation_probabilites(self, attach_prob):
-        """Accepts an (m + 1) x n matrix of (ideally normalized) log attachment probabilities
+        """Accepts an (m + 1) x n matrix of (ideally normalized) log attachment
+        probabilities
 
         m is the number of sites and n is the number of samples
 
-        returns an m x n matrix of mutation probabilities. Each cell is the probability
-        that site i is mutated in sample j.
+        returns an m x n matrix of mutation probabilities. Each cell is the
+        probability that site i is mutated in sample j.
         """
 
         attach_prob = attach_prob[1:]
@@ -241,8 +260,8 @@ class TreeLikelihoodCalculator:
         return np.argmax(self.attachment_log_like, axis=0)
 
     def register_changed_nodes(self, *nodes):
-        """Marks these nodes and all descendants of these nodes to have changed position
-        in the graph"""
+        """Marks these nodes and all descendants of these nodes to have changed
+        position in the graph"""
         for node in nodes:
             self._changed_nodes.add(node)
         return self
@@ -293,7 +312,9 @@ class AttachmentAggregator:
             self.attachment_scores = log_likes
         else:
             with np.errstate(under="ignore"):
-                self.attachment_scores = np.logaddexp(self.attachment_scores, log_likes)
+                self.attachment_scores = np.logaddexp(
+                    self.attachment_scores, log_likes
+                )
         self.num_additions += 1
 
     def normalized_attachment_probabilities(self):

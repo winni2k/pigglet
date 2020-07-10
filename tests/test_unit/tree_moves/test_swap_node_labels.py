@@ -1,6 +1,5 @@
 import networkx as nx
 import pytest
-
 from builders.tree_interactor import MutationTreeInteractorBuilder
 
 

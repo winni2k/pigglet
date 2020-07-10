@@ -1,10 +1,10 @@
 import itertools
 
 import numpy as np
+from pigglet_testing.builders.tree_likelihood import LikelihoodBuilder
 from pytest import approx
 
 from pigglet.gl_manipulator import GLManipulator
-from pigglet_testing.builders.tree_likelihood import LikelihoodBuilder
 
 
 class TestNormalizesGLs:
