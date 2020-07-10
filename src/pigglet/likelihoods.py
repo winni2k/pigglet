@@ -114,12 +114,9 @@ class TreeLikelihoodCalculator:
     """
 
     def __init__(self, g, gls):
-        glstmp = np.zeros((gls.shape[0], gls.shape[2], gls.shape[1]))
-        for genotype_idx in range(gls.shape[2]):
-            glstmp[:, genotype_idx, :] = gls[:, :, genotype_idx]
-        self.gls = glstmp
+        self.gls = gls
         self.n_sites = self.gls.shape[0]
-        self.n_samples = self.gls.shape[2]
+        self.n_samples = self.gls.shape[1]
         self.paths = None
         self._attachment_log_like = None
         self.summer = TreeLikelihoodSummer(self.n_sites + 1, self.n_samples)
@@ -205,20 +202,20 @@ class TreeLikelihoodCalculator:
                 (self.n_sites + 1, self.n_samples), dtype=LOG_LIKE_DTYPE
             )
             attachment_log_like[start + 1] = np.sum(
-                self.gls[:, 0, :].reshape((self.n_sites, self.n_samples)), 0
+                self.gls[:, :, 0].reshape((self.n_sites, self.n_samples)), 0
             )
         else:
             parent = list(self.g.pred[start])[0]
             a = attachment_log_like[parent + 1]
-            b = self.gls[start, HET_NUM, :]
-            c = self.gls[start, HOM_REF_NUM, :]
+            b = self.gls[start, :, HET_NUM]
+            c = self.gls[start, :, HOM_REF_NUM]
             attachment_log_like[start + 1] = ne.evaluate("a + b - c")
         for u, v in nx.dfs_edges(self.g, start):
             self.n_node_updates += 1
             self.summer.register_changed_node(v)
             a = attachment_log_like[u + 1]  # noqa
-            b = self.gls[v, HET_NUM, :]  # noqa
-            c = self.gls[v, HOM_REF_NUM, :]  # noqa
+            b = self.gls[v, :, HET_NUM]  # noqa
+            c = self.gls[v, :, HOM_REF_NUM]  # noqa
             attachment_log_like[v + 1] = ne.evaluate("a + b - c")
         self._attachment_log_like = attachment_log_like
 
