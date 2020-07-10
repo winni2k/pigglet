@@ -1,9 +1,8 @@
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import networkx as nx
-import numexpr as ne
 import numpy as np
 
 from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
@@ -17,7 +16,7 @@ np.seterr(all="raise")
 
 
 @dataclass
-class TreeLikelihoodSummer:
+class MutationTreeLikelihoodSummer:
     """Calculates efficient summed attachment log likelihood updates"""
 
     n_nodes: int
@@ -100,6 +99,64 @@ class TreeLikelihoodSummer:
         return gold
 
 
+@dataclass
+class PhyloTreeLikelihoodCalculator:
+    """Calculates likelihood of phylogenetic tree (self.g) and
+    attachment points from gls for m sites and n samples
+
+    self.gls should have shape (m, n, NUM_GLS)
+    self.mutation_matrix_mask has shape (m, n, NUM_GLS)
+
+    The tree is a binary rooted phylogenetic tree where all leaf nodes are samples
+    and mutations are unattached. The leaf node IDs are also the index of
+    the sample into the mutation and GL matrices.
+    """
+
+    g: nx.DiGraph
+    gls: np.ndarray
+    n_sites: int = 0
+    n_samples: int = 0
+    _changed_nodes: set = field(default_factory=set)
+
+    def __post_init__(self):
+        self.n_sites = self.gls.shape[0]
+        self.n_samples = self.gls.shape[1]
+        roots = roots_of_tree(self.g)
+        assert len(roots) == 1
+        root = roots[0]
+        self._changed_nodes.add(root)
+
+    @property
+    def attachment_log_like(self) -> np.ndarray:
+        """Calculate the likelihoods of all possible mutation attachments
+
+        :returns (len(self.g)) x m numpy array
+        the cell at row i and column j is the probability of mutation j
+        attaching to node i in the phylogenetic tree
+        """
+        start = roots_of_tree(self.g)[0]
+        attachment_log_like = np.zeros(len(self.g), self.n_sites, dtype=LOG_LIKE_DTYPE)
+
+        # If a site attaches to the root, then all samples have the mutation
+        attachment_log_like[start] = np.sum(
+            self.gls[:, :, 1].reshape((self.n_sites, self.n_samples)), 0
+        )
+        for u, v in nx.dfs_edges(self.g, start):
+            update_sample_ids = (
+                self.g.nodes[u]["sample_ids"] - self.g.nodes[v]["sample_ids"]
+            )
+            attachment_log_like[v] = (
+                attachment_log_like[u][update_sample_ids]
+                + self.gls[:, update_sample_ids, HOM_REF_NUM]
+                - self.gls[:, update_sample_ids, HET_NUM]
+            )
+        return attachment_log_like
+
+    def attachment_marginalized_mutation_log_likelihoods(self):
+        """Calculate the marginal likelihoods of all possible mutation attachments"""
+        return logsumexp(self.attachment_log_like, axis=0)
+
+
 class TreeLikelihoodCalculator:
     """Calculates likelihood of mutation tree (self.g) and attachment points
     from gls for m sites and n samples
@@ -107,7 +164,7 @@ class TreeLikelihoodCalculator:
     self.gls should have shape (m, n, NUM_GLS)
     self.mutation_matrix_mask has shape (m, n, NUM_GLS)
 
-    The likelihood tree is a rooted mutation tree with unattached samples.
+    The tree is a rooted mutation tree with unattached samples.
     This means that every node, except for the root node, represents
     a single mutation. The mutation node IDs are also the index of the mutation into the
     mutation and GL matrices.
@@ -119,7 +176,7 @@ class TreeLikelihoodCalculator:
         self.n_samples = self.gls.shape[1]
         self.paths = None
         self._attachment_log_like = None
-        self.summer = TreeLikelihoodSummer(self.n_sites + 1, self.n_samples)
+        self.summer = MutationTreeLikelihoodSummer(self.n_sites + 1, self.n_samples)
         self.g = g
         roots = roots_of_tree(g)
         assert len(roots) == 1

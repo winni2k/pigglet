@@ -11,11 +11,8 @@ from tqdm import tqdm
 from pigglet.constants import TreeIsTooSmallError
 from pigglet.likelihoods import AttachmentAggregator, TreeLikelihoodCalculator
 from pigglet.tree import TreeMoveMemento
-from pigglet.tree_interactor import (
-    PhyloTreeInteractor,
-    MutationTreeInteractor,
-    TreeInteractor,
-)
+from pigglet.tree_interactor import (MutationTreeInteractor,
+                                     PhyloTreeInteractor, TreeInteractor)
 from pigglet.tree_utils import roots_of_tree
 
 NUM_MCMC_MOVES = 3

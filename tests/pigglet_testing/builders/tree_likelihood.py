@@ -7,7 +7,7 @@ import numpy as np
 
 from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
-from pigglet.likelihoods import TreeLikelihoodCalculator
+from pigglet.likelihoods import TreeLikelihoodCalculator, PhyloTreeLikelihoodCalculator
 from pigglet.mcmc import MCMCRunner, MoveExecutor
 from pigglet_testing.builders.tree import MutationTreeBuilder
 
@@ -86,7 +86,13 @@ class TreeLikelihoodBuilder:
         return self
 
 
-class TreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
+class PhyloTreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
+    def build(self):
+        g, gls = super().build()
+        return PhyloTreeLikelihoodCalculator(g, gls)
+
+
+class MutationTreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
     def build(self):
         g, gls = super().build()
         return TreeLikelihoodCalculator(g, gls)

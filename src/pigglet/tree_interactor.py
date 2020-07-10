@@ -1,13 +1,13 @@
-from abc import ABC
 import itertools
 import random
+from abc import ABC
 from dataclasses import dataclass, field
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 import networkx as nx
 
-from pigglet.constants import TreeIsTooSmallError, TMP_LABEL
-from pigglet.tree import TreeMoveMemento, RandomWalkStopType
+from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
+from pigglet.tree import RandomWalkStopType, TreeMoveMemento
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -36,7 +36,7 @@ class TreeInteractor(ABC):
 
 
 @dataclass
-class PhyloTreeInteractor(ABC):
+class PhyloTreeInteractor(TreeInteractor):
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
     leaf_nodes: set = field(default_factory=set)
     root: int = 0
@@ -53,6 +53,8 @@ class PhyloTreeInteractor(ABC):
         self.root = roots[0]
         self._inner_g = self.g.subgraph(u for u in self.g if u not in self.leaf_nodes)
         self.check_binary_rooted_tree()
+        if "leaves" not in self.g.nodes[self.root]:
+            self.annotate_all_nodes_with_descendant_leaves()
 
     def attach_node_to_edge(self, node, edge: Tuple[Any, Any]):
         """Attach node to edge and generate new nodes as necessary"""
@@ -62,11 +64,20 @@ class PhyloTreeInteractor(ABC):
         nx.add_path(self.g, [edge[0], new_node, edge[1]])
         self.g.add_edge(new_node, node)
         self.g.remove_edge(*edge)
+        self._annotate_descendant_leaves_and_ancestors_of(new_node)
+        return new_node
 
-    def create_sample_on_edge(self, sample_node, edge: Tuple[Any, Any]):
-        assert sample_node not in self.g
+    def create_sample_on_edge(self, u: Any, v: Any) -> Tuple[Any, Any]:
+        """
+        Creates a new leaf node and attaches it to the edge (u, v)
+
+        :returns: newly created edge (u, leaf_node)
+        """
+        sample_node = self._generate_node_id()
         self.g.add_node(sample_node)
-        return self.attach_node_to_edge(sample_node, edge)
+        new_node = self.attach_node_to_edge(sample_node, (u, v))
+        self.leaf_nodes.add(sample_node)
+        return new_node, sample_node
 
     def prune_edge(self, u, v):
         """Prunes an edge and suppresses u if necessary"""
@@ -81,8 +92,10 @@ class PhyloTreeInteractor(ABC):
             g.remove_node(u)
         else:
             assert g.degree[u] == 2
-            g.add_edge(list(self.g.pred[u])[0], list(self.g.succ[u])[0])
+            parent = next(self.g.predecessors(u))
+            g.add_edge(parent, next(self.g.successors(u)))
             g.remove_node(u)
+            self._annotate_descendant_leaves_and_ancestors_of(parent)
 
     def random_edge(self):
         return random.choice(self.g.edges)
@@ -91,22 +104,47 @@ class PhyloTreeInteractor(ABC):
         assert nx.is_directed_acyclic_graph(self.g)
         for node in self.g:
             if node == self.root:
-                assert self.g.in_degree[node] == 0
-                assert self.g.out_degree[node] == 2
+                assert self.g.in_degree(node) == 0
+                assert self.g.out_degree(node) == 2
             elif node in self.leaf_nodes:
-                assert self.g.in_degree[node] == 1
-                assert self.g.out_degree[node] == 0
+                assert self.g.in_degree(node) == 1
+                assert self.g.out_degree(node) == 0
             else:
-                assert self.g.in_degree[node] == 1
-                assert self.g.out_degree[node] == 2
+                assert self.g.in_degree(node) == 1
+                assert self.g.out_degree(node) == 2
 
     def _generate_node_id(self):
         while self._last_node_id in self.g:
             self._last_node_id += 1
         return self._last_node_id
 
+    def _annotate_descendant_leaves_of(self, new_node):
+        if self.g.out_degree(new_node) == 0:
+            return
+        descendant_leaves = set()
+        for child in self.g.successors(new_node):
+            if self.g.out_degree(child) == 0:
+                descendant_leaves.add(child)
+            else:
+                descendant_leaves |= self.g.nodes[child]["leaves"]
+        self.g.nodes[new_node]["leaves"] = descendant_leaves
 
-class MutationTreeInteractor(ABC):
+    def _annotate_descendant_leaves_and_ancestors_of(self, new_node):
+        current = new_node
+        while True:
+            self._annotate_descendant_leaves_of(current)
+            predecessors = list(self.g.predecessors(current))
+            if not predecessors:
+                break
+            assert len(predecessors) == 1
+            current = predecessors[0]
+
+    def annotate_all_nodes_with_descendant_leaves(self):
+        for node in nx.dfs_postorder_nodes(self.g, self.root):
+            self._annotate_descendant_leaves_of(node)
+
+
+class MutationTreeInteractor(TreeInteractor):
     """Manipulates a mutation tree
 
     All public methods return a memento object that can be used to undo a move

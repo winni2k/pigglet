@@ -13,11 +13,13 @@ import numpy as np
 import pytest
 from pytest import approx
 
-from pigglet_testing.builders.tree_likelihood import TreeLikelihoodCalculatorBuilder
+from pigglet_testing.builders.tree_likelihood import (
+    PhyloTreeLikelihoodCalculatorBuilder,
+)
 
 
 def get_sample_likelihood(calc, sample_idx):
-    return np.exp(calc.attachment_marginalized_sample_log_likelihoods()[sample_idx])
+    return np.exp(calc.attachment_marginalized_mutation_log_likelihoods()[sample_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):
@@ -31,7 +33,7 @@ def log_sum_of_exp_of(*log_likelihoods):
 class TestSampleLikelihood:
     def test_one_sample_one_site_no_mutation(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
@@ -45,7 +47,7 @@ class TestSampleLikelihood:
 
     def test_two_samples_one_site_no_mutation(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
@@ -62,7 +64,7 @@ class TestSampleLikelihood:
     def test_one_sample_one_private_mutation(self):
         # given
 
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
@@ -72,7 +74,7 @@ class TestSampleLikelihood:
 
     def test_one_sample_two_private_mutations(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
@@ -84,7 +86,7 @@ class TestSampleLikelihood:
 
     def test_four_samples_two_mutations_and_likelihood_one(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_balanced_tree(1)
         b.with_gl_dimensions(2, 4)
         b.with_likelihood_peak_at_all_hom_ref()
@@ -99,7 +101,7 @@ class TestSampleLikelihood:
     @pytest.mark.parametrize("sample_id_to_mutate", [0, 1])
     def test_with_two_samples_and_private_mutation(self, sample_id_to_mutate):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_gl_dimensions(1, 2)
 
@@ -116,7 +118,7 @@ class TestSampleLikelihood:
 
     def test_raises_on_invalid_sample_idx(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_balanced_tree()
         calc = b.build()
 
@@ -126,7 +128,7 @@ class TestSampleLikelihood:
 
     def test_with_two_private_mutations(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(attachment_node=-1, new_node_id=0)
         b.with_mutation_site_at(-1, 1)
 
@@ -143,7 +145,7 @@ class TestSampleLikelihood:
 
     def test_with_doubleton_mutation(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_balanced_tree(1)
         b.with_gl_dimensions(n_sites=2, n_samples=4)
         b.with_mutated_gl_at(sample_idx=2, site_idx=1)
@@ -160,7 +162,7 @@ class TestSampleLikelihood:
 class TestSampleMarginalizedLikelihood:
     def test_single_mutation_one_sample(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
@@ -173,7 +175,7 @@ class TestSampleMarginalizedLikelihood:
 
     def test_single_mutation_two_samples(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 0)
@@ -187,7 +189,7 @@ class TestSampleMarginalizedLikelihood:
 
     def test_two_mutations_one_sample_balanced_tree(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_balanced_tree(1)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
@@ -201,7 +203,7 @@ class TestSampleMarginalizedLikelihood:
 
     def test_two_mutations_one_sample(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
@@ -216,7 +218,7 @@ class TestSampleMarginalizedLikelihood:
 
     def test_two_mutations_two_samples(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
@@ -235,7 +237,7 @@ class TestSampleMarginalizedLikelihood:
 class TestMLAttachments:
     def test_single_mutation_one_sample(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
@@ -248,7 +250,7 @@ class TestMLAttachments:
 
     def test_single_mutation_two_samples(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 0)
@@ -262,7 +264,7 @@ class TestMLAttachments:
 
     def test_two_mutations_one_sample(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
@@ -277,7 +279,7 @@ class TestMLAttachments:
 
     def test_two_mutations_two_samples(self):
         # given
-        b = TreeLikelihoodCalculatorBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutation_site_at(-1, 0)
         b.with_mutation_site_at(0, 1)
         b.with_mutated_gl_at(0, 0)
