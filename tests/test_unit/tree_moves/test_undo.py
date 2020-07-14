@@ -2,10 +2,13 @@ import random
 
 import networkx as nx
 import pytest
-from builders.tree_interactor import MutationTreeInteractorBuilder
+from builders.tree_interactor import (
+    MutationTreeInteractorBuilder,
+    PhyloTreeInteractorBuilder,
+)
 
 
-class TestUndo:
+class TestMutationTreeInteractor:
     def test_prune_of_single_mutation(self):
         # given
         b = MutationTreeInteractorBuilder()
@@ -97,3 +100,26 @@ class TestUndo:
         assert nx.descendants(inter.g, 0) == {2, 3, 6, 7, 8, 9}
         assert nx.ancestors(inter.g, 2) == {-1, 0}
         assert nx.descendants(inter.g, 2) == {6, 7}
+
+
+class TestPhyloTreeInteractor:
+    @pytest.mark.xfail()
+    def test_prune_of_sample_on_two_sample_tree(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=2)
+        interactor = b.build()
+
+        # when
+        move = interactor.prune_edge(0, 1)
+        interactor.undo(move)
+
+        # then
+        assert set(interactor.g.edges()) == {
+            (0, 1),
+            (0, 2),
+            (1, 3),
+            (1, 4),
+            (2, 5),
+            (2, 6),
+        }

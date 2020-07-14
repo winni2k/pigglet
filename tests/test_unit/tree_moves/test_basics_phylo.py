@@ -129,8 +129,8 @@ class TestCalculateDescendantLeavesOf:
         inter = PhyloTreeInteractor()
 
         # when
-        new_edge = inter.create_sample_on_edge(0, 1)
-        new_edge2 = inter.create_sample_on_edge(*new_edge)
+        *new_edge, _ = inter.create_sample_on_edge(0, 1)
+        *new_edge2, _ = inter.create_sample_on_edge(*new_edge)
 
         # then
         assert inter.g.nodes[new_edge[0]]["leaves"] == {

@@ -7,7 +7,11 @@ from typing import Any, Tuple
 import networkx as nx
 
 from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
-from pigglet.tree import RandomWalkStopType, TreeMoveMemento
+from pigglet.tree import (
+    RandomWalkStopType,
+    MutationTreeMoveMemento,
+    PhyloTreeMoveMemento,
+)
 from pigglet.tree_utils import roots_of_tree
 
 
@@ -33,8 +37,13 @@ def random_graph_walk_with_memory_from(g, start):
         current_node = random.choice(neighbors)
 
 
+@dataclass
 class TreeInteractor(ABC):
-    pass
+    def undo(self, memento):
+        for command, args in zip(
+            reversed(memento.commands), reversed(memento.args)
+        ):
+            getattr(self, command)(**args)
 
 
 @dataclass
@@ -60,20 +69,22 @@ class PhyloTreeInteractor(TreeInteractor):
         if "leaves" not in self.g.nodes[self.root]:
             self.annotate_all_nodes_with_descendant_leaves()
 
-    def attach_node_to_edge(self, node, edge: Tuple[Any, Any]):
+    def attach_node_to_edge(
+        self, node, edge: Tuple[Any, Any]
+    ) -> Tuple[Any, PhyloTreeMoveMemento]:
         """Attach node to edge and generate new nodes as necessary"""
         if node not in self.g:
             raise ValueError(
                 f"Node to attach ({node}) must already exist in tree"
             )
         new_node = self._generate_node_id()
-        nx.add_path(self.g, [edge[0], new_node, edge[1]])
-        self.g.add_edge(new_node, node)
-        self.g.remove_edge(*edge)
-        self._annotate_descendant_leaves_and_ancestors_of(new_node)
-        return new_node
+        memento = self.attach_edge_to_edge((new_node, node), edge)
+        self._annotate_leaves_of_node_and_its_ancestors(new_node)
+        return new_node, memento
 
-    def create_sample_on_edge(self, u: Any, v: Any) -> Tuple[Any, Any]:
+    def create_sample_on_edge(
+        self, u: Any, v: Any
+    ) -> Tuple[Any, Any, PhyloTreeMoveMemento]:
         """
         Creates a new leaf node and attaches it to the edge (u, v)
 
@@ -82,11 +93,27 @@ class PhyloTreeInteractor(TreeInteractor):
         sample_node = self._generate_node_id()
         self.g.add_node(sample_node)
         self.g.nodes[sample_node]["leaves"] = {sample_node}
-        new_node = self.attach_node_to_edge(sample_node, (u, v))
+        new_node, memento = self.attach_node_to_edge(sample_node, (u, v))
         self.leaf_nodes.add(sample_node)
-        return new_node, sample_node
+        return new_node, sample_node, memento
 
-    def prune_edge(self, u, v):
+    def add_semiconnected_root(self, new_root) -> PhyloTreeMoveMemento:
+        current_roots = roots_of_tree(self.g)
+        assert len(current_roots) == 1
+        old_root = current_roots[0]
+        self.g.add_edge(new_root, old_root)
+        self.g.nodes[new_root]["leaves"] = self.g.nodes[old_root][
+            "leaves"
+        ].copy()
+        return PhyloTreeMoveMemento.of_add_semiconnected_root(new_root)
+
+    def remove_semiconnected_root(self, root) -> PhyloTreeMoveMemento:
+        assert self.g.in_degree[root] == 0
+        assert self.g.out_degree[root] == 1
+        self.g.remove_node(root)
+        return PhyloTreeMoveMemento.of_remove_semiconnected_root(root)
+
+    def prune_edge(self, u, v) -> PhyloTreeMoveMemento:
         """Prunes an edge and suppresses u if necessary"""
         if (u, v) not in self._inner_g.edges:
             raise ValueError(
@@ -96,14 +123,23 @@ class PhyloTreeInteractor(TreeInteractor):
         g = self.g
         g.remove_edge(u, v)
         if g.in_degree[u] == 0:
-            assert g.out_degree[u] == 1
-            g.remove_node(u)
-        else:
-            assert g.degree[u] == 2
-            parent = next(self.g.predecessors(u))
-            g.add_edge(parent, next(self.g.successors(u)))
-            g.remove_node(u)
-            self._annotate_descendant_leaves_and_ancestors_of(parent)
+            return self.remove_semiconnected_root(u)
+        assert g.degree[u] == 2
+        parent = next(self.g.predecessors(u))
+        child = next(self.g.successors(u))
+        g.add_edge(parent, child)
+        g.remove_node(u)
+        self._annotate_leaves_of_node_and_its_ancestors(parent)
+        return PhyloTreeMoveMemento.of_prune_edge(u, v, parent, child)
+
+    def attach_edge_to_edge(
+        self, new_edge: Tuple[int, int], target_edge: Tuple[int, int]
+    ) -> PhyloTreeMoveMemento:
+        self.g.remove_edge(*target_edge)
+        nx.add_path(self.g, [target_edge[0], new_edge[0], target_edge[1]])
+        self.g.add_edge(*new_edge)
+        self._annotate_leaves_of_node_and_its_ancestors(new_edge[0])
+        return PhyloTreeMoveMemento.of_attach_edge_to_edge(new_edge)
 
     def random_edge(self):
         return random.choice(self.g.edges)
@@ -137,7 +173,7 @@ class PhyloTreeInteractor(TreeInteractor):
             | self.g.nodes[children[1]]["leaves"]
         )
 
-    def _annotate_descendant_leaves_and_ancestors_of(self, new_node):
+    def _annotate_leaves_of_node_and_its_ancestors(self, new_node):
         current = new_node
         while True:
             self._annotate_descendant_leaves_of(current)
@@ -170,13 +206,13 @@ class MutationTreeInteractor(TreeInteractor):
         self.mh_correction = 1
         edges = list(self.g.in_edges(node))
         self.g.remove_edge(*edges[0])
-        return TreeMoveMemento.of_prune(edges[0])
+        return MutationTreeMoveMemento.of_prune(edges[0])
 
     def attach(self, node, target):
         """Add a link pointing from target to node"""
         self.mh_correction = 1
         self.g.add_edge(target, node)
-        return TreeMoveMemento.of_attach(node, target)
+        return MutationTreeMoveMemento.of_attach(node, target)
 
     def uniform_attach(self, node):
         self.mh_correction = 1
@@ -223,7 +259,7 @@ class MutationTreeInteractor(TreeInteractor):
             raise ValueError
         nx.relabel_nodes(self.g, {n1: TMP_LABEL}, copy=False)
         nx.relabel_nodes(self.g, {n2: n1, TMP_LABEL: n2}, copy=False)
-        return TreeMoveMemento.of_swap_labels(n1, n2)
+        return MutationTreeMoveMemento.of_swap_labels(n1, n2)
 
     def swap_subtrees(self, n1, n2):
         if n1 == self.root or n2 == self.root:
@@ -240,12 +276,6 @@ class MutationTreeInteractor(TreeInteractor):
         memento.append(self.attach(n1, n2_parent))
         memento.append(self.attach(n2, n1_parent))
         return memento
-
-    def undo(self, memento):
-        for command, args in zip(
-            reversed(memento.commands), reversed(memento.args)
-        ):
-            getattr(self, command)(**args)
 
     def _parent_of(self, n):
         return next(self.g.predecessors(n))

@@ -13,7 +13,7 @@ from pigglet.likelihoods import (
     MutationTreeLikelihoodCalculator,
 )
 from pigglet.mcmc import MCMCRunner
-from pigglet.tree_likelihood_mover import MutationTreeMoveExecutor
+from pigglet.tree_likelihood_mover import MutationTreeMoveCaretaker
 
 
 @dataclass
@@ -125,7 +125,7 @@ class MutationTreeLikelihoodCalculatorBuilder(MutationTreeLikelihoodBuilder):
 class MoveExecutorBuilder(MutationTreeBuilder):
     def build(self):
         g = super().build()
-        return MutationTreeMoveExecutor(g)
+        return MutationTreeMoveCaretaker(g)
 
 
 class MCMCBuilder(LikelihoodBuilder):

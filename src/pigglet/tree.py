@@ -1,6 +1,7 @@
+from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Any
 
 
 class RandomWalkStopType(Enum):
@@ -9,12 +10,46 @@ class RandomWalkStopType(Enum):
 
 
 @dataclass
-class TreeMoveMemento:
-    """This memento stores the information necessary to undo a TreeInteractor
-    move"""
-
+class TreeMoveMemento(ABC):
     commands: List[str] = field(default_factory=list)
-    args: List[Dict[str, int]] = field(default_factory=list)
+    args: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class PhyloTreeMoveMemento(TreeMoveMemento):
+    """Stores the information necessary to undo a PhyloTreeInteractor move"""
+
+    @classmethod
+    def of_add_semiconnected_root(cls, new_root):
+        return cls(
+            commands=["remove_semiconnected_root"], args=[{"root": new_root}]
+        )
+
+    @classmethod
+    def of_remove_semiconnected_root(cls, root):
+        return cls(
+            commands=["add_semiconnected_root"], args=[{"new_root": root}]
+        )
+
+    @classmethod
+    def of_prune_edge(cls, u, v, parent, child):
+        return cls(
+            commands=["attach_edge_to_edge"],
+            args=[{"new_edge": (u, v), "target_edge": (parent, child)}],
+        )
+
+    @classmethod
+    def of_attach_edge_to_edge(cls, new_edge):
+        return cls(
+            commands=["prune_edge"],
+            args=[{"u": new_edge[0], "v": new_edge[1]}],
+        )
+
+
+@dataclass
+class MutationTreeMoveMemento(TreeMoveMemento):
+    """Stores the information necessary to undo a MutationTreeInteractor
+    move"""
 
     @classmethod
     def of_prune(cls, edge):
