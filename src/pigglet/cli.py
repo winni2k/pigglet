@@ -230,9 +230,9 @@ def store_results(gls, out_prefix, output_store, runner):
     import networkx as nx
     import numpy as np
 
-    from pigglet.likelihoods import TreeLikelihoodCalculator
+    from pigglet.likelihoods import MutationTreeLikelihoodCalculator
 
-    calc = TreeLikelihoodCalculator(runner.map_g, gls)
+    calc = MutationTreeLikelihoodCalculator(runner.map_g, gls)
     map_tree_mut_probs = calc.mutation_probabilites(
         runner.agg.normalized_attachment_probabilities()
     )

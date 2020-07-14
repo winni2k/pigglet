@@ -6,7 +6,7 @@ from pigglet_testing.builders.tree_likelihood import (
     add_gl_at_ancestor_mutations_for,
 )
 
-from pigglet.mcmc import TreeLikelihoodMover
+from pigglet.tree_likelihood_mover import MutationTreeLikelihoodMover
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
@@ -55,7 +55,7 @@ def test_arbitrary_trees_and_moves_undo_ok(n_mutations):
         add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
 
     mcmc = b.build()
-    mover = TreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls)
+    mover = MutationTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls)
     like = mover.attachment_log_like
 
     # when/then

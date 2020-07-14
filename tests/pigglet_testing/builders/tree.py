@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 
 import networkx as nx
+
+from pigglet.tree_interactor import PhyloTreeInteractor
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 from pigglet.tree_converter import PhylogeneticTreeConverter
@@ -15,7 +17,7 @@ class PhyloTreeBuilder:
         return self
 
     def with_path(self, *nodes):
-        self.g.add_path(nodes)
+        nx.add_path(self.g, nodes)
         return self
 
     def with_balanced_tree(self, height=2, n_branches=2):
@@ -23,9 +25,7 @@ class PhyloTreeBuilder:
         return self
 
     def build(self):
-        if len(self.g.nodes()) == 0:
-            self.g.add_node(-1)
-        return self.g
+        return PhyloTreeInteractor(self.g).g
 
 
 class MutationTreeBuilder:

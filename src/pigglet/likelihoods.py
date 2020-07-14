@@ -128,6 +128,7 @@ class PhyloTreeLikelihoodCalculator:
     n_sites: int = 0
     n_samples: int = 0
     _changed_nodes: set = field(default_factory=set)
+    _sample_lookup: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -136,6 +137,10 @@ class PhyloTreeLikelihoodCalculator:
         assert len(roots) == 1
         root = roots[0]
         self._changed_nodes.add(root)
+        leaf_nodes = sorted(
+            u for u in self.g.nodes if self.g.out_degree(u) == 0
+        )
+        self._sample_lookup = {u: i for i, u in enumerate(leaf_nodes)}
 
     @property
     def attachment_log_like(self) -> np.ndarray:
@@ -147,31 +152,38 @@ class PhyloTreeLikelihoodCalculator:
         """
         start = roots_of_tree(self.g)[0]
         attachment_log_like = np.zeros(
-            len(self.g), self.n_sites, dtype=LOG_LIKE_DTYPE
+            (len(self.g), self.n_sites), dtype=LOG_LIKE_DTYPE
         )
 
-        # If a site attaches to the root, then all samples have the mutation
-        attachment_log_like[start] = np.sum(
-            self.gls[:, :, 1].reshape((self.n_sites, self.n_samples)), 0
-        )
+        # If a mutation attaches to the root,
+        # then all samples have the mutation
+        attachment_log_like[start] = np.sum(self.gls[:, :, HET_NUM], 1)
         for u, v in nx.dfs_edges(self.g, start):
-            update_sample_ids = (
-                self.g.nodes[u]["sample_ids"] - self.g.nodes[v]["sample_ids"]
-            )
+            update_idxs = [
+                self._sample_lookup[s]
+                for s in self.g.nodes[u]["leaves"] - self.g.nodes[v]["leaves"]
+            ]
             attachment_log_like[v] = (
-                attachment_log_like[u][update_sample_ids]
-                + self.gls[:, update_sample_ids, HOM_REF_NUM]
-                - self.gls[:, update_sample_ids, HET_NUM]
+                attachment_log_like[u]
+                + np.sum(self.gls[:, update_idxs, HOM_REF_NUM], 1)
+                - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
         return attachment_log_like
 
-    def attachment_marginalized_mutation_log_likelihoods(self):
+    def attachment_marginalized_mutation_log_likelihoods(self) -> np.ndarray:
         """Calculate the marginal likelihoods of all possible mutation
-        attachments"""
+        attachments for each of m mutations
+
+        :returns: ndarray of shape m"""
         return logsumexp(self.attachment_log_like, axis=0)
 
+    def log_likelihood(self):
+        """Calculate the sum of the log likelihoods of all possible mutation
+        attachments"""
+        return np.sum(self.attachment_marginalized_mutation_log_likelihoods())
 
-class TreeLikelihoodCalculator:
+
+class MutationTreeLikelihoodCalculator:
     """Calculates likelihood of mutation tree (self.g) and attachment points
     from gls for m sites and n samples
 
@@ -224,7 +236,7 @@ class TreeLikelihoodCalculator:
         attachments"""
         return self.summer.calculate(self.attachment_log_like)
 
-    def sample_marginalized_log_likelihood(self):
+    def log_likelihood(self):
         """Calculate the sum of the log likelihoods of all possible sample
         attachments"""
         return np.sum(self.attachment_marginalized_sample_log_likelihoods())
@@ -278,7 +290,7 @@ class TreeLikelihoodCalculator:
                 (self.n_sites + 1, self.n_samples), dtype=LOG_LIKE_DTYPE
             )
             attachment_log_like[start + 1] = np.sum(
-                self.gls[:, :, 0].reshape((self.n_sites, self.n_samples)), 0
+                self.gls[:, :, HOM_REF_NUM], 0
             )
         else:
             parent = list(self.g.pred[start])[0]

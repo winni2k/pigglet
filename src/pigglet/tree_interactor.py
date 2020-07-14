@@ -81,6 +81,7 @@ class PhyloTreeInteractor(TreeInteractor):
         """
         sample_node = self._generate_node_id()
         self.g.add_node(sample_node)
+        self.g.nodes[sample_node]["leaves"] = {sample_node}
         new_node = self.attach_node_to_edge(sample_node, (u, v))
         self.leaf_nodes.add(sample_node)
         return new_node, sample_node
@@ -127,14 +128,14 @@ class PhyloTreeInteractor(TreeInteractor):
 
     def _annotate_descendant_leaves_of(self, new_node):
         if self.g.out_degree(new_node) == 0:
+            self.g.nodes[new_node]["leaves"] = {new_node}
             return
-        descendant_leaves = set()
-        for child in self.g.successors(new_node):
-            if self.g.out_degree(child) == 0:
-                descendant_leaves.add(child)
-            else:
-                descendant_leaves |= self.g.nodes[child]["leaves"]
-        self.g.nodes[new_node]["leaves"] = descendant_leaves
+        children = list(self.g.successors(new_node))
+        assert len(children) == 2
+        self.g.nodes[new_node]["leaves"] = (
+            self.g.nodes[children[0]]["leaves"]
+            | self.g.nodes[children[1]]["leaves"]
+        )
 
     def _annotate_descendant_leaves_and_ancestors_of(self, new_node):
         current = new_node

@@ -4,15 +4,16 @@ from typing import Set
 
 import networkx as nx
 import numpy as np
-from pigglet_testing.builders.tree import MutationTreeBuilder
+from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import (
     PhyloTreeLikelihoodCalculator,
-    TreeLikelihoodCalculator,
+    MutationTreeLikelihoodCalculator,
 )
-from pigglet.mcmc import MCMCRunner, MoveExecutor
+from pigglet.mcmc import MCMCRunner
+from pigglet.tree_likelihood_mover import MutationTreeMoveExecutor
 
 
 @dataclass
@@ -65,7 +66,7 @@ class LikelihoodBuilder:
         return self
 
 
-class TreeLikelihoodBuilder:
+class MutationTreeLikelihoodBuilder:
     def __init__(self):
         self.tree_builder = MutationTreeBuilder()
         self.likelihood_builder = LikelihoodBuilder()
@@ -91,22 +92,40 @@ class TreeLikelihoodBuilder:
         return self
 
 
-class PhyloTreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
+class PhyloTreeLikelihoodBuilder:
+    def __init__(self):
+        self.tree_builder = PhyloTreeBuilder()
+        self.likelihood_builder = LikelihoodBuilder()
+
+    def __getattr__(self, attr):
+        try:
+            return getattr(self.likelihood_builder, attr)
+        except AttributeError:
+            pass
+        return getattr(self.tree_builder, attr)
+
+    def build(self):
+        tree = self.tree_builder.build()
+        gls = self.likelihood_builder.build()
+        return tree, gls
+
+
+class PhyloTreeLikelihoodCalculatorBuilder(PhyloTreeLikelihoodBuilder):
     def build(self):
         g, gls = super().build()
         return PhyloTreeLikelihoodCalculator(g, gls)
 
 
-class MutationTreeLikelihoodCalculatorBuilder(TreeLikelihoodBuilder):
+class MutationTreeLikelihoodCalculatorBuilder(MutationTreeLikelihoodBuilder):
     def build(self):
         g, gls = super().build()
-        return TreeLikelihoodCalculator(g, gls)
+        return MutationTreeLikelihoodCalculator(g, gls)
 
 
 class MoveExecutorBuilder(MutationTreeBuilder):
     def build(self):
         g = super().build()
-        return MoveExecutor(g)
+        return MutationTreeMoveExecutor(g)
 
 
 class MCMCBuilder(LikelihoodBuilder):
