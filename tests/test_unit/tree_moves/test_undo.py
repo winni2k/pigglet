@@ -103,8 +103,7 @@ class TestMutationTreeInteractor:
 
 
 class TestPhyloTreeInteractor:
-    @pytest.mark.xfail()
-    def test_prune_of_sample_on_two_sample_tree(self):
+    def test_prune_of_samples_on_four_sample_tree(self):
         # given
         b = PhyloTreeInteractorBuilder()
         b.with_balanced_tree(height=2)
@@ -123,3 +122,27 @@ class TestPhyloTreeInteractor:
             (2, 5),
             (2, 6),
         }
+        assert interactor.g.nodes[0]["leaves"] == set(range(3, 7))
+
+    def test_prune_and_attach_of_samples_on_four_sample_tree(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=2)
+        interactor = b.build()
+
+        # when
+        move = interactor.prune_edge(0, 1)
+        new_node, move2 = interactor.attach_node_to_edge(1, (2, 5))
+        interactor.undo(move2)
+        interactor.undo(move)
+
+        # then
+        assert set(interactor.g.edges()) == {
+            (0, 1),
+            (0, 2),
+            (1, 3),
+            (1, 4),
+            (2, 5),
+            (2, 6),
+        }
+        assert interactor.g.nodes[0]["leaves"] == set(range(3, 7))

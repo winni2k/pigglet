@@ -11,6 +11,9 @@ import math
 
 import numpy as np
 import pytest
+
+from pigglet.tree_interactor import PhyloTreeInteractor
+from pigglet_testing.builders.tree import PhyloTreeBuilder
 from pigglet_testing.builders.tree_likelihood import (
     PhyloTreeLikelihoodCalculatorBuilder,
 )
@@ -35,20 +38,18 @@ class TestPruneAndRegraft:
     @pytest.mark.xfail()
     def test_three_samples_one_private_mutation_for_first_sample(self):
         # given
-        b = PhyloTreeLikelihoodCalculatorBuilder()
-        b.with_mutated_gl_at(0, 0)
-        b.with_unmutated_gl_at(1, 0)
-        b.with_unmutated_gl_at(2, 0)
+        b = PhyloTreeBuilder()
         b.with_path(0, 1, 2)
         b.with_branch(1, 3)
         b.with_branch(0, 4)
-        calc = b.build()
+        inter = PhyloTreeInteractor(b.build())
 
         # when
-        like1 = calc.attachment_log_like()
+        inter.prune_edge(0, 1)
+        inter.attach_node_to_edge(1, (0, 4))
 
         # then
-        assert like1 == approx(sum_of_exp_of(-2, -1, 0, -2, -2))
+        assert set(inter.g.edges) == {(1, 0)}
 
     def test_three_samples_one_private_mutation_for_two_samples(self):
         # given

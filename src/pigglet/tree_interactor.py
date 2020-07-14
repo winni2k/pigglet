@@ -1,8 +1,8 @@
 import itertools
 import random
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Tuple
+from typing import Any, Tuple, List, Dict
 
 import networkx as nx
 
@@ -10,7 +10,6 @@ from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
 from pigglet.tree import (
     RandomWalkStopType,
     MutationTreeMoveMemento,
-    PhyloTreeMoveMemento,
 )
 from pigglet.tree_utils import roots_of_tree
 
@@ -38,12 +37,62 @@ def random_graph_walk_with_memory_from(g, start):
 
 
 @dataclass
+class PhyloTreeMoveMemento:
+    """Stores the information necessary to undo a PhyloTreeInteractor move"""
+
+    commands: List = field(default_factory=list)
+    args: List[Dict[str, Any]] = field(default_factory=list)
+
+    def append(self, other):
+        self.commands += other.commands
+        self.args += other.args
+
+
+@dataclass
+class PhyloTreeMoveMementoBuilder:
+    interactor: Any
+
+    def of_add_semiconnected_root(self, new_root) -> PhyloTreeMoveMemento:
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.remove_semiconnected_root],
+            args=[{"root": new_root}],
+        )
+
+    def of_remove_semiconnected_root(
+        self, root, root_child
+    ) -> PhyloTreeMoveMemento:
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.add_semiconnected_root],
+            args=[{"new_root": root, "old_root": root_child}],
+        )
+
+    def of_prune_edge(self, u, v, parent, child) -> PhyloTreeMoveMemento:
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.attach_edge_to_edge],
+            args=[{"new_edge": (u, v), "target_edge": (parent, child)}],
+        )
+
+    def of_attach_edge_to_edge(self, new_edge) -> PhyloTreeMoveMemento:
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.prune_edge],
+            args=[{"u": new_edge[0], "v": new_edge[1]}],
+        )
+
+    def of_add_edge(self, u, v):
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.remove_edge], args=[{"u": u, "v": v}]
+        )
+
+    def of_remove_edge(self, u, v):
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.add_edge], args=[{"u": u, "v": v}]
+        )
+
+
 class TreeInteractor(ABC):
+    @abstractmethod
     def undo(self, memento):
-        for command, args in zip(
-            reversed(memento.commands), reversed(memento.args)
-        ):
-            getattr(self, command)(**args)
+        pass
 
 
 @dataclass
@@ -54,8 +103,10 @@ class PhyloTreeInteractor(TreeInteractor):
     mh_correction: float = 0
     _inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
     _last_node_id: int = 0
+    _memento_builder: PhyloTreeMoveMementoBuilder = field(init=False)
 
     def __post_init__(self):
+        self._memento_builder = PhyloTreeMoveMementoBuilder(self)
         if len(self.g) == 0:
             self.g.add_edges_from([(0, 1), (0, 2)])
         self.leaf_nodes = {u for u in self.g if self.g.out_degree[u] == 0}
@@ -68,6 +119,12 @@ class PhyloTreeInteractor(TreeInteractor):
         self.check_binary_rooted_tree()
         if "leaves" not in self.g.nodes[self.root]:
             self.annotate_all_nodes_with_descendant_leaves()
+
+    def undo(self, memento):
+        for command, args in zip(
+            reversed(memento.commands), reversed(memento.args)
+        ):
+            command(**args)
 
     def attach_node_to_edge(
         self, node, edge: Tuple[Any, Any]
@@ -97,21 +154,33 @@ class PhyloTreeInteractor(TreeInteractor):
         self.leaf_nodes.add(sample_node)
         return new_node, sample_node, memento
 
-    def add_semiconnected_root(self, new_root) -> PhyloTreeMoveMemento:
-        current_roots = roots_of_tree(self.g)
-        assert len(current_roots) == 1
-        old_root = current_roots[0]
+    def add_semiconnected_root(
+        self, new_root, old_root
+    ) -> PhyloTreeMoveMemento:
         self.g.add_edge(new_root, old_root)
         self.g.nodes[new_root]["leaves"] = self.g.nodes[old_root][
             "leaves"
         ].copy()
-        return PhyloTreeMoveMemento.of_add_semiconnected_root(new_root)
+        return self._memento_builder.of_add_semiconnected_root(new_root)
 
     def remove_semiconnected_root(self, root) -> PhyloTreeMoveMemento:
         assert self.g.in_degree[root] == 0
         assert self.g.out_degree[root] == 1
+        root_child = list(nx.descendants(self.g, root))[0]
         self.g.remove_node(root)
-        return PhyloTreeMoveMemento.of_remove_semiconnected_root(root)
+        return self._memento_builder.of_remove_semiconnected_root(
+            root, root_child
+        )
+
+    def add_edge(self, u, v):
+        self.g.add_edge(u, v)
+        self.g.nodes[u]["leaves"] |= self.g.nodes[v]["leaves"]
+        return self._memento_builder.of_add_edge(u, v)
+
+    def remove_edge(self, u, v):
+        self.g.remove_edge(u, v)
+        self.g.nodes[u]["leaves"] -= self.g.nodes[v]["leaves"]
+        return self._memento_builder.of_remove_edge(u, v)
 
     def prune_edge(self, u, v) -> PhyloTreeMoveMemento:
         """Prunes an edge and suppresses u if necessary"""
@@ -121,16 +190,17 @@ class PhyloTreeInteractor(TreeInteractor):
                 f" not an inner edge"
             )
         g = self.g
-        g.remove_edge(u, v)
+        memento = self.remove_edge(u, v)
         if g.in_degree[u] == 0:
-            return self.remove_semiconnected_root(u)
+            memento.append(self.remove_semiconnected_root(u))
+            return memento
         assert g.degree[u] == 2
         parent = next(self.g.predecessors(u))
         child = next(self.g.successors(u))
         g.add_edge(parent, child)
         g.remove_node(u)
         self._annotate_leaves_of_node_and_its_ancestors(parent)
-        return PhyloTreeMoveMemento.of_prune_edge(u, v, parent, child)
+        return self._memento_builder.of_prune_edge(u, v, parent, child)
 
     def attach_edge_to_edge(
         self, new_edge: Tuple[int, int], target_edge: Tuple[int, int]
@@ -139,7 +209,7 @@ class PhyloTreeInteractor(TreeInteractor):
         nx.add_path(self.g, [target_edge[0], new_edge[0], target_edge[1]])
         self.g.add_edge(*new_edge)
         self._annotate_leaves_of_node_and_its_ancestors(new_edge[0])
-        return PhyloTreeMoveMemento.of_attach_edge_to_edge(new_edge)
+        return self._memento_builder.of_attach_edge_to_edge(new_edge)
 
     def random_edge(self):
         return random.choice(self.g.edges)
@@ -200,6 +270,12 @@ class MutationTreeInteractor(TreeInteractor):
         assert len(self.root) == 1, self.root
         self.root = self.root[0]
         self.mh_correction = None
+
+    def undo(self, memento):
+        for command, args in zip(
+            reversed(memento.commands), reversed(memento.args)
+        ):
+            getattr(self, command)(**args)
 
     def prune(self, node):
         """Remove the incoming link for a node"""
