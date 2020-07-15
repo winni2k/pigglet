@@ -173,11 +173,6 @@ class PhyloTreeInteractor(TreeInteractor):
                 assert self.g.in_degree(node) == 1
                 assert self.g.out_degree(node) == 2
 
-    def _generate_node_id(self):
-        while self._last_node_id in self.g:
-            self._last_node_id += 1
-        return self._last_node_id
-
     def _annotate_descendant_leaves_of(self, new_node):
         if self.g.out_degree(new_node) == 0:
             self.g.nodes[new_node]["leaves"] = {new_node}
