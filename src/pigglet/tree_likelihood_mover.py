@@ -91,10 +91,8 @@ class PhyloTreeMoveCaretaker:
         self.interactor = PhyloTreeInteractor(self.g)
         self.memento = None
         self.available_moves = [
-            # self.prune_and_reattach,
             self.extending_subtree_prune_and_regraft,
-            self.swap_node,
-            self.swap_subtree,
+            self.swap_leaf,
         ]
         self.move_tracker = MoveTracker(len(self.available_moves))
         self.changed_nodes = list(roots_of_tree(g))

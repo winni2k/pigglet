@@ -36,6 +36,8 @@ setup(
         "h5py",
         "tqdm",
         "scipy==1.5.*",
+        "msprime",
+        "tskit",
     ],
     packages=find_packages(
         "src", exclude=["contrib", "docs", "tests", "test_utils"]

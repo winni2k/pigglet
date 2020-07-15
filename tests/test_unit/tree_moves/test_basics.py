@@ -2,7 +2,10 @@ import random
 
 import networkx as nx
 import pytest
-from builders.tree_interactor import MutationTreeInteractorBuilder
+from builders.tree_interactor import (
+    MutationTreeInteractorBuilder,
+    PhyloTreeInteractorBuilder,
+)
 
 from pigglet.constants import TreeIsTooSmallError
 
@@ -140,6 +143,96 @@ class TestExtendAttach:
         print(inter.g.edges)
         assert inter.mh_correction == 1 - 0.999
 
+    def test_end_constrained_move_mh_correction(self):
+        # given
+        random.seed(1)
+        b = MutationTreeInteractorBuilder()
+        b.with_path(3)
+        inter = b.build()
+
+        inter.prune(2)
+
+        # when
+        inter.extend_attach(2, 0, 0.05)
+
+        # then
+        print(inter.g.edges)
+        assert inter.mh_correction == 1 / (1 - 0.05)
+
+
+@pytest.mark.xfail()
+class TestPhyloExtendAttach:
+    @pytest.mark.parametrize("seed", range(4))
+    def test_only_reattaches_to_root_connected_nodes_with_appropriate_mh(
+        self, seed
+    ):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(3)
+        inter = b.build()
+
+        inter.remove_edge(1, 3)
+        random.seed(seed)
+
+        # when
+        inter.extend_attach(3, 1, prop_attach=0.45)
+
+        # then
+        new_parent = next(inter.g.pred[3])
+        parent_parent = next(inter.g.pred[new_parent])
+        if parent_parent == 4:
+            assert inter.mh_correction == 1 - 0.45
+        elif parent_parent in {0, 2, 5, 6}:
+            assert inter.mh_correction == 1
+        else:
+            assert False
+
+    @pytest.mark.xfail()
+    def test_raises_if_no_move_possible(self):
+        # given
+        b = MutationTreeInteractorBuilder()
+        b.with_path(1)
+        inter = b.build()
+
+        inter.prune(0)
+
+        # when
+        with pytest.raises(TreeIsTooSmallError):
+            inter.extend_attach(0, -1, prop_attach=0.45)
+
+    @pytest.mark.xfail()
+    def test_double_constrained_move_mh_correction_is_one(self):
+        # given
+        b = MutationTreeInteractorBuilder()
+        b.with_path(2)
+        inter = b.build()
+
+        inter.prune(1)
+
+        # when
+        inter.extend_attach(1, -1, 0)
+
+        # then
+        assert inter.mh_correction == 1
+
+    @pytest.mark.xfail()
+    def test_start_constrained_move_mh_correction(self):
+        # given
+        random.seed(1)
+        b = MutationTreeInteractorBuilder()
+        b.with_path(3)
+        inter = b.build()
+
+        inter.prune(2)
+
+        # when
+        inter.extend_attach(2, -1, 0.999)
+
+        # then
+        print(inter.g.edges)
+        assert inter.mh_correction == 1 - 0.999
+
+    @pytest.mark.xfail()
     def test_end_constrained_move_mh_correction(self):
         # given
         random.seed(1)

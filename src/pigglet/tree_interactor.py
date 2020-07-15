@@ -88,6 +88,11 @@ class PhyloTreeMoveMementoBuilder:
             commands=[self.interactor.add_edge], args=[{"u": u, "v": v}]
         )
 
+    def of_swap_leaves(self, u, v):
+        return PhyloTreeMoveMemento(
+            commands=[self.interactor.swap_leaves], args=[{"u": u, "v": v}]
+        )
+
 
 class TreeInteractor(ABC):
     @abstractmethod
@@ -98,7 +103,7 @@ class TreeInteractor(ABC):
 @dataclass
 class PhyloTreeInteractor(TreeInteractor):
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
-    leaf_nodes: set = field(default_factory=set)
+    leaf_nodes: frozenset = field(default_factory=frozenset)
     root: int = 0
     mh_correction: float = 0
     _inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
@@ -109,7 +114,9 @@ class PhyloTreeInteractor(TreeInteractor):
         self._memento_builder = PhyloTreeMoveMementoBuilder(self)
         if len(self.g) == 0:
             self.g.add_edges_from([(0, 1), (0, 2)])
-        self.leaf_nodes = {u for u in self.g if self.g.out_degree[u] == 0}
+        self.leaf_nodes = frozenset(
+            u for u in self.g if self.g.out_degree[u] == 0
+        )
         roots = [u for u in self.g if self.g.in_degree[u] == 0]
         assert len(roots) == 1, roots
         self.root = roots[0]
@@ -138,21 +145,6 @@ class PhyloTreeInteractor(TreeInteractor):
         memento = self.attach_edge_to_edge((new_node, node), edge)
         self._annotate_leaves_of_node_and_its_ancestors(new_node)
         return new_node, memento
-
-    def create_sample_on_edge(
-        self, u: Any, v: Any
-    ) -> Tuple[Any, Any, PhyloTreeMoveMemento]:
-        """
-        Creates a new leaf node and attaches it to the edge (u, v)
-
-        :returns: newly created edge (u, leaf_node)
-        """
-        sample_node = self._generate_node_id()
-        self.g.add_node(sample_node)
-        self.g.nodes[sample_node]["leaves"] = {sample_node}
-        new_node, memento = self.attach_node_to_edge(sample_node, (u, v))
-        self.leaf_nodes.add(sample_node)
-        return new_node, sample_node, memento
 
     def add_semiconnected_root(
         self, new_root, old_root
@@ -256,6 +248,61 @@ class PhyloTreeInteractor(TreeInteractor):
     def annotate_all_nodes_with_descendant_leaves(self):
         for node in nx.dfs_postorder_nodes(self.g, self.root):
             self._annotate_descendant_leaves_of(node)
+
+    def swap_leaves(self, u, v) -> PhyloTreeMoveMemento:
+        assert u != v
+        assert u in self.leaf_nodes
+        assert v in self.leaf_nodes
+        parents = [next(self.g.predecessors(node)) for node in [u, v]]
+        for node, parent in zip([u, v], parents):
+            self.g.remove_edge(parent, node)
+        for node, parent in zip([u, v], reversed(parents)):
+            self.g.add_edge(parent, node)
+        for parent in parents:
+            self._annotate_leaves_of_node_and_its_ancestors(parent)
+        return self._memento_builder.of_swap_leaves(u, v)
+
+    # def extend_attach(self, node, start, prop_attach):
+    #     assert 0 <= prop_attach < 1
+    #     assert node != start
+    #
+    #     if len(list(nx.all_neighbors(self.g, start))) == 0:
+    #         raise TreeIsTooSmallError
+    #     if len(list(nx.all_neighbors(self.g, start))) == 1:
+    #         start_constraint = RandomWalkStopType.CONSTRAINED
+    #     else:
+    #         start_constraint = RandomWalkStopType.UNCONSTRAINED
+    #     previous_node = start
+    #     for attach_node, neighbors in random_graph_walk_with_memory_from(
+    #         self.g, start
+    #     ):
+    #         if random.random() < prop_attach:
+    #             break
+    #         previous_node = attach_node
+    #     attach_edge = (previous_node, attach_node)
+    #     if attach_edge not in self.g.edges:
+    #         attach_edge = reversed(attach_edge)
+    #     assert attach_edge in self.g.edges
+    #     if attach_edge[0] != start:
+    #         parent = list(self.g.predecessors(start))
+    #         if len(parent) == 0:
+    #             self.g.remove_node(start)
+    #     constraint = RandomWalkStopType.UNCONSTRAINED
+    #     if not neighbors:
+    #         constraint = RandomWalkStopType.CONSTRAINED
+    #
+    #     memento = self.attach_node_to_edge(node, attach_edge)
+    #     assert self.mh_correction == 1
+    #     if start_constraint == constraint:
+    #         self.mh_correction = 1
+    #     elif start_constraint == RandomWalkStopType.CONSTRAINED:
+    #         self.mh_correction = 1 - prop_attach
+    #     elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
+    #         self.mh_correction = 1 / (1 - prop_attach)
+    #     else:
+    #         raise Exception("Programmer error")
+    #     return memento
+    #
 
 
 class MutationTreeInteractor(TreeInteractor):

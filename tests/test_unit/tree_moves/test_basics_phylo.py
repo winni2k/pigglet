@@ -89,22 +89,6 @@ class TestAttachNodeToEdge:
             inter.attach_node_to_edge(3, (0, 1))
 
 
-class TestCreateSampleOnEdge:
-    def test_creates_new_node_on_minimal_tree(self):
-        # given
-        inter = PhyloTreeInteractor()
-
-        # when
-        edge = inter.create_sample_on_edge(0, 1)
-
-        # then
-        assert 5 == len(inter.g)
-        new_parent = next(inter.g.predecessors(1))
-        assert new_parent == edge[0]
-        assert (0, 1) not in inter.g.edges
-        assert inter.leaf_nodes == {1, 2, edge[1]}
-
-
 class TestCalculateDescendantLeavesOf:
     def test_two_leaves(self):
         # given
@@ -113,33 +97,29 @@ class TestCalculateDescendantLeavesOf:
         # then
         assert inter.g.nodes[0]["leaves"] == {1, 2}
 
-    def test_three_leaves(self):
-        # given
-        inter = PhyloTreeInteractor()
-
-        # when
-        new_edge = inter.create_sample_on_edge(0, 1)
-
-        # then
-        assert inter.g.nodes[new_edge[0]]["leaves"] == {1, new_edge[1]}
-        assert inter.g.nodes[0]["leaves"] == {1, 2, new_edge[1]}
-
     def test_four_leaves(self):
         # given
-        inter = PhyloTreeInteractor()
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=2)
+        inter = b.build()
 
         # when
-        *new_edge, _ = inter.create_sample_on_edge(0, 1)
-        *new_edge2, _ = inter.create_sample_on_edge(*new_edge)
+        inter.swap_leaves(3, 5)
 
         # then
-        assert inter.g.nodes[new_edge[0]]["leaves"] == {
-            1,
-            new_edge[1],
-            new_edge2[1],
-        }
-        assert inter.g.nodes[new_edge2[0]]["leaves"] == {
-            new_edge[1],
-            new_edge2[1],
-        }
-        assert inter.g.nodes[0]["leaves"] == {1, 2, new_edge[1], new_edge2[1]}
+        assert inter.g.nodes[0]["leaves"] == {3, 4, 5, 6}
+        assert inter.g.nodes[1]["leaves"] == {4, 5}
+        assert inter.g.nodes[2]["leaves"] == {3, 6}
+
+    def test_eight_leaves(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=3)
+        inter = b.build()
+
+        # when
+        inter.prune_edge(1, 3)
+        new_node, _ = inter.attach_node_to_edge(3, (2, 5))
+
+        # then
+        assert inter.g.nodes[2]["leaves"] == {7, 8, 11, 12, 13, 14}

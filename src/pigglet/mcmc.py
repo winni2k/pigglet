@@ -187,12 +187,14 @@ class MCMCRunner:
 
 def build_random_phylogenetic_tree(num_samples):
     assert num_samples > 1
-    interactor = PhyloTreeInteractor()
-    assert [0, 1] == sorted(interactor.leaf_nodes)
-    for sample_id in range(2, num_samples):
-        interactor.create_sample_on_edge(sample_id, interactor.random_edge())
-    assert num_samples == len(interactor.leaf_nodes)
-    return interactor.g
+    import msprime
+
+    ts = msprime.simulate(
+        sample_size=num_samples, Ne=100 * num_samples, recombination_rate=0
+    )
+    tree = ts.first()
+    g = nx.DiGraph(tree.as_dict_of_dicts())
+    return g
 
 
 def build_random_mutation_tree(num_sites):
