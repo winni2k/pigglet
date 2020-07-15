@@ -1,92 +1,55 @@
-import pytest
 from builders.tree_interactor import PhyloTreeInteractorBuilder
 
 from pigglet.tree_interactor import PhyloTreeInteractor
 
 
-class TestPruneEdge:
-    def test_raises_with_two_leaf_nodes(self):
+class TestPruneAndRegraft:
+    def test_leaves_tree_unchanged_with_two_leaf_nodes(self):
         # given
         b = PhyloTreeInteractorBuilder()
         b.with_branch(0, 1)
         b.with_branch(0, 2)
         interactor = b.build()
 
-        # when/then
-        with pytest.raises(ValueError):
-            interactor.prune_edge(0, 1)
+        # when
+        interactor.prune_and_regraft(1, (0, 2))
 
-    def test_detaches_node(self):
+        assert set(interactor.g.edges) == {(0, 1), (0, 2)}
+        assert interactor.g.nodes[0]["leaves"] == {1, 2}
+
+    def test_leaves_tree_unchanged_with_four_leaf_nodes(self):
         # given
         b = PhyloTreeInteractorBuilder()
         b.with_balanced_tree(height=2)
         interactor = b.build()
-        in_degree = interactor.g.in_degree
+        previous_edges = set(interactor.g.edges)
 
         # when
-        assert in_degree[0] == 0
-        assert in_degree[1] == 1
-        interactor.prune_edge(0, 1)
+        interactor.prune_and_regraft(1, (0, 2))
 
-        # then
-        assert in_degree[1] == 0
+        assert set(interactor.g.edges) == previous_edges
+        assert interactor.g.nodes[0]["leaves"] == set(range(3, 7))
 
-    def test_removes_root_of_balanced_tree(self):
+    def test_moves_sub_tree(self):
         # given
         b = PhyloTreeInteractorBuilder()
         b.with_balanced_tree(height=2)
         inter = b.build()
 
         # when
-        inter.prune_edge(0, 1)
+        inter.prune_and_regraft(1, (2, 5))
 
         # then
-        assert 0 not in inter.g
-        assert inter.g.in_degree[2] == 0
-        assert inter.g.nodes[2]["leaves"] == {5, 6}
-
-    def test_removes_redundant_internal_node(self):
-        # given
-        b = PhyloTreeInteractorBuilder()
-        b.with_balanced_tree(height=3)
-        interactor = b.build()
-
-        # when
-        interactor.prune_edge(1, 3)
-
-        # then
-        assert 1 not in interactor.g
-        assert (0, 4) in interactor.g.edges
-        assert interactor.g.nodes[0]["leaves"] == {9, 10, 11, 12, 13, 14}
-        assert interactor.g.nodes[4]["leaves"] == {9, 10}
-
-
-class TestAttachNodeToEdge:
-    def test_creates_new_node_to_accomodate_edge_attachment(self):
-        # given
-        b = PhyloTreeInteractorBuilder()
-        b.with_balanced_tree(height=3)
-        inter = b.build()
-
-        # when
-        inter.prune_edge(1, 3)
-        n_nodes_in_g = len(inter.g)
-        inter.attach_node_to_edge(3, (0, 4))
-
-        # then
-        assert n_nodes_in_g + 1 == len(inter.g)
-        new_parent = list(inter.g.pred[3])[0]
-        assert new_parent == list(inter.g.pred[4])[0]
-        assert (0, 4) not in inter.g.edges
-        assert inter.g.nodes[new_parent]["leaves"] == {7, 8, 9, 10}
-
-    def test_raises_when_asked_to_attach_non_existent_node(self):
-        # given
-        inter = PhyloTreeInteractor()
-
-        # when
-        with pytest.raises(ValueError):
-            inter.attach_node_to_edge(3, (0, 1))
+        assert inter.g.edges == {
+            (2, 0),
+            (2, 6),
+            (0, 1),
+            (0, 5),
+            (1, 3),
+            (1, 4),
+        }
+        assert inter.g.nodes[2]["leaves"] == set(range(3, 7))
+        assert inter.g.nodes[0]["leaves"] == set(range(3, 6))
 
 
 class TestCalculateDescendantLeavesOf:
@@ -110,16 +73,3 @@ class TestCalculateDescendantLeavesOf:
         assert inter.g.nodes[0]["leaves"] == {3, 4, 5, 6}
         assert inter.g.nodes[1]["leaves"] == {4, 5}
         assert inter.g.nodes[2]["leaves"] == {3, 6}
-
-    def test_eight_leaves(self):
-        # given
-        b = PhyloTreeInteractorBuilder()
-        b.with_balanced_tree(height=3)
-        inter = b.build()
-
-        # when
-        inter.prune_edge(1, 3)
-        new_node, _ = inter.attach_node_to_edge(3, (2, 5))
-
-        # then
-        assert inter.g.nodes[2]["leaves"] == {7, 8, 11, 12, 13, 14}

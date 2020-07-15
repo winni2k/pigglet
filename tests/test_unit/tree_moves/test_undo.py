@@ -1,4 +1,5 @@
 import random
+import itertools as it
 
 import networkx as nx
 import pytest
@@ -103,14 +104,15 @@ class TestMutationTreeInteractor:
 
 
 class TestPhyloTreeInteractor:
-    def test_prune_of_samples_on_four_sample_tree(self):
+    @pytest.mark.parametrize("u,v", it.permutations(range(3, 7), 2))
+    def test_prune_of_samples_on_four_sample_tree(self, u, v):
         # given
         b = PhyloTreeInteractorBuilder()
         b.with_balanced_tree(height=2)
         interactor = b.build()
 
         # when
-        move = interactor.prune_edge(0, 1)
+        move = interactor.swap_leaves(u, v)
         interactor.undo(move)
 
         # then
@@ -124,25 +126,18 @@ class TestPhyloTreeInteractor:
         }
         assert interactor.g.nodes[0]["leaves"] == set(range(3, 7))
 
-    def test_prune_and_attach_of_samples_on_four_sample_tree(self):
+    @pytest.mark.parametrize("u,e", [(3, (2, 5)), (1, (2, 5)), (1, (0, 2))])
+    def test_prune_and_regraft_on_four_sample_tree(self, u, e):
         # given
         b = PhyloTreeInteractorBuilder()
-        b.with_balanced_tree(height=2)
-        interactor = b.build()
+        b.with_balanced_tree(height=3)
+        inter = b.build()
+        edges = set(inter.g.edges)
 
         # when
-        move = interactor.prune_edge(0, 1)
-        new_node, move2 = interactor.attach_node_to_edge(1, (2, 5))
-        interactor.undo(move2)
-        interactor.undo(move)
+        move = inter.prune_and_regraft(u, e)
+        inter.undo(move)
 
         # then
-        assert set(interactor.g.edges()) == {
-            (0, 1),
-            (0, 2),
-            (1, 3),
-            (1, 4),
-            (2, 5),
-            (2, 6),
-        }
-        assert interactor.g.nodes[0]["leaves"] == set(range(3, 7))
+        assert set(inter.g.edges()) == edges
+        assert inter.g.nodes[0]["leaves"] == set(range(7, 15))

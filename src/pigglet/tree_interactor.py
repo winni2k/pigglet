@@ -2,7 +2,7 @@ import itertools
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Tuple, List, Dict
+from typing import Any, Tuple, List, Dict, Optional
 
 import networkx as nx
 
@@ -12,6 +12,8 @@ from pigglet.tree import (
     MutationTreeMoveMemento,
 )
 from pigglet.tree_utils import roots_of_tree
+
+Node = int
 
 
 def random_graph_walk_with_memory_from(g, start):
@@ -52,40 +54,17 @@ class PhyloTreeMoveMemento:
 class PhyloTreeMoveMementoBuilder:
     interactor: Any
 
-    def of_add_semiconnected_root(self, new_root) -> PhyloTreeMoveMemento:
+    def of_prune_and_regraft(
+        self, node, edge: Optional[Tuple[Node, Node]] = None
+    ):
+        if not edge:
+            return PhyloTreeMoveMemento(
+                commands=[self.interactor.rooted_prune_and_regraft],
+                args=[{"node": node}],
+            )
         return PhyloTreeMoveMemento(
-            commands=[self.interactor.remove_semiconnected_root],
-            args=[{"root": new_root}],
-        )
-
-    def of_remove_semiconnected_root(
-        self, root, root_child
-    ) -> PhyloTreeMoveMemento:
-        return PhyloTreeMoveMemento(
-            commands=[self.interactor.add_semiconnected_root],
-            args=[{"new_root": root, "old_root": root_child}],
-        )
-
-    def of_prune_edge(self, u, v, parent, child) -> PhyloTreeMoveMemento:
-        return PhyloTreeMoveMemento(
-            commands=[self.interactor.attach_edge_to_edge],
-            args=[{"new_edge": (u, v), "target_edge": (parent, child)}],
-        )
-
-    def of_attach_edge_to_edge(self, new_edge) -> PhyloTreeMoveMemento:
-        return PhyloTreeMoveMemento(
-            commands=[self.interactor.prune_edge],
-            args=[{"u": new_edge[0], "v": new_edge[1]}],
-        )
-
-    def of_add_edge(self, u, v):
-        return PhyloTreeMoveMemento(
-            commands=[self.interactor.remove_edge], args=[{"u": u, "v": v}]
-        )
-
-    def of_remove_edge(self, u, v):
-        return PhyloTreeMoveMemento(
-            commands=[self.interactor.add_edge], args=[{"u": u, "v": v}]
+            commands=[self.interactor.prune_and_regraft],
+            args=[{"node": node, "edge": edge}],
         )
 
     def of_swap_leaves(self, u, v):
@@ -104,7 +83,6 @@ class TreeInteractor(ABC):
 class PhyloTreeInteractor(TreeInteractor):
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
     leaf_nodes: frozenset = field(default_factory=frozenset)
-    root: int = 0
     mh_correction: float = 0
     _inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
     _last_node_id: int = 0
@@ -117,9 +95,6 @@ class PhyloTreeInteractor(TreeInteractor):
         self.leaf_nodes = frozenset(
             u for u in self.g if self.g.out_degree[u] == 0
         )
-        roots = [u for u in self.g if self.g.in_degree[u] == 0]
-        assert len(roots) == 1, roots
-        self.root = roots[0]
         self._inner_g = self.g.subgraph(
             u for u in self.g if u not in self.leaf_nodes
         )
@@ -127,84 +102,61 @@ class PhyloTreeInteractor(TreeInteractor):
         if "leaves" not in self.g.nodes[self.root]:
             self.annotate_all_nodes_with_descendant_leaves()
 
+    @property
+    def root(self):
+        roots = [u for u in self.g if self.g.in_degree[u] == 0]
+        assert len(roots) == 1, roots
+        return roots[0]
+
     def undo(self, memento):
         for command, args in zip(
             reversed(memento.commands), reversed(memento.args)
         ):
             command(**args)
 
-    def attach_node_to_edge(
-        self, node, edge: Tuple[Any, Any]
-    ) -> Tuple[Any, PhyloTreeMoveMemento]:
-        """Attach node to edge and generate new nodes as necessary"""
-        if node not in self.g:
-            raise ValueError(
-                f"Node to attach ({node}) must already exist in tree"
-            )
-        new_node = self._generate_node_id()
-        memento = self.attach_edge_to_edge((new_node, node), edge)
-        self._annotate_leaves_of_node_and_its_ancestors(new_node)
-        return new_node, memento
-
-    def add_semiconnected_root(
-        self, new_root, old_root
+    def prune_and_regraft(
+        self, node: Node, edge: Tuple[Node, Node]
     ) -> PhyloTreeMoveMemento:
-        self.g.add_edge(new_root, old_root)
-        self.g.nodes[new_root]["leaves"] = self.g.nodes[old_root][
-            "leaves"
-        ].copy()
-        return self._memento_builder.of_add_semiconnected_root(new_root)
-
-    def remove_semiconnected_root(self, root) -> PhyloTreeMoveMemento:
-        assert self.g.in_degree[root] == 0
-        assert self.g.out_degree[root] == 1
-        root_child = list(nx.descendants(self.g, root))[0]
-        self.g.remove_node(root)
-        return self._memento_builder.of_remove_semiconnected_root(
-            root, root_child
-        )
-
-    def add_edge(self, u, v):
-        self.g.add_edge(u, v)
-        self.g.nodes[u]["leaves"] |= self.g.nodes[v]["leaves"]
-        return self._memento_builder.of_add_edge(u, v)
-
-    def remove_edge(self, u, v):
-        self.g.remove_edge(u, v)
-        self.g.nodes[u]["leaves"] -= self.g.nodes[v]["leaves"]
-        return self._memento_builder.of_remove_edge(u, v)
-
-    def prune_edge(self, u, v) -> PhyloTreeMoveMemento:
-        """Prunes an edge and suppresses u if necessary"""
-        if (u, v) not in self._inner_g.edges:
-            raise ValueError(
-                f"Edge {(u, v)} cannot be pruned because it is"
-                f" not an inner edge"
-            )
         g = self.g
-        memento = self.remove_edge(u, v)
-        if g.in_degree[u] == 0:
-            memento.append(self.remove_semiconnected_root(u))
-            return memento
-        assert g.degree[u] == 2
-        parent = next(self.g.predecessors(u))
-        child = next(self.g.successors(u))
-        g.add_edge(parent, child)
-        g.remove_node(u)
-        self._annotate_leaves_of_node_and_its_ancestors(parent)
-        return self._memento_builder.of_prune_edge(u, v, parent, child)
+        assert g.in_degree(node) == 1
+        parent = next(g.predecessors(node))
+        updated_nodes = {parent}
+        if edge[0] == parent:
+            return PhyloTreeMoveMemento()
+        if g.in_degree(parent) == 0:
+            g.remove_node(parent)
+            memento = self._memento_builder.of_prune_and_regraft(node)
+        else:
+            parent_parent = next(g.predecessors(parent))
+            parent_child = next(u for u in g.successors(parent) if u != node)
+            g.add_edge(parent_parent, parent_child)
+            g.remove_node(parent)
+            updated_nodes.add(parent_parent)
+            memento = self._memento_builder.of_prune_and_regraft(
+                node, (parent_parent, parent_child)
+            )
+        nx.add_path(g, [edge[0], parent, edge[1]])
+        g.add_edge(parent, node)
+        g.remove_edge(*edge)
+        for u in updated_nodes:
+            self._annotate_leaves_of_node_and_its_ancestors(u)
+        return memento
 
-    def attach_edge_to_edge(
-        self, new_edge: Tuple[int, int], target_edge: Tuple[int, int]
-    ) -> PhyloTreeMoveMemento:
-        self.g.remove_edge(*target_edge)
-        nx.add_path(self.g, [target_edge[0], new_edge[0], target_edge[1]])
-        self.g.add_edge(*new_edge)
-        self._annotate_leaves_of_node_and_its_ancestors(new_edge[0])
-        return self._memento_builder.of_attach_edge_to_edge(new_edge)
-
-    def random_edge(self):
-        return random.choice(self.g.edges)
+    def rooted_prune_and_regraft(self, node: Node):
+        g = self.g
+        root = self.root
+        parent = next(g.predecessors(node))
+        parent_parent = next(g.predecessors(parent))
+        parent_child = next(u for u in g.successors(parent) if u != node)
+        g.add_edge(parent_parent, parent_child)
+        g.remove_node(parent)
+        g.add_edge(parent, root)
+        g.add_edge(parent, node)
+        for u in [parent_parent]:
+            self._annotate_leaves_of_node_and_its_ancestors(u)
+        return self._memento_builder.of_prune_and_regraft(
+            node, (parent_parent, parent_child)
+        )
 
     def check_binary_rooted_tree(self):
         assert nx.is_directed_acyclic_graph(self.g)
