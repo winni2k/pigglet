@@ -113,7 +113,7 @@ class PhyloTreeMoveCaretaker:
         parent = parent_node_of(self.g, node)
         self.memento = self.interactor.prune(node)
         try:
-            memento = self.interactor.extend_attach(
+            memento = self.interactor.extend_prune_and_regraft(
                 node, parent, self.ext_choice_prob
             )
         except TreeIsTooSmallError:

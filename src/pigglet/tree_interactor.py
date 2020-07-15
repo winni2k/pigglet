@@ -16,15 +16,17 @@ from pigglet.tree_utils import roots_of_tree
 Node = int
 
 
-def random_graph_walk_with_memory_from(g, start):
+def random_graph_walk_with_memory_from(g, start, seen=None):
     """Walks the graph starting from start
 
     Does not yield start node.
 
     :yields: current node, number of unvisited neighbors of current node
     """
+    if not seen:
+        seen = set()
+    seen.add(start)
     current_node = start
-    seen = {current_node}
     neighbors = [n for n in nx.all_neighbors(g, current_node) if n not in seen]
     current_node = random.choice(neighbors)
     while True:
@@ -214,47 +216,43 @@ class PhyloTreeInteractor(TreeInteractor):
             self._annotate_leaves_of_node_and_its_ancestors(parent)
         return self._memento_builder.of_swap_leaves(u, v)
 
-    # def extend_attach(self, node, start, prop_attach):
-    #     assert 0 <= prop_attach < 1
-    #     assert node != start
-    #
-    #     if len(list(nx.all_neighbors(self.g, start))) == 0:
-    #         raise TreeIsTooSmallError
-    #     if len(list(nx.all_neighbors(self.g, start))) == 1:
-    #         start_constraint = RandomWalkStopType.CONSTRAINED
-    #     else:
-    #         start_constraint = RandomWalkStopType.UNCONSTRAINED
-    #     previous_node = start
-    #     for attach_node, neighbors in random_graph_walk_with_memory_from(
-    #         self.g, start
-    #     ):
-    #         if random.random() < prop_attach:
-    #             break
-    #         previous_node = attach_node
-    #     attach_edge = (previous_node, attach_node)
-    #     if attach_edge not in self.g.edges:
-    #         attach_edge = reversed(attach_edge)
-    #     assert attach_edge in self.g.edges
-    #     if attach_edge[0] != start:
-    #         parent = list(self.g.predecessors(start))
-    #         if len(parent) == 0:
-    #             self.g.remove_node(start)
-    #     constraint = RandomWalkStopType.UNCONSTRAINED
-    #     if not neighbors:
-    #         constraint = RandomWalkStopType.CONSTRAINED
-    #
-    #     memento = self.attach_node_to_edge(node, attach_edge)
-    #     assert self.mh_correction == 1
-    #     if start_constraint == constraint:
-    #         self.mh_correction = 1
-    #     elif start_constraint == RandomWalkStopType.CONSTRAINED:
-    #         self.mh_correction = 1 - prop_attach
-    #     elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
-    #         self.mh_correction = 1 / (1 - prop_attach)
-    #     else:
-    #         raise Exception("Programmer error")
-    #     return memento
-    #
+    def extend_prune_and_regraft(self, node, prop_attach):
+        assert 0 <= prop_attach < 1
+        assert self.g.in_degree(node) == 1
+        assert self.g.out_degree(node) == 2
+        start = next(self.g.predecessors(node))
+        if len(list(nx.all_neighbors(self.g, start))) == 1:
+            raise TreeIsTooSmallError
+        if len(list(nx.all_neighbors(self.g, start))) == 2:
+            start_constraint = RandomWalkStopType.CONSTRAINED
+        else:
+            start_constraint = RandomWalkStopType.UNCONSTRAINED
+        previous_node = start
+        for attach_node, neighbors in random_graph_walk_with_memory_from(
+            self.g, start, seen={node}
+        ):
+            if not neighbors:
+                break
+            if random.random() < prop_attach:
+                break
+            previous_node = attach_node
+        attach_edge = (previous_node, attach_node)
+        if attach_edge not in self.g.edges:
+            attach_edge = tuple(reversed(attach_edge))
+        assert attach_edge in self.g.edges, attach_edge
+        memento = self.prune_and_regraft(node, attach_edge)
+        constraint = RandomWalkStopType.UNCONSTRAINED
+        if not neighbors:
+            constraint = RandomWalkStopType.CONSTRAINED
+        if start_constraint == constraint:
+            self.mh_correction = 1
+        elif start_constraint == RandomWalkStopType.CONSTRAINED:
+            self.mh_correction = 1 - prop_attach
+        elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
+            self.mh_correction = 1 / (1 - prop_attach)
+        else:
+            raise Exception("Programmer error")
+        return memento
 
 
 class MutationTreeInteractor(TreeInteractor):
