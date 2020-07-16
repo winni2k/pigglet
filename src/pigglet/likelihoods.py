@@ -2,7 +2,8 @@ import logging
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
+from typing import Optional
+import itertools as it
 import networkx as nx
 import numpy as np
 
@@ -140,19 +141,24 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     _changed_nodes: set = field(default_factory=set)
     _sample_lookup: dict = field(default_factory=dict)
     n_node_update_list: list = field(default_factory=list)
+    _attachment_log_like: Optional[np.ndarray] = None
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
         self.n_samples = self.gls.shape[1]
-        roots = roots_of_tree(self.g)
-        assert len(roots) == 1
-        root = roots[0]
-        self._changed_nodes.add(root)
         leaf_nodes = sorted(
             u for u in self.g.nodes if self.g.out_degree(u) == 0
         )
         self._sample_lookup = {u: i for i, u in enumerate(leaf_nodes)}
-        GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(root)
+        GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(
+            self.root
+        )
+
+    @property
+    def root(self):
+        roots = roots_of_tree(self.g)
+        assert len(roots) == 1
+        return roots[0]
 
     @property
     def attachment_log_like(self) -> np.ndarray:
@@ -162,30 +168,71 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         the cell at row i and column j is the probability of mutation j
         attaching to node i in the phylogenetic tree
         """
+        if self._attachment_log_like is None:
+            self._attachment_log_like_complete_recalculation()
+        elif self._changed_nodes:
+            self._attachment_log_like_partial_recalculation()
+        return self._attachment_log_like
+
+    def _attachment_log_like_complete_recalculation(self):
+        """Completely recalculate attachment log likelihoods"""
         n_node_updates = 0
-        start = roots_of_tree(self.g)[0]
-        attachment_log_like = np.zeros(
-            (len(self.g), self.n_sites), dtype=LOG_LIKE_DTYPE
-        )
+        attach_ll = np.zeros((len(self.g), self.n_sites), dtype=LOG_LIKE_DTYPE)
 
         # If a mutation attaches to the root,
         # then all samples have the mutation
-        attachment_log_like[start] = np.sum(self.gls[:, :, HET_NUM], 1)
-        for u, v in nx.dfs_edges(self.g, start):
+        attach_ll[self.root] = np.sum(self.gls[:, :, HET_NUM], 1)
+        for u, v in nx.dfs_edges(self.g, self.root):
             n_node_updates += 1
             update_idxs = [
                 self._sample_lookup[s]
                 for s in self.g.nodes[u]["leaves"] - self.g.nodes[v]["leaves"]
             ]
-            attachment_log_like[v] = (
-                attachment_log_like[u]
+            attach_ll[v] = (
+                attach_ll[u]
                 + np.sum(self.gls[:, update_idxs, HOM_REF_NUM], 1)
                 - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
         self._changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
+        self._attachment_log_like = attach_ll
 
-        return attachment_log_like
+    def _attachment_log_like_partial_recalculation(self):
+        """Recalculate attachment log likelihoods only for changed nodes
+        and their ancestors"""
+        n_node_updates = 0
+        attach_ll = self._attachment_log_like
+        for start in self._changed_nodes:
+            for node in it.chain([start], nx.ancestors(self.g, start)):
+                n_node_updates += 1
+                leaves = self.g.nodes[node]["leaves"]
+                sample_idxs = [self._sample_lookup[u] for u in leaves]
+                node_gls = self.gls[:, :, HOM_REF_NUM].copy()
+                node_gls[:, sample_idxs] = self.gls[:, sample_idxs, HET_NUM]
+                attach_ll[node] = np.sum(node_gls, 1)
+                #
+                # children = list(self.g.successors(node))
+                # if len(children) == 2:
+                #     child2_samples = [
+                #         self._sample_lookup[leaf]
+                #         for leaf in self.g.nodes[children[1]]["leaves"]
+                #     ]
+                #     attach_ll[node] = (
+                #         attach_ll[children[0]]
+                #         - np.sum(self.gls[:, child2_samples, HOM_REF_NUM], 1)
+                #         + np.sum(self.gls[:, child2_samples, HET_NUM], 1,)
+                #     )
+                # elif len(children) == 0:
+                #     sample_idx = self._sample_lookup[node]
+                #     node_gls = self.gls[:,:,HOM_REF_NUM]
+                #     node_gls[:, sample_idx] = self.gls[:,
+                #     sample_idx, HET_NUM]
+                #     attach_ll[node] = np.sum(node_gls, 1)
+                # else:
+                #     raise Exception("Programmer error")
+        self._changed_nodes.clear()
+        self.n_node_update_list.append(n_node_updates)
+        self._attachment_log_like = attach_ll
 
     def node_sample_ids(self):
         """Iterate over node ids and associated samples (leaves)"""

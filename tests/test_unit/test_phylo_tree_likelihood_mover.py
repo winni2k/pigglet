@@ -8,12 +8,13 @@ All methods prefixed with "_" are private.
 Call build() to obtain the constructed object.
 """
 import math
-
+import random
+import itertools as it
 import numpy as np
 import pytest
 from pytest import approx
 
-
+from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
 from pigglet.tree_interactor import PhyloTreeInteractor
 from pigglet.tree_likelihood_mover import PhyloTreeLikelihoodMover
 
@@ -94,11 +95,14 @@ class TestSampleMarginalizedLikelihood:
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
-    @pytest.mark.parametrize("n_samples", list(range(3, 10)))
-    def test_arbitrary_trees(self, n_samples):
+    @pytest.mark.parametrize(
+        "n_samples,seed", list(it.product(range(3, 10), (0, 1)))
+    )
+    def test_arbitrary_trees(self, n_samples, seed):
         # given
         b = MCMCBuilder()
         b.with_phylogenetic_tree()
+        random.seed(seed)
 
         for sample in range(n_samples):
             b.with_mutated_gl_at(sample, sample)
@@ -114,13 +118,13 @@ class TestRecalculateAttachmentLogLikeFromNodes:
             *mover.changed_nodes
         ).attachment_log_like.copy()
 
-        root_like = calc.register_changed_nodes(
-            mcmc.tree_interactor.root
-        ).attachment_log_like.copy()
+        recalc_like = PhyloTreeLikelihoodCalculator(
+            calc.g, calc.gls
+        ).attachment_log_like
 
         # then
-        assert root_like is not None
-        assert np.allclose(root_like, like)
+        for idx in range(recalc_like.shape[0]):
+            assert np.allclose(recalc_like[idx], like[idx]), idx
 
 
 @pytest.mark.parametrize("n_samples", list(range(3, 10)))
