@@ -142,14 +142,17 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     _sample_lookup: dict = field(default_factory=dict)
     n_node_update_list: list = field(default_factory=list)
     _attachment_log_like: Optional[np.ndarray] = None
+    leaf_nodes: frozenset = field(init=False)
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
         self.n_samples = self.gls.shape[1]
-        leaf_nodes = sorted(
-            u for u in self.g.nodes if self.g.out_degree(u) == 0
+        self.leaf_nodes = frozenset(
+            {u for u in self.g.nodes if self.g.out_degree(u) == 0}
         )
-        self._sample_lookup = {u: i for i, u in enumerate(leaf_nodes)}
+        self._sample_lookup = {
+            u: i for i, u in enumerate(sorted(self.leaf_nodes))
+        }
         GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(
             self.root
         )
@@ -206,10 +209,12 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
             for node in it.chain([start], nx.ancestors(self.g, start)):
                 n_node_updates += 1
                 leaves = self.g.nodes[node]["leaves"]
+                other_leaves = self.leaf_nodes - leaves
                 sample_idxs = [self._sample_lookup[u] for u in leaves]
-                node_gls = self.gls[:, :, HOM_REF_NUM].copy()
-                node_gls[:, sample_idxs] = self.gls[:, sample_idxs, HET_NUM]
-                attach_ll[node] = np.sum(node_gls, 1)
+                other_idxs = [self._sample_lookup[u] for u in other_leaves]
+                attach_ll[node] = np.sum(
+                    self.gls[:, sample_idxs, HET_NUM], 1
+                ) + np.sum(self.gls[:, other_idxs, HOM_REF_NUM], 1)
                 #
                 # children = list(self.g.successors(node))
                 # if len(children) == 2:
