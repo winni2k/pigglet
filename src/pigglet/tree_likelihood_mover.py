@@ -135,7 +135,7 @@ class PhyloTreeMoveCaretaker:
         ]
         self.move_tracker = MoveTracker(len(self.available_moves))
         self.changed_nodes = list(roots_of_tree(g))
-        self.ext_choice_prob = 0.5
+        self.ext_choice_prob = 0.33
 
     @property
     def mh_correction(self):
@@ -172,6 +172,9 @@ class PhyloTreeMoveCaretaker:
         )[0]
         self.move_tracker.register_try(choice)
         self.available_moves[choice]()
+
+    def register_mh_result(self, accepted: bool):
+        self.move_tracker.register_mh_result(accepted)
 
     def _get_two_distinct_leaves(self):
         n1 = n2 = 0

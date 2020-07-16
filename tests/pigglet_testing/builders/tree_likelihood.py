@@ -12,7 +12,10 @@ from pigglet.likelihoods import (
     PhyloTreeLikelihoodCalculator,
 )
 from pigglet.mcmc import MCMCRunner
-from pigglet.tree_likelihood_mover import MutationTreeMoveCaretaker
+from pigglet.tree_likelihood_mover import (
+    MutationTreeMoveCaretaker,
+    PhyloTreeMoveCaretaker,
+)
 from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 
@@ -25,6 +28,7 @@ class LikelihoodBuilder:
     mutation_gl = 0
     num_sites = 0
     num_samples = 0
+    certainty = 1
     gls = None
 
     def _mutate_gls(self):
@@ -38,7 +42,11 @@ class LikelihoodBuilder:
             self.gls[:, :, peak] = self.mutation_gl
 
     def build(self):
-        self.gls = np.ones((self.num_sites, self.num_samples, NUM_GLS)) * -1
+        self.gls = (
+            np.ones((self.num_sites, self.num_samples, NUM_GLS))
+            * -1
+            * self.certainty
+        )
         self._add_likelihood_peaks()
         self._mutate_gls()
         return self.gls
@@ -122,10 +130,16 @@ class MutationTreeLikelihoodCalculatorBuilder(MutationTreeLikelihoodBuilder):
         return MutationTreeLikelihoodCalculator(g, gls)
 
 
-class MoveExecutorBuilder(MutationTreeBuilder):
+class MutationMoveExecutorBuilder(MutationTreeBuilder):
     def build(self):
         g = super().build()
         return MutationTreeMoveCaretaker(g)
+
+
+class PhyloMoveExecutorBuilder(PhyloTreeBuilder):
+    def build(self):
+        g = super().build()
+        return PhyloTreeMoveCaretaker(g)
 
 
 class MCMCBuilder(LikelihoodBuilder):
@@ -136,6 +150,7 @@ class MCMCBuilder(LikelihoodBuilder):
         self.n_sampling_iter = 10
         self.normalize_gls = False
         self.mutation_tree = True
+        self.reporting_interval = 10
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
@@ -165,6 +180,7 @@ class MCMCBuilder(LikelihoodBuilder):
             runner = MCMCRunner.phylogenetic_tree_from_gls(gls)
         runner.num_burnin_iter = self.n_burnin_iter
         runner.num_sampling_iter = self.n_sampling_iter
+        runner.reporting_interval = self.reporting_interval
         return runner
 
 
@@ -177,3 +193,16 @@ def add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample):
     for non_mutation in set(rand_g) - mutations:
         if non_mutation != ROOT_LABEL:
             b.with_unmutated_gl_at(sample, non_mutation)
+
+
+def add_gl_at_each_ancestor_node_for_nodes(b, g):
+    """Add a mutation for each inner node of g to all samples"""
+    leaf_nodes = {u for u in g.nodes if g.out_degree(u) == 0}
+    inner_nodes = {u for u in g.nodes if g.out_degree(u) != 0}
+    for mutation_idx, u in enumerate(sorted(inner_nodes)):
+        mutated_samples = set(nx.descendants(g, u)) & leaf_nodes
+        for sample in leaf_nodes:
+            if sample in mutated_samples:
+                b.with_mutated_gl_at(sample, mutation_idx)
+            else:
+                b.with_unmutated_gl_at(sample, mutation_idx)

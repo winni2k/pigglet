@@ -50,6 +50,73 @@ class TestPruneAndRegraft:
         assert inter.g.nodes[2]["leaves"] == set(range(3, 7))
         assert inter.g.nodes[0]["leaves"] == set(range(3, 6))
 
+    def test_bug1(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=3)
+        inter = b.build()
+
+        # when
+        inter.prune_and_regraft(6, (0, 1))
+
+        # then
+        assert inter.g.edges >= {
+            (0, 2),
+            (0, 5),
+            (2, 1),
+            (2, 6),
+            (1, 3),
+            (1, 4),
+        }
+        assert inter.g.nodes[0]["leaves"] == set(range(7, 15))
+        assert inter.g.nodes[2]["leaves"] == set(range(7, 15)) - {11, 12}
+
+    def test_bug2_regraft_edge_pointing_to_parent(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(height=3)
+        inter = b.build()
+
+        # when
+        inter.prune_and_regraft(6, (0, 2))
+
+        # then
+        assert inter.g.edges >= {
+            (0, 1),
+            (0, 2),
+            (1, 3),
+            (1, 4),
+            (2, 5),
+            (2, 6),
+        }
+        assert inter.g.nodes[0]["leaves"] == set(range(7, 15))
+        assert inter.g.nodes[2]["leaves"] == set(range(11, 15))
+
+    def test_bug3_regraft_root_onto_distal_edge(self):
+        # given
+        b = PhyloTreeInteractorBuilder()
+        b.with_path(6, 5, 1)
+        b.with_path(5, 4, 0)
+        b.with_branch(4, 2)
+        b.with_branch(6, 3)
+        inter = b.build()
+
+        # when
+        inter.rooted_prune_and_regraft(4)
+
+        # then
+        assert inter.g.edges >= {
+            (5, 6),
+            (5, 4),
+            (4, 0),
+            (4, 2),
+            (6, 3),
+            (6, 1),
+        }
+        assert inter.g.nodes[5]["leaves"] == set(range(4))
+        assert inter.g.nodes[4]["leaves"] == {0, 2}
+        assert inter.g.nodes[6]["leaves"] == {1, 3}
+
 
 class TestCalculateDescendantLeavesOf:
     def test_two_leaves(self):

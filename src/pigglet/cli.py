@@ -1,7 +1,5 @@
 import click
 
-from pigglet.tree import strip_tree
-
 
 def configure_logger(log_level, log_file):
     import logging
@@ -271,6 +269,7 @@ def store_phylo_tree_results(out_prefix, output_store, runner):
     import h5py
     import networkx as nx
     import numpy as np
+    from pigglet.tree import strip_tree
 
     with h5py.File(output_store, mode="a") as fh:
         fh.create_dataset(

@@ -8,6 +8,7 @@ import numpy as np
 
 from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
 from pigglet.scipy_import import logsumexp
+from pigglet.tree_interactor import GraphAnnotator
 from pigglet.tree_utils import roots_of_tree
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     n_samples: int = 0
     _changed_nodes: set = field(default_factory=set)
     _sample_lookup: dict = field(default_factory=dict)
+    n_node_update_list: list = field(default_factory=list)
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -150,6 +152,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
             u for u in self.g.nodes if self.g.out_degree(u) == 0
         )
         self._sample_lookup = {u: i for i, u in enumerate(leaf_nodes)}
+        GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(root)
 
     @property
     def attachment_log_like(self) -> np.ndarray:
@@ -159,6 +162,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         the cell at row i and column j is the probability of mutation j
         attaching to node i in the phylogenetic tree
         """
+        n_node_updates = 0
         start = roots_of_tree(self.g)[0]
         attachment_log_like = np.zeros(
             (len(self.g), self.n_sites), dtype=LOG_LIKE_DTYPE
@@ -168,6 +172,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         # then all samples have the mutation
         attachment_log_like[start] = np.sum(self.gls[:, :, HET_NUM], 1)
         for u, v in nx.dfs_edges(self.g, start):
+            n_node_updates += 1
             update_idxs = [
                 self._sample_lookup[s]
                 for s in self.g.nodes[u]["leaves"] - self.g.nodes[v]["leaves"]
@@ -178,6 +183,8 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
         self._changed_nodes.clear()
+        self.n_node_update_list.append(n_node_updates)
+
         return attachment_log_like
 
     def node_sample_ids(self):
@@ -235,7 +242,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         assert len(roots) == 1
         self.root = roots[0]
         self._changed_nodes = {self.root}
-        self.n_node_updates = None
+        self._n_node_updates = None
         self.n_node_update_list = []
 
     @property
@@ -250,7 +257,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         if self.has_changed_nodes():
             for node in self._changed_nodes:
                 self._recalculate_attachment_log_like_from(node)
-                n_node_updates += self.n_node_updates
+                n_node_updates += self._n_node_updates
             self._changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
 
@@ -307,7 +314,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
 
     def _recalculate_attachment_log_like_from(self, start):
         attachment_log_like = self._attachment_log_like
-        self.n_node_updates = 1
+        self._n_node_updates = 1
         self.summer.register_changed_node(start)
         if start == self.root:
             attachment_log_like = np.zeros(
@@ -324,7 +331,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 - self.gls[start, :, HOM_REF_NUM]
             )
         for u, v in nx.dfs_edges(self.g, start):
-            self.n_node_updates += 1
+            self._n_node_updates += 1
             self.summer.register_changed_node(v)
             attachment_log_like[v + 1] = (
                 attachment_log_like[u + 1]

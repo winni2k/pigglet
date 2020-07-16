@@ -1,4 +1,5 @@
 import itertools
+import logging
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -11,6 +12,36 @@ from pigglet.tree import MutationTreeMoveMemento, RandomWalkStopType
 from pigglet.tree_utils import roots_of_tree
 
 Node = int
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class GraphAnnotator:
+    g: nx.DiGraph
+
+    def annotate_all_nodes_with_descendant_leaves(self, start):
+        for node in nx.dfs_postorder_nodes(self.g, start):
+            self.annotate_leaves_from_successors(node)
+
+    def annotate_leaves_from_successors(self, new_node):
+        if self.g.out_degree(new_node) == 0:
+            self.g.nodes[new_node]["leaves"] = {new_node}
+            return
+        children = list(self.g.successors(new_node))
+        assert len(children) == 2
+        self.g.nodes[new_node]["leaves"] = (
+            self.g.nodes[children[0]]["leaves"]
+            | self.g.nodes[children[1]]["leaves"]
+        )
+
+    def annotate_leaves_of_node_and_its_ancestors(self, current):
+        while True:
+            self.annotate_leaves_from_successors(current)
+            predecessors = list(self.g.predecessors(current))
+            if not predecessors:
+                break
+            assert len(predecessors) == 1
+            current = predecessors[0]
 
 
 def random_graph_walk_with_memory_from(g, start, seen=None):
@@ -87,6 +118,7 @@ class PhyloTreeInteractor(TreeInteractor):
     inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
     _last_node_id: int = 0
     _memento_builder: PhyloTreeMoveMementoBuilder = field(init=False)
+    _annotator: GraphAnnotator = field(init=False)
 
     def __post_init__(self):
         self._memento_builder = PhyloTreeMoveMementoBuilder(self)
@@ -100,8 +132,8 @@ class PhyloTreeInteractor(TreeInteractor):
             u for u in self.g if u not in self.leaf_nodes
         )
         self.check_binary_rooted_tree()
-        if "leaves" not in self.g.nodes[self.root]:
-            self.annotate_all_nodes_with_descendant_leaves()
+        self._annotator = GraphAnnotator(self.g)
+        self._annotator.annotate_all_nodes_with_descendant_leaves(self.root)
 
     @property
     def root(self):
@@ -121,8 +153,8 @@ class PhyloTreeInteractor(TreeInteractor):
         g = self.g
         assert g.in_degree(node) == 1
         parent = next(g.predecessors(node))
-        updated_nodes = {parent}
-        if edge[0] == parent:
+        updated_nodes = [parent]
+        if parent in edge:
             return PhyloTreeMoveMemento()
         if g.in_degree(parent) == 0:
             g.remove_node(parent)
@@ -132,7 +164,7 @@ class PhyloTreeInteractor(TreeInteractor):
             parent_child = next(u for u in g.successors(parent) if u != node)
             g.add_edge(parent_parent, parent_child)
             g.remove_node(parent)
-            updated_nodes.add(parent_parent)
+            updated_nodes.append(parent_parent)
             memento = self._memento_builder.of_prune_and_regraft(
                 node, (parent_parent, parent_child)
             )
@@ -140,21 +172,33 @@ class PhyloTreeInteractor(TreeInteractor):
         g.add_edge(parent, node)
         g.remove_edge(*edge)
         for u in updated_nodes:
-            self._annotate_leaves_of_node_and_its_ancestors(u)
+            try:
+                self._annotator.annotate_leaves_of_node_and_its_ancestors(u)
+            except KeyError:
+                logger.error(f"During: prune_and_regraft({node}, {edge})")
+                logger.error(f"Node {u} leaves cannot be annotated.")
+                logger.error(self.g.nodes(data=True))
+                logger.error(self.g.edges)
+                raise
         return memento
 
     def rooted_prune_and_regraft(self, node: Node):
+        """Create new root with old root and node as children"""
         g = self.g
         root = self.root
         parent = next(g.predecessors(node))
-        parent_parent = next(g.predecessors(parent))
+        predecessors = list(g.predecessors(parent))
+        if not predecessors:
+            return PhyloTreeMoveMemento()
+        parent_parent = predecessors[0]
         parent_child = next(u for u in g.successors(parent) if u != node)
         g.add_edge(parent_parent, parent_child)
         g.remove_node(parent)
         g.add_edge(parent, root)
         g.add_edge(parent, node)
+        self.check_binary_rooted_tree()
         for u in [parent_parent]:
-            self._annotate_leaves_of_node_and_its_ancestors(u)
+            self._annotator.annotate_leaves_of_node_and_its_ancestors(u)
         return self._memento_builder.of_prune_and_regraft(
             node, (parent_parent, parent_child)
         )
@@ -172,31 +216,6 @@ class PhyloTreeInteractor(TreeInteractor):
                 assert self.g.in_degree(node) == 1
                 assert self.g.out_degree(node) == 2
 
-    def _annotate_descendant_leaves_of(self, new_node):
-        if self.g.out_degree(new_node) == 0:
-            self.g.nodes[new_node]["leaves"] = {new_node}
-            return
-        children = list(self.g.successors(new_node))
-        assert len(children) == 2
-        self.g.nodes[new_node]["leaves"] = (
-            self.g.nodes[children[0]]["leaves"]
-            | self.g.nodes[children[1]]["leaves"]
-        )
-
-    def _annotate_leaves_of_node_and_its_ancestors(self, new_node):
-        current = new_node
-        while True:
-            self._annotate_descendant_leaves_of(current)
-            predecessors = list(self.g.predecessors(current))
-            if not predecessors:
-                break
-            assert len(predecessors) == 1
-            current = predecessors[0]
-
-    def annotate_all_nodes_with_descendant_leaves(self):
-        for node in nx.dfs_postorder_nodes(self.g, self.root):
-            self._annotate_descendant_leaves_of(node)
-
     def swap_leaves(self, u, v) -> PhyloTreeMoveMemento:
         assert u != v
         assert u in self.leaf_nodes
@@ -207,7 +226,7 @@ class PhyloTreeInteractor(TreeInteractor):
         for node, parent in zip([u, v], reversed(parents)):
             self.g.add_edge(parent, node)
         for parent in parents:
-            self._annotate_leaves_of_node_and_its_ancestors(parent)
+            self._annotator.annotate_leaves_of_node_and_its_ancestors(parent)
         return self._memento_builder.of_swap_leaves(u, v)
 
     def extend_prune_and_regraft(self, node, prop_attach):
@@ -230,23 +249,31 @@ class PhyloTreeInteractor(TreeInteractor):
             if random.random() < prop_attach:
                 break
             previous_node = attach_node
+        self.mh_correction = determine_espr_mh_correction(
+            neighbors, prop_attach, start_constraint
+        )
+        if previous_node == self.root:
+            return self.rooted_prune_and_regraft(node)
         attach_edge = (previous_node, attach_node)
         if attach_edge not in self.g.edges:
             attach_edge = tuple(reversed(attach_edge))
         assert attach_edge in self.g.edges, attach_edge
-        memento = self.prune_and_regraft(node, attach_edge)
+        return self.prune_and_regraft(node, attach_edge)
+
+
+def determine_espr_mh_correction(neighbors, prop_attach, start_constraint):
+    if neighbors:
         constraint = RandomWalkStopType.UNCONSTRAINED
-        if not neighbors:
-            constraint = RandomWalkStopType.CONSTRAINED
-        if start_constraint == constraint:
-            self.mh_correction = 1
-        elif start_constraint == RandomWalkStopType.CONSTRAINED:
-            self.mh_correction = 1 - prop_attach
-        elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
-            self.mh_correction = 1 / (1 - prop_attach)
-        else:
-            raise Exception("Programmer error")
-        return memento
+    else:
+        constraint = RandomWalkStopType.CONSTRAINED
+    if start_constraint == constraint:
+        return 1
+    elif start_constraint == RandomWalkStopType.CONSTRAINED:
+        return 1 - prop_attach
+    elif start_constraint == RandomWalkStopType.UNCONSTRAINED:
+        return 1 / (1 - prop_attach)
+    else:
+        raise Exception("Programmer error")
 
 
 class MutationTreeInteractor(TreeInteractor):
