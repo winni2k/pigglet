@@ -11,16 +11,15 @@ import math
 
 import numpy as np
 import pytest
+from pytest import approx
+
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
-from pytest import approx
 
 
 def get_sample_likelihood(calc, sample_idx):
-    return np.exp(
-        calc.attachment_marginalized_sample_log_likelihoods()[sample_idx]
-    )
+    return np.exp(calc.attachment_marginalized_log_likelihoods()[sample_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):

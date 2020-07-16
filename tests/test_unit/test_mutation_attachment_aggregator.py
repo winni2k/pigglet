@@ -2,17 +2,17 @@ import math
 
 import numpy as np
 import pytest
+
+from pigglet.likelihoods import MutationAttachmentAggregator
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
-
-from pigglet.likelihoods import AttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:
     def test_no_attachment_scores(self):
         # given
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
 
         # then
         assert agg.attachment_scores is None
@@ -24,7 +24,7 @@ class TestAddAttachmentlogLikes:
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
 
         # when
         agg.add_attachment_log_likes(calc)
@@ -40,7 +40,7 @@ class TestAddAttachmentlogLikes:
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
 
         # when
         agg.add_attachment_log_likes(calc)
@@ -57,7 +57,7 @@ class TestAddAttachmentlogLikes:
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
 
         # when
         agg.add_attachment_log_likes(calc)
@@ -79,7 +79,7 @@ class TestAddAttachmentlogLikes:
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
 
         # when
         for _ in range(num_additions):
@@ -103,7 +103,7 @@ class TestConvertToMutationProbs:
         b.with_gl_dimensions(1, 1)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
         agg.add_attachment_log_likes(calc)
 
         # when
@@ -121,7 +121,7 @@ class TestConvertToMutationProbs:
         b.with_mutation_site_at(-1, 0)
         b.with_mutated_gl_at(0, 0)
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
         agg.add_attachment_log_likes(calc)
 
         # when
@@ -140,7 +140,7 @@ class TestConvertToMutationProbs:
         b.with_gl_dimensions(1, 2)
         b.with_likelihood_peak_at_all_hom_ref()
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
         agg.add_attachment_log_likes(calc)
 
         # when
@@ -163,7 +163,7 @@ class TestConvertToMutationProbs:
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(0, 1)
         calc = b.build()
-        agg = AttachmentAggregator()
+        agg = MutationAttachmentAggregator()
         for _ in range(num_additions):
             agg.add_attachment_log_likes(calc)
 

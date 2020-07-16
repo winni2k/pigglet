@@ -1,5 +1,7 @@
 import click
 
+from pigglet.tree import strip_tree
+
 
 def configure_logger(log_level, log_file):
     import logging
@@ -138,12 +140,19 @@ def infer(
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
-    runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
-    runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
+    if mutation_tree:
+        logging.info("Using a mutation tree")
+        runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
+        runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
+    else:
+        logging.info("Using a phylogenetic tree")
     runner.run()
 
     logging.info("Storing results")
-    store_results(gls, out_prefix, output_store, runner)
+    if mutation_tree:
+        store_mutation_tree_results(gls, out_prefix, output_store, runner)
+    else:
+        store_phylo_tree_results(out_prefix, output_store, runner)
 
 
 @cli.command()
@@ -225,7 +234,7 @@ def store_input(gls, loader, output_store, store_gls):
             fh.create_dataset("input/gls", data=gls, compression="gzip")
 
 
-def store_results(gls, out_prefix, output_store, runner):
+def store_mutation_tree_results(gls, out_prefix, output_store, runner):
     import h5py
     import networkx as nx
     import numpy as np
@@ -256,3 +265,24 @@ def store_results(gls, out_prefix, output_store, runner):
         )
     output_graph = out_prefix + ".map_tree.gml"
     nx.write_gml(runner.map_g, output_graph)
+
+
+def store_phylo_tree_results(out_prefix, output_store, runner):
+    import h5py
+    import networkx as nx
+    import numpy as np
+
+    with h5py.File(output_store, mode="a") as fh:
+        fh.create_dataset(
+            "map_phylo_tree/mutation_probabilities",
+            data=runner.agg.averaged_mutation_probabilities(),
+            compression="gzip",
+        )
+        fh.create_dataset(
+            "map_phylo_tree/edge_list",
+            data=np.array(
+                [edge[0:2] for edge in nx.to_edgelist(runner.map_g)]
+            ),
+        )
+    output_graph = out_prefix + ".map_tree.gml"
+    nx.write_gml(strip_tree(runner.map_g), output_graph)

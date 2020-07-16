@@ -10,16 +10,15 @@ Call build() to obtain the constructed object.
 import math
 
 import numpy as np
+from pytest import approx
+
 from pigglet_testing.builders.tree_likelihood import (
     PhyloTreeLikelihoodCalculatorBuilder,
 )
-from pytest import approx
 
 
 def get_mutation_likelihood(calc, site_idx):
-    return np.exp(
-        calc.attachment_marginalized_mutation_log_likelihoods()[site_idx]
-    )
+    return np.exp(calc.attachment_marginalized_log_likelihoods()[site_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):

@@ -1,21 +1,60 @@
 import random
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, Optional
 
 import numpy as np
 
 from pigglet.constants import TreeIsTooSmallError
-from pigglet.likelihoods import MutationTreeLikelihoodCalculator
+from pigglet.likelihoods import (
+    MutationTreeLikelihoodCalculator,
+    PhyloTreeLikelihoodCalculator,
+)
 from pigglet.tree import MutationTreeMoveMemento
 from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
-from pigglet.tree_utils import roots_of_tree, parent_node_of
+from pigglet.tree_utils import parent_node_of, roots_of_tree
 
 
-class PhyloTreeLikelihoodMover:
+class TreeLikelihoodMover(ABC):
+    pass
+
+
+class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     """Make phylogenetic tree moves while keeping tree likelihoods updated"""
 
+    def __init__(self, g, gls):
+        self.mover = PhyloTreeMoveCaretaker(g)
+        self.calc = PhyloTreeLikelihoodCalculator(g, gls)
 
-class MutationTreeLikelihoodMover:
+    def random_move(self, weights=None):
+        self.mover.random_move(weights=weights)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+
+    def undo(self):
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+        self.mover.undo(memento=self.mover.memento)
+
+    def log_likelihood(self):
+        return self.calc.log_likelihood()
+
+    @property
+    def mh_correction(self):
+        return self.mover.mh_correction
+
+    @property
+    def changed_nodes(self):
+        return self.mover.changed_nodes
+
+    @property
+    def attachment_log_like(self):
+        return self.calc.attachment_log_like
+
+    @property
+    def memento(self):
+        return self.mover.memento
+
+
+class MutationTreeLikelihoodMover(TreeLikelihoodMover):
     """Make mutation tree moves while keeping tree likelihoods updated"""
 
     def __init__(self, g, gls):
@@ -30,7 +69,7 @@ class MutationTreeLikelihoodMover:
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
         self.mover.undo(memento=self.mover.memento)
 
-    def sample_marginalized_log_likelihood(self):
+    def log_likelihood(self):
         return self.calc.log_likelihood()
 
     @property
@@ -107,64 +146,40 @@ class PhyloTreeMoveCaretaker:
 
     def extending_subtree_prune_and_regraft(self):
         """AKA eSPR, as described in Lakner et al. 2008"""
-        if len(self.g) < 2:
-            raise TreeIsTooSmallError
-        node = random.randrange(len(self.g) - 1)
-        parent = parent_node_of(self.g, node)
-        self.memento = self.interactor.prune(node)
-        try:
-            memento = self.interactor.extend_prune_and_regraft(
-                node, parent, self.ext_choice_prob
-            )
-        except TreeIsTooSmallError:
-            memento = self.interactor.attach(node, parent)
-        self.memento.append(memento)
-        self.changed_nodes = [node]
+        if len(self.g) == 3:
+            return MutationTreeMoveMemento()
+        node = random.choice(
+            [
+                u
+                for u in self.interactor.inner_g.nodes
+                if self.g.in_degree(u) != 0
+            ]
+        )
+        self.memento = self.interactor.extend_prune_and_regraft(
+            node, prop_attach=self.ext_choice_prob
+        )
 
-    def prune_and_regraft(self):
-        if len(self.g) < 2:
-            raise TreeIsTooSmallError
-        node = random.randrange(len(self.g) - 1)
-        self.memento = self.interactor.prune(node)
-        self.memento.append(self.interactor.uniform_attach(node))
-        self.changed_nodes = [node]
-
-    def swap_node(self):
-        if self._tree_is_too_small_for_advanced_moves():
-            self.memento = MutationTreeMoveMemento()
-            return
-        n1, n2 = self._get_two_distinct_nodes()
-        self.memento = self.interactor.swap_labels(n1, n2)
-        self.changed_nodes = [n1, n2]
-
-    def swap_subtree(self):
-        if self._tree_is_too_small_for_advanced_moves():
-            self.memento = MutationTreeMoveMemento()
-            return
-        n1, n2 = self._get_two_distinct_nodes()
-        self.memento = self.interactor.swap_subtrees(n1, n2)
+    def swap_leaf(self):
+        n1, n2 = self._get_two_distinct_leaves()
+        self.memento = self.interactor.swap_leaves(n1, n2)
         self.changed_nodes = [n1, n2]
 
     def random_move(self, weights=None):
         if weights is None:
-            weights = [1, 1, 1]
+            weights = [1] * len(self.available_moves)
         choice = random.choices(
             range(len(self.available_moves)), weights=weights
         )[0]
         self.move_tracker.register_try(choice)
         self.available_moves[choice]()
 
-    def _get_two_distinct_nodes(self):
+    def _get_two_distinct_leaves(self):
         n1 = n2 = 0
+        leaf_nodes = self.interactor.leaf_node_list
         while n1 == n2:
-            n1 = random.randrange(len(self.g) - 1)
-            n2 = random.randrange(len(self.g) - 1)
+            n1 = random.choice(leaf_nodes)
+            n2 = random.choice(leaf_nodes)
         return n1, n2
-
-    def _tree_is_too_small_for_advanced_moves(self):
-        if len(self.g) < 3:
-            return True
-        return False
 
 
 class MutationTreeMoveCaretaker:

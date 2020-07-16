@@ -11,19 +11,20 @@ import math
 
 import numpy as np
 import pytest
-
-from pigglet.tree_interactor import PhyloTreeInteractor
-from pigglet_testing.builders.tree import PhyloTreeBuilder
-from pigglet_testing.builders.tree_likelihood import (
-    PhyloTreeLikelihoodCalculatorBuilder,
-)
 from pytest import approx
 
 
+from pigglet.tree_interactor import PhyloTreeInteractor
+from pigglet.tree_likelihood_mover import PhyloTreeLikelihoodMover
+
+from pigglet_testing.builders.tree_likelihood import (
+    MCMCBuilder,
+    PhyloTreeLikelihoodCalculatorBuilder,
+)
+
+
 def get_mutation_likelihood(calc, site_idx):
-    return np.exp(
-        calc.attachment_marginalized_mutation_log_likelihoods()[site_idx]
-    )
+    return np.exp(calc.attachment_marginalized_log_likelihoods()[site_idx])
 
 
 def sum_of_exp_of(*log_likelihoods):
@@ -35,45 +36,46 @@ def log_sum_of_exp_of(*log_likelihoods):
 
 
 class TestPruneAndRegraft:
-    @pytest.mark.xfail()
-    def test_three_samples_one_private_mutation_for_first_sample(self):
+    def test_prune_regraft_to_root_edge_does_not_change_likelihoods(self):
         # given
-        b = PhyloTreeBuilder()
+        b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_path(0, 1, 2)
         b.with_branch(1, 3)
         b.with_branch(0, 4)
-        inter = PhyloTreeInteractor(b.build())
+        b.with_mutated_gl_at(0, 0)
+        b.with_mutated_gl_at(1, 0)
+        b.with_unmutated_gl_at(2, 0)
+        calc = b.build()
+        like = calc.log_likelihood()
+        inter = PhyloTreeInteractor(calc.g)
 
         # when
-        inter.prune_edge(0, 1)
-        inter.attach_node_to_edge(1, (0, 4))
+        inter.prune_and_regraft(1, (0, 4))
 
         # then
-        assert set(inter.g.edges) == {(1, 0)}
+        assert calc.log_likelihood() == like
 
     def test_three_samples_one_private_mutation_for_two_samples(self):
         # given
         b = PhyloTreeLikelihoodCalculatorBuilder()
         b.with_mutated_gl_at(0, 0)
-        b.with_unmutated_gl_at(0, 1)
         b.with_unmutated_gl_at(1, 0)
-        b.with_unmutated_gl_at(1, 1)
-        b.with_unmutated_gl_at(2, 0)
-        b.with_mutated_gl_at(2, 1)
+        b.with_mutated_gl_at(2, 0)
 
         b.with_path(0, 1, 2)
         b.with_branch(1, 3)
         b.with_branch(0, 4)
 
         calc = b.build()
+        inter = PhyloTreeInteractor(calc.g)
 
         # when
+        inter.prune_and_regraft(4, (1, 2))
+
         like1 = get_mutation_likelihood(calc, 0)
-        like2 = get_mutation_likelihood(calc, 1)
 
         # then
-        assert like1 == approx(sum_of_exp_of(-2, -1, 0, -2, -2))
-        assert like2 == approx(sum_of_exp_of(-2, -3, -2, -2, 0))
+        assert like1 == approx(sum_of_exp_of(-1, -3, 0, -1, -1))
 
 
 class TestSampleMarginalizedLikelihood:
@@ -89,3 +91,59 @@ class TestSampleMarginalizedLikelihood:
 
         # then
         assert like == approx(log_sum_of_exp_of(-2, -1, -1))
+
+
+class TestRecalculateAttachmentLogLikeFromNodes:
+    @pytest.mark.parametrize("n_samples", list(range(3, 10)))
+    def test_arbitrary_trees(self, n_samples):
+        # given
+        b = MCMCBuilder()
+        b.with_phylogenetic_tree()
+
+        for sample in range(n_samples):
+            b.with_mutated_gl_at(sample, sample)
+
+        mcmc = b.build()
+        mover = mcmc.mover
+        calc = mover.calc
+
+        # when
+        mover.random_move()
+
+        like = calc.register_changed_nodes(
+            *mover.changed_nodes
+        ).attachment_log_like.copy()
+
+        root_like = calc.register_changed_nodes(
+            mcmc.tree_interactor.root
+        ).attachment_log_like.copy()
+
+        # then
+        assert root_like is not None
+        assert np.allclose(root_like, like)
+
+
+@pytest.mark.parametrize("n_samples", list(range(3, 10)))
+def test_arbitrary_trees_and_moves_undo_ok(n_samples):
+    # given
+    b = MCMCBuilder()
+    b.with_phylogenetic_tree()
+
+    for sample in range(n_samples):
+        b.with_mutated_gl_at(sample, sample)
+
+    mcmc = b.build()
+    mover = PhyloTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls)
+    like = mover.attachment_log_like
+
+    # when/then
+    mover.random_move()
+    assert mover.calc.has_changed_nodes()
+    mover.attachment_log_like
+    assert not mover.calc.has_changed_nodes()
+    mover.undo()
+    assert mover.calc.has_changed_nodes()
+
+    # then
+    assert like is not None
+    assert np.allclose(like, mover.attachment_log_like)

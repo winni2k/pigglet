@@ -1,15 +1,12 @@
 import logging
 import math
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import networkx as nx
 import numpy as np
 
-from pigglet.constants import (
-    HET_NUM,
-    HOM_REF_NUM,
-    LOG_LIKE_DTYPE,
-)
+from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
 from pigglet.scipy_import import logsumexp
 from pigglet.tree_utils import roots_of_tree
 
@@ -110,8 +107,20 @@ class MutationTreeLikelihoodSummer:
         return gold
 
 
+class TreeLikelihoodCalculator(ABC):
+    @abstractmethod
+    def attachment_marginalized_log_likelihoods(self):
+        """Calculate likelihood after marginalizing over attachment points"""
+        pass
+
+    @abstractmethod
+    def log_likelihood(self):
+        """Calculate tree likelihood"""
+        pass
+
+
 @dataclass
-class PhyloTreeLikelihoodCalculator:
+class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     """Calculates likelihood of phylogenetic tree (self.g) and
     attachment points from gls for m sites and n samples
 
@@ -168,22 +177,38 @@ class PhyloTreeLikelihoodCalculator:
                 + np.sum(self.gls[:, update_idxs, HOM_REF_NUM], 1)
                 - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
+        self._changed_nodes.clear()
         return attachment_log_like
 
-    def attachment_marginalized_mutation_log_likelihoods(self) -> np.ndarray:
+    def node_sample_ids(self):
+        """Iterate over node ids and associated samples (leaves)"""
+        lookup = self._sample_lookup
+        for node, leaves in self.g.nodes(data="leaves"):
+            yield node, [lookup[leaf] for leaf in leaves]
+
+    def attachment_marginalized_log_likelihoods(self) -> np.ndarray:
         """Calculate the marginal likelihoods of all possible mutation
         attachments for each of m mutations
 
-        :returns: ndarray of shape m"""
+        :returns: ndarray of shape len(g)"""
         return logsumexp(self.attachment_log_like, axis=0)
 
     def log_likelihood(self):
-        """Calculate the sum of the log likelihoods of all possible mutation
-        attachments"""
-        return np.sum(self.attachment_marginalized_mutation_log_likelihoods())
+        """Calculate the tree likelihood"""
+        return np.sum(self.attachment_marginalized_log_likelihoods())
+
+    def register_changed_nodes(self, *nodes):
+        """Marks these nodes and all ancestors of these nodes to have changed
+        position in the graph"""
+        for node in nodes:
+            self._changed_nodes.add(node)
+        return self
+
+    def has_changed_nodes(self):
+        return len(self._changed_nodes) != 0
 
 
-class MutationTreeLikelihoodCalculator:
+class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     """Calculates likelihood of mutation tree (self.g) and attachment points
     from gls for m sites and n samples
 
@@ -231,15 +256,14 @@ class MutationTreeLikelihoodCalculator:
 
         return self._attachment_log_like
 
-    def attachment_marginalized_sample_log_likelihoods(self):
+    def attachment_marginalized_log_likelihoods(self):
         """Calculate the marginal likelihoods of all possible sample
         attachments"""
         return self.summer.calculate(self.attachment_log_like)
 
     def log_likelihood(self):
-        """Calculate the sum of the log likelihoods of all possible sample
-        attachments"""
-        return np.sum(self.attachment_marginalized_sample_log_likelihoods())
+        """Calculate the tree likelihood"""
+        return np.sum(self.attachment_marginalized_log_likelihoods())
 
     def mutation_probabilites(self, attach_prob):
         """Accepts an (m + 1) x n matrix of (ideally normalized) log attachment
@@ -310,15 +334,19 @@ class MutationTreeLikelihoodCalculator:
         self._attachment_log_like = attachment_log_like
 
 
-class AttachmentAggregator:
+class AttachmentAggregator(ABC):
+    pass
+
+
+class MutationAttachmentAggregator(AttachmentAggregator):
     """Aggregates attachment scores"""
 
     def __init__(self):
         self.attachment_scores = None
         self.num_additions = 0
 
-    def add_attachment_log_likes(self, calc):
-        sum_likes = calc.attachment_marginalized_sample_log_likelihoods()
+    def add_attachment_log_likes(self, calc: MutationTreeLikelihoodCalculator):
+        sum_likes = calc.attachment_marginalized_log_likelihoods()
         log_likes = calc.attachment_log_like - sum_likes
         if self.attachment_scores is None:
             self.attachment_scores = log_likes
@@ -330,4 +358,44 @@ class AttachmentAggregator:
         self.num_additions += 1
 
     def normalized_attachment_probabilities(self):
+        return self.attachment_scores - math.log(self.num_additions)
+
+
+class PhyloAttachmentAggregator(AttachmentAggregator):
+    """Aggregates attachment scores for phylogenetic trees
+
+    The results of aggregation are stored in attachment_scores, an m x n
+    matrix of mutation probabilities
+    """
+
+    def __init__(self):
+        self.attachment_scores = None
+        self.num_additions = 0
+
+    def add_attachment_log_likes(self, calc: PhyloTreeLikelihoodCalculator):
+        """Calculate normalized mutation probabilities and aggregate
+        in attachment_scores"""
+        site_like_total = calc.attachment_marginalized_log_likelihoods()
+        # log_likes.shape = len(g) x m
+        log_likes = calc.attachment_log_like - site_like_total
+        scores = np.zeros((calc.n_sites, calc.n_samples))
+        node_sample_indicator = np.zeros(
+            (len(calc.g), calc.n_samples), dtype=np.bool
+        )
+        for node, leaves in calc.node_sample_ids():
+            node_sample_indicator[node, leaves] = True
+        for leaf in range(calc.n_samples):
+            scores[:, leaf] = logsumexp(
+                log_likes[node_sample_indicator[:, leaf], :], axis=0
+            )
+        if self.attachment_scores is None:
+            self.attachment_scores = scores
+        else:
+            with np.errstate(under="ignore"):
+                self.attachment_scores = np.logaddexp(
+                    self.attachment_scores, scores
+                )
+        self.num_additions += 1
+
+    def averaged_mutation_probabilities(self):
         return self.attachment_scores - math.log(self.num_additions)

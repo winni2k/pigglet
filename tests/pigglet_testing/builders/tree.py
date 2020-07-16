@@ -2,10 +2,9 @@ from dataclasses import dataclass, field
 
 import networkx as nx
 
+from pigglet.tree_converter import PhylogeneticTreeConverter
 from pigglet.tree_interactor import PhyloTreeInteractor
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
-
-from pigglet.tree_converter import PhylogeneticTreeConverter
 
 
 @dataclass

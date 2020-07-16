@@ -2,15 +2,12 @@ import itertools
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Tuple, List, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import networkx as nx
 
 from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
-from pigglet.tree import (
-    RandomWalkStopType,
-    MutationTreeMoveMemento,
-)
+from pigglet.tree import MutationTreeMoveMemento, RandomWalkStopType
 from pigglet.tree_utils import roots_of_tree
 
 Node = int
@@ -84,9 +81,10 @@ class TreeInteractor(ABC):
 @dataclass
 class PhyloTreeInteractor(TreeInteractor):
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
-    leaf_nodes: frozenset = field(default_factory=frozenset)
+    leaf_nodes: frozenset = field(init=False)
+    leaf_node_list: list = field(init=False)
     mh_correction: float = 0
-    _inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
+    inner_g: nx.DiGraph = field(default_factory=nx.DiGraph)
     _last_node_id: int = 0
     _memento_builder: PhyloTreeMoveMementoBuilder = field(init=False)
 
@@ -97,7 +95,8 @@ class PhyloTreeInteractor(TreeInteractor):
         self.leaf_nodes = frozenset(
             u for u in self.g if self.g.out_degree[u] == 0
         )
-        self._inner_g = self.g.subgraph(
+        self.leaf_node_list = sorted(self.leaf_nodes)
+        self.inner_g = self.g.subgraph(
             u for u in self.g if u not in self.leaf_nodes
         )
         self.check_binary_rooted_tree()

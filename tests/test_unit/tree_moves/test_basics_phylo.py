@@ -1,5 +1,4 @@
 from builders.tree_interactor import PhyloTreeInteractorBuilder
-
 from pigglet.tree_interactor import PhyloTreeInteractor
 
 

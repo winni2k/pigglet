@@ -1,8 +1,9 @@
-import random
 import itertools as it
+import random
 
 import networkx as nx
 import pytest
+
 from builders.tree_interactor import (
     MutationTreeInteractorBuilder,
     PhyloTreeInteractorBuilder,

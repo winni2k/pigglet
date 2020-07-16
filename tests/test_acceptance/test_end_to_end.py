@@ -1,41 +1,64 @@
+import itertools as it
 import math
+from subprocess import run
 
 import h5py
 import networkx as nx
 import numpy as np
 import pytest
 from click.testing import CliRunner
-from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
+from pigglet.scipy_import import logsumexp
+from pigglet_testing.builders.vcf import VCFBuilder
 
 
-@pytest.mark.parametrize("gl_tag", ["GL", "PL"])
-def test_single_mutation_one_sample_creates_trivial_graph(tmpdir, gl_tag):
+@pytest.mark.parametrize(
+    "gl_tag,mutation_tree", it.product(["GL", "PL"], [True, False])
+)
+def test_single_mutation_one_sample_creates_trivial_graph(
+    tmpdir, gl_tag, mutation_tree
+):
     # given
     b = VCFBuilder(tmpdir)
     b.with_tag(gl_tag)
-    b.with_site_gls([-1, 0, -1])
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1])
     vcf_file = b.build()
     prefix = tmpdir / "out"
-    runner = CliRunner()
     out_gml = str(prefix) + ".map_tree.gml"
     out_h5 = str(prefix) + ".h5"
 
     # when
-    result = runner.invoke(
-        cli.cli, ["infer", str(vcf_file), str(prefix), "--mutation-tree"]
-    )
-    assert result.exit_code == 0, result.output
+    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    if mutation_tree:
+        command.append("--mutation-tree")
+    else:
+        command.append("--no-mutation-tree")
+    result = run(command)
+    assert result.returncode == 0
 
     # then
-    assert list(nx.read_gml(out_gml).edges) == [("-1", "0")]
-    with h5py.File(out_h5, "r") as fh:
-        assert list(fh["map_tree/mutation_probabilities"]) == pytest.approx(
-            [math.e / (math.e + 1)]
-        )
-        assert list(fh["map_tree/map_sample_attachments"]) == [0]
-        assert list(fh["map_tree/edge_list"][0]) == [-1, 0]
+    if mutation_tree:
+        assert list(nx.read_gml(out_gml).edges) == [("-1", "0")]
+        with h5py.File(out_h5, "r") as fh:
+            assert list(
+                fh["map_tree/mutation_probabilities"]
+            ) == pytest.approx([math.e / (math.e + 1)])
+            assert list(fh["map_tree/map_sample_attachments"]) == [0, 0]
+            assert list(fh["map_tree/edge_list"][0]) == [-1, 0]
+    else:
+        all_node_attachment_likes = np.array([0, -1, -1])
+        site_sum_like = logsumexp(all_node_attachment_likes)
+        sample_prob = logsumexp([0, -1]) - site_sum_like
+        assert list(nx.read_gml(out_gml).edges) == [("2", "0"), ("2", "1")]
+        with h5py.File(out_h5, "r") as fh:
+            mut_probs = fh["map_phylo_tree/mutation_probabilities"]
+            assert mut_probs.shape == (1, 2)
+            assert mut_probs[0] == pytest.approx([sample_prob, sample_prob])
+            assert {tuple(e) for e in fh["map_phylo_tree/edge_list"]} == {
+                (2, 0),
+                (2, 1),
+            }
 
 
 @pytest.mark.parametrize("invoke", [True, False])

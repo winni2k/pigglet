@@ -1,6 +1,7 @@
 import networkx as nx
 import pytest
 from hypothesis import given, strategies
+
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     MoveExecutorBuilder,

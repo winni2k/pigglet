@@ -4,16 +4,16 @@ from typing import Set
 
 import networkx as nx
 import numpy as np
-from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
 from pigglet.likelihoods import (
-    PhyloTreeLikelihoodCalculator,
     MutationTreeLikelihoodCalculator,
+    PhyloTreeLikelihoodCalculator,
 )
 from pigglet.mcmc import MCMCRunner
 from pigglet.tree_likelihood_mover import MutationTreeMoveCaretaker
+from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 
 @dataclass
@@ -139,6 +139,10 @@ class MCMCBuilder(LikelihoodBuilder):
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
+        return self
+
+    def with_phylogenetic_tree(self):
+        self.mutation_tree = False
         return self
 
     def with_n_sampling_iter(self, n_iter):
