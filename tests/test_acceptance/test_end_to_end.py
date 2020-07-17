@@ -9,7 +9,6 @@ import pytest
 from click.testing import CliRunner
 
 from pigglet import cli
-from pigglet.scipy_import import logsumexp
 from pigglet_testing.builders.vcf import VCFBuilder
 
 
@@ -22,7 +21,7 @@ def test_single_mutation_one_sample_creates_trivial_graph(
     # given
     b = VCFBuilder(tmpdir)
     b.with_tag(gl_tag)
-    b.with_site_gls([-1, 0, -1], [-1, 0, -1])
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
     vcf_file = b.build()
     prefix = tmpdir / "out"
     out_gml = str(prefix) + ".map_tree.gml"
@@ -44,21 +43,24 @@ def test_single_mutation_one_sample_creates_trivial_graph(
             assert list(
                 fh["map_tree/mutation_probabilities"]
             ) == pytest.approx([math.e / (math.e + 1)])
-            assert list(fh["map_tree/map_sample_attachments"]) == [0, 0]
+            assert list(fh["map_tree/map_sample_attachments"]) == [0, 0, 0]
             assert list(fh["map_tree/edge_list"][0]) == [-1, 0]
     else:
-        all_node_attachment_likes = np.array([0, -1, -1])
-        site_sum_like = logsumexp(all_node_attachment_likes)
-        sample_prob = logsumexp([0, -1]) - site_sum_like
-        assert list(nx.read_gml(out_gml).edges) == [("2", "0"), ("2", "1")]
+        # all_node_attachment_likes = np.array([0, -1, -2, -2])
+        # site_sum_like = logsumexp(all_node_attachment_likes)
+        # sample_prob = logsumexp([0, -1]) - site_sum_like
+        g = nx.read_gml(out_gml)
+        assert nx.is_directed_acyclic_graph(g)
+        assert len(g) == 5
+        assert len([u for u, d in g.in_degree() if d == 0]) == 1
+        assert len([u for u, d in g.in_degree() if d == 1]) == 4
+        assert len([u for u, d in g.out_degree() if d == 0]) == 3
+        assert len([u for u, d in g.out_degree() if d == 2]) == 2
         with h5py.File(out_h5, "r") as fh:
             mut_probs = fh["map_phylo_tree/mutation_probabilities"]
-            assert mut_probs.shape == (1, 2)
-            assert mut_probs[0] == pytest.approx([sample_prob, sample_prob])
-            assert {tuple(e) for e in fh["map_phylo_tree/edge_list"]} == {
-                (2, 0),
-                (2, 1),
-            }
+            assert mut_probs.shape == (1, 3)
+            # assert mut_probs[0] == pytest.approx([sample_prob]*3)
+            assert len([e for e in fh["map_phylo_tree/edge_list"]]) == 4
 
 
 @pytest.mark.parametrize("invoke", [True, False])

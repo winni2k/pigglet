@@ -21,6 +21,7 @@ from pigglet.tree_likelihood_mover import PhyloTreeLikelihoodMover
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     PhyloTreeLikelihoodCalculatorBuilder,
+    PhyloMoveExecutorBuilder,
 )
 
 
@@ -127,6 +128,52 @@ class TestRecalculateAttachmentLogLikeFromNodes:
             assert np.allclose(recalc_like[idx], like[idx]), idx
 
 
+class TestChangedNodes:
+    @pytest.mark.parametrize("seed", range(10))
+    def test_swap_leaf(self, seed):
+        # given
+        b = PhyloMoveExecutorBuilder()
+        b.with_path(6, 5, 0)
+        b.with_branch(5, 1)
+        b.with_branch(6, 4)
+        b.with_branch(4, 2)
+        b.with_branch(4, 3)
+
+        caretaker = b.build()
+
+        # when
+        n1, n2 = caretaker.swap_leaf()
+
+        # then
+        if {n1, n2} in ({0, 1}, {2, 3}):
+            assert caretaker.changed_nodes == {}
+        else:
+            assert caretaker.changed_nodes == {4: {2, 3}, 5: {0, 1}}
+
+    @pytest.mark.parametrize("seed", range(4))
+    def test_espr(self, seed):
+        # given
+        b = PhyloMoveExecutorBuilder()
+        b.with_path(6, 5, 0)
+        b.with_branch(5, 1)
+        b.with_branch(6, 4)
+        b.with_branch(4, 2)
+        b.with_branch(4, 3)
+
+        caretaker = b.build()
+
+        # when
+        node, edge = caretaker.extending_subtree_prune_and_regraft()
+
+        # then
+        assert caretaker.changed_nodes.keys().isdisjoint(set(range(4)))
+        assert node not in caretaker.changed_nodes
+        if node == 4 and edge in ((5, 0), (5, 1)):
+            assert caretaker.changed_nodes == {5: {0, 1}, 6: set()}
+        elif node == 5 and edge in ((4, 2), (4, 3)):
+            assert caretaker.changed_nodes == {4: {2, 3}, 6: set()}
+
+
 @pytest.mark.parametrize("n_samples", list(range(3, 10)))
 def test_arbitrary_trees_and_moves_undo_ok(n_samples):
     # given
@@ -150,4 +197,5 @@ def test_arbitrary_trees_and_moves_undo_ok(n_samples):
 
     # then
     assert like is not None
-    assert np.allclose(like, mover.attachment_log_like)
+    for u in range(like.shape[0]):
+        assert np.allclose(like[u], mover.attachment_log_like[u])

@@ -115,13 +115,13 @@ class MCMCRunner:
         )
         percentiles = np.percentile(
             self.mover.calc.n_node_update_list,
-            [50, 95, 99],
+            [5, 25, 50, 75, 95],
             interpolation="higher",
         )
         logger.info(
             f"Iteration {iteration} "
-            f"| median, 95, 99 percentile of nodes "
-            f"updated per move: {percentiles}"
+            f"| {len(self.mover.calc.n_node_update_list)} updates "
+            f"| 5, 25, 50, 75, 95 percentile nodes updated: {percentiles}"
         )
         self.mover.calc.n_node_update_list.clear()
         logger.info(

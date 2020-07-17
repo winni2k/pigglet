@@ -1,7 +1,7 @@
 import random
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -11,12 +11,40 @@ from pigglet.likelihoods import (
     PhyloTreeLikelihoodCalculator,
 )
 from pigglet.tree import MutationTreeMoveMemento
-from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
+from pigglet.tree_interactor import (
+    MutationTreeInteractor,
+    PhyloTreeInteractor,
+)
 from pigglet.tree_utils import parent_node_of, roots_of_tree
 
 
 class TreeLikelihoodMover(ABC):
-    pass
+    def random_move(self, weights=None):
+        self.mover.random_move(weights=weights)
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+
+    def undo(self):
+        self.calc.register_changed_nodes(*self.mover.changed_nodes)
+        self.mover.undo(memento=self.mover.memento)
+
+    def log_likelihood(self):
+        return self.calc.log_likelihood()
+
+    @property
+    def mh_correction(self):
+        return self.mover.mh_correction
+
+    @property
+    def changed_nodes(self):
+        return self.mover.changed_nodes
+
+    @property
+    def attachment_log_like(self):
+        return self.calc.attachment_log_like
+
+    @property
+    def memento(self):
+        return self.mover.memento
 
 
 class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
@@ -26,33 +54,6 @@ class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
         self.mover = PhyloTreeMoveCaretaker(g)
         self.calc = PhyloTreeLikelihoodCalculator(g, gls)
 
-    def random_move(self, weights=None):
-        self.mover.random_move(weights=weights)
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-
-    def undo(self):
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-        self.mover.undo(memento=self.mover.memento)
-
-    def log_likelihood(self):
-        return self.calc.log_likelihood()
-
-    @property
-    def mh_correction(self):
-        return self.mover.mh_correction
-
-    @property
-    def changed_nodes(self):
-        return self.mover.changed_nodes
-
-    @property
-    def attachment_log_like(self):
-        return self.calc.attachment_log_like
-
-    @property
-    def memento(self):
-        return self.mover.memento
-
 
 class MutationTreeLikelihoodMover(TreeLikelihoodMover):
     """Make mutation tree moves while keeping tree likelihoods updated"""
@@ -60,33 +61,6 @@ class MutationTreeLikelihoodMover(TreeLikelihoodMover):
     def __init__(self, g, gls):
         self.mover = MutationTreeMoveCaretaker(g)
         self.calc = MutationTreeLikelihoodCalculator(g, gls)
-
-    def random_move(self, weights=None):
-        self.mover.random_move(weights=weights)
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-
-    def undo(self):
-        self.calc.register_changed_nodes(*self.mover.changed_nodes)
-        self.mover.undo(memento=self.mover.memento)
-
-    def log_likelihood(self):
-        return self.calc.log_likelihood()
-
-    @property
-    def mh_correction(self):
-        return self.mover.mh_correction
-
-    @property
-    def changed_nodes(self):
-        return self.mover.changed_nodes
-
-    @property
-    def attachment_log_like(self):
-        return self.calc.attachment_log_like
-
-    @property
-    def memento(self):
-        return self.mover.memento
 
 
 @dataclass
@@ -124,7 +98,15 @@ class MoveTracker:
         self.n_tries = 0
 
 
+class UnchangedTopologyError(Exception):
+    """Raised when a valid MCMC move would yield no change in topology"""
+
+    pass
+
+
 class PhyloTreeMoveCaretaker:
+    """In charge of undoing moves"""
+
     def __init__(self, g):
         self.g = g
         self.interactor = PhyloTreeInteractor(self.g)
@@ -134,7 +116,7 @@ class PhyloTreeMoveCaretaker:
             self.swap_leaf,
         ]
         self.move_tracker = MoveTracker(len(self.available_moves))
-        self.changed_nodes = list(roots_of_tree(g))
+        self.changed_nodes = {}
         self.ext_choice_prob = 0.33
 
     @property
@@ -144,10 +126,12 @@ class PhyloTreeMoveCaretaker:
     def undo(self, memento):
         self.interactor.undo(memento)
 
-    def extending_subtree_prune_and_regraft(self):
+    def extending_subtree_prune_and_regraft(
+        self,
+    ) -> Optional[Tuple[int, Tuple[int, int]]]:
         """AKA eSPR, as described in Lakner et al. 2008"""
-        if len(self.g) == 3:
-            return MutationTreeMoveMemento()
+        if len(self.g) < 4:
+            raise TreeIsTooSmallError("Tree contains less than four nodes")
         node = random.choice(
             [
                 u
@@ -155,14 +139,24 @@ class PhyloTreeMoveCaretaker:
                 if self.g.in_degree(u) != 0
             ]
         )
-        self.memento = self.interactor.extend_prune_and_regraft(
+        self.memento, edge = self.interactor.extend_prune_and_regraft(
             node, prop_attach=self.ext_choice_prob
         )
+        self.changed_nodes = self.interactor.changed_nodes
+        return node, edge
 
-    def swap_leaf(self):
-        n1, n2 = self._get_two_distinct_leaves()
-        self.memento = self.interactor.swap_leaves(n1, n2)
-        self.changed_nodes = [n1, n2]
+    def swap_leaf(self) -> Tuple[int, int]:
+        if len(self.interactor.leaf_nodes) < 3:
+            raise TreeIsTooSmallError(
+                "Tree contains less than three leaf nodes"
+            )
+        while True:
+            n1, n2 = self._get_two_distinct_leaves()
+            self.memento = self.interactor.swap_leaves(n1, n2)
+            self.changed_nodes = self.interactor.changed_nodes
+            if self.changed_nodes:
+                break
+        return n1, n2
 
     def random_move(self, weights=None):
         if weights is None:
@@ -170,8 +164,8 @@ class PhyloTreeMoveCaretaker:
         choice = random.choices(
             range(len(self.available_moves)), weights=weights
         )[0]
-        self.move_tracker.register_try(choice)
         self.available_moves[choice]()
+        self.move_tracker.register_try(choice)
 
     def register_mh_result(self, accepted: bool):
         self.move_tracker.register_mh_result(accepted)

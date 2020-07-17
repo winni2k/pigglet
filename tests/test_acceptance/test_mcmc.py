@@ -31,8 +31,9 @@ def test_finds_one_sample_one_site():
     assert set(mcmc.map_g.edges()) == {(-1, 0)}
 
 
-@pytest.mark.parametrize("mutation_tree", (True, False))
-def test_finds_two_samples_two_sites(mutation_tree):
+# @pytest.mark.parametrize("mutation_tree", (True, False))
+def test_finds_two_samples_two_sites():
+    mutation_tree = True
     b = MCMCBuilder()
     b.mutation_tree = mutation_tree
     b.with_mutated_gl_at(0, 0)
@@ -103,7 +104,7 @@ def test_arbitrary_phylo_trees(n_samples):
     b.reporting_interval = 100
     b.with_phylogenetic_tree()
     b.with_n_burnin_iter(10)
-    b.with_n_sampling_iter(20 * 2 ** n_samples)
+    b.with_n_sampling_iter(10 * 2 ** n_samples)
     add_gl_at_each_ancestor_node_for_nodes(b, rand_g)
     mcmc = b.build()
 
@@ -188,12 +189,12 @@ class TestPhyloMoveExecutor:
         exe = b.build()
         random.seed(seed)
 
-        for _ in range(20):
+        for i in range(20):
             old_g = exe.g.copy()
             try:
                 exe.random_move()
             except Exception:
-                logging.error("Original tree:")
+                logging.error(f"Original tree on iteration {i}:")
                 logging.error(old_g.nodes(data=True))
                 logging.error(old_g.edges)
                 raise

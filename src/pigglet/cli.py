@@ -108,9 +108,11 @@ def infer(
 
     configure_logger(log_level=log_level, log_file=out_prefix + ".log")
     import logging
+    import numpy as np
 
     from pigglet.gl_loader import LikelihoodLoader
     from pigglet.mcmc import MCMCRunner
+    from pigglet.constants import HOM_REF_NUM, HET_NUM
 
     version = get_version()
     logging.info(f"The PIGGLET v{version}")
@@ -125,6 +127,13 @@ def infer(
     del loader
 
     logging.info("Loaded %s sites and %s samples", gls.shape[0], gls.shape[1])
+    missingness = (
+        np.sum(gls[:, :, HOM_REF_NUM] == gls[:, :, HET_NUM])
+        / gls.shape[0]
+        / gls.shape[1]
+    )
+    logging.info(f"Proportion missing sites: {missingness}")
+
     logging.info(
         "Running MCMC with %s burnin and %s sampling iterations",
         burnin,

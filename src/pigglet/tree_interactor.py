@@ -1,15 +1,17 @@
+import collections
 import itertools
 import logging
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, FrozenSet
 
 import networkx as nx
 
 from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
 from pigglet.tree import MutationTreeMoveMemento, RandomWalkStopType
 from pigglet.tree_utils import roots_of_tree
+import itertools as it
 
 Node = int
 logger = logging.getLogger(__name__)
@@ -17,31 +19,77 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class GraphAnnotator:
+    """Annotate leaves of nodes on graph
+
+    updated_nodes contains key=node, value=node leaves before update
+    """
+
     g: nx.DiGraph
+    updated_nodes: Dict[int, frozenset] = field(default_factory=dict)
 
     def annotate_all_nodes_with_descendant_leaves(self, start):
+        self.updated_nodes.clear()
         for node in nx.dfs_postorder_nodes(self.g, start):
-            self.annotate_leaves_from_successors(node)
+            if self.g.out_degree(node) == 0:
+                self._annotate_leaf(node)
+            else:
+                self._annotate_leaves_from_successors(node)
 
-    def annotate_leaves_from_successors(self, new_node):
-        if self.g.out_degree(new_node) == 0:
-            self.g.nodes[new_node]["leaves"] = {new_node}
-            return
-        children = list(self.g.successors(new_node))
+    def _annotate_leaves_from_successors(self, node):
+        node_view = self.g.nodes[node]
+        children = list(self.g.successors(node))
         assert len(children) == 2
-        self.g.nodes[new_node]["leaves"] = (
+        new_leaves = (
             self.g.nodes[children[0]]["leaves"]
             | self.g.nodes[children[1]]["leaves"]
         )
+        if "leaves" not in node_view:
+            assert node not in self.updated_nodes
+            self.updated_nodes[node] = frozenset()
+        elif new_leaves != node_view["leaves"]:
+            if node not in self.updated_nodes:
+                self.updated_nodes[node] = node_view["leaves"]
+        else:
+            return
+        node_view["leaves"] = new_leaves
 
-    def annotate_leaves_of_node_and_its_ancestors(self, current):
-        while True:
-            self.annotate_leaves_from_successors(current)
-            predecessors = list(self.g.predecessors(current))
-            if not predecessors:
-                break
-            assert len(predecessors) == 1
-            current = predecessors[0]
+    def _annotate_leaf(self, node):
+        node_view = self.g.nodes[node]
+        if "leaves" not in self.g.nodes[node]:
+            self.updated_nodes[node] = frozenset()
+            node_view["leaves"] = {node}
+
+    def annotate_leaves_of_nodes_and_their_ancestors(self, *nodes):
+        self.updated_nodes.clear()
+        for node in self._postorder_nodes(nodes):
+            if self.g.out_degree(node) == 0:
+                self._annotate_leaf(node)
+            else:
+                self._annotate_leaves_from_successors(node)
+
+    def _postorder_nodes(self, nodes):
+        nodes = set(nodes)
+        ancestors = collections.Counter(
+            it.chain(
+                it.chain.from_iterable(nx.ancestors(self.g, u) for u in nodes),
+                nodes,
+            )
+        )
+        seen = set()
+        frontier = collections.deque(nodes)
+        while frontier:
+            current = frontier.pop()
+            if ancestors[current] > 1 and current not in seen:
+                seen.add(current)
+                frontier.appendleft(current)
+                continue
+            yield current
+            seen.add(current)
+            parents = list(self.g.predecessors(current))
+            if not parents:
+                return
+            if parents[0] not in seen:
+                frontier.append(parents[0])
 
 
 def random_graph_walk_with_memory_from(g, start, seen=None):
@@ -119,6 +167,7 @@ class PhyloTreeInteractor(TreeInteractor):
     _last_node_id: int = 0
     _memento_builder: PhyloTreeMoveMementoBuilder = field(init=False)
     _annotator: GraphAnnotator = field(init=False)
+    changed_nodes: Dict[int, FrozenSet[int]] = field(default_factory=dict)
 
     def __post_init__(self):
         self._memento_builder = PhyloTreeMoveMementoBuilder(self)
@@ -171,15 +220,17 @@ class PhyloTreeInteractor(TreeInteractor):
         nx.add_path(g, [edge[0], parent, edge[1]])
         g.add_edge(parent, node)
         g.remove_edge(*edge)
-        for u in updated_nodes:
-            try:
-                self._annotator.annotate_leaves_of_node_and_its_ancestors(u)
-            except KeyError:
-                logger.error(f"During: prune_and_regraft({node}, {edge})")
-                logger.error(f"Node {u} leaves cannot be annotated.")
-                logger.error(self.g.nodes(data=True))
-                logger.error(self.g.edges)
-                raise
+        try:
+            self._annotator.annotate_leaves_of_nodes_and_their_ancestors(
+                *updated_nodes
+            )
+        except KeyError:
+            logger.error(f"During: prune_and_regraft({node}, {edge})")
+            logger.error(f"Updated nodes: {updated_nodes}")
+            logger.error(self.g.nodes(data=True))
+            logger.error(self.g.edges)
+            raise
+        self.changed_nodes = self._annotator.updated_nodes
         return memento
 
     def rooted_prune_and_regraft(self, node: Node):
@@ -197,8 +248,11 @@ class PhyloTreeInteractor(TreeInteractor):
         g.add_edge(parent, root)
         g.add_edge(parent, node)
         self.check_binary_rooted_tree()
-        for u in [parent_parent]:
-            self._annotator.annotate_leaves_of_node_and_its_ancestors(u)
+        self.changed_nodes.clear()
+        self._annotator.annotate_leaves_of_nodes_and_their_ancestors(
+            parent_parent
+        )
+        self.changed_nodes = self._annotator.updated_nodes
         return self._memento_builder.of_prune_and_regraft(
             node, (parent_parent, parent_child)
         )
@@ -225,11 +279,14 @@ class PhyloTreeInteractor(TreeInteractor):
             self.g.remove_edge(parent, node)
         for node, parent in zip([u, v], reversed(parents)):
             self.g.add_edge(parent, node)
-        for parent in parents:
-            self._annotator.annotate_leaves_of_node_and_its_ancestors(parent)
+        self.changed_nodes.clear()
+        self._annotator.annotate_leaves_of_nodes_and_their_ancestors(*parents)
+        self.changed_nodes = self._annotator.updated_nodes
         return self._memento_builder.of_swap_leaves(u, v)
 
-    def extend_prune_and_regraft(self, node, prop_attach):
+    def extend_prune_and_regraft(
+        self, node, prop_attach
+    ) -> Tuple[PhyloTreeMoveMemento, Tuple[int, int]]:
         assert 0 <= prop_attach < 1
         assert self.g.in_degree(node) == 1
         assert self.g.out_degree(node) == 2
@@ -253,12 +310,15 @@ class PhyloTreeInteractor(TreeInteractor):
             neighbors, prop_attach, start_constraint
         )
         if previous_node == self.root:
-            return self.rooted_prune_and_regraft(node)
+            return (
+                self.rooted_prune_and_regraft(node),
+                (previous_node, attach_node),
+            )
         attach_edge = (previous_node, attach_node)
         if attach_edge not in self.g.edges:
-            attach_edge = tuple(reversed(attach_edge))
+            attach_edge = (attach_edge[1], attach_edge[0])
         assert attach_edge in self.g.edges, attach_edge
-        return self.prune_and_regraft(node, attach_edge)
+        return self.prune_and_regraft(node, attach_edge), attach_edge
 
 
 def determine_espr_mh_correction(neighbors, prop_attach, start_constraint):

@@ -230,26 +230,6 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 attach_ll[node] = np.sum(
                     self.gls[:, sample_idxs, HET_NUM], 1
                 ) + np.sum(self.gls[:, other_idxs, HOM_REF_NUM], 1)
-                #
-                # children = list(self.g.successors(node))
-                # if len(children) == 2:
-                #     child2_samples = [
-                #         self._sample_lookup[leaf]
-                #         for leaf in self.g.nodes[children[1]]["leaves"]
-                #     ]
-                #     attach_ll[node] = (
-                #         attach_ll[children[0]]
-                #         - np.sum(self.gls[:, child2_samples, HOM_REF_NUM], 1)
-                #         + np.sum(self.gls[:, child2_samples, HET_NUM], 1,)
-                #     )
-                # elif len(children) == 0:
-                #     sample_idx = self._sample_lookup[node]
-                #     node_gls = self.gls[:,:,HOM_REF_NUM]
-                #     node_gls[:, sample_idx] = self.gls[:,
-                #     sample_idx, HET_NUM]
-                #     attach_ll[node] = np.sum(node_gls, 1)
-                # else:
-                #     raise Exception("Programmer error")
         self._changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
         self._attachment_log_like = attach_ll
