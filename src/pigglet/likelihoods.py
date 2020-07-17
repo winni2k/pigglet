@@ -156,6 +156,14 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(
             self.root
         )
+        gls = self.gls
+        glstmp = np.zeros((gls.shape[1], gls.shape[2], gls.shape[0]))
+        for genotype_idx in range(gls.shape[2]):
+            for site_idx in range(gls.shape[0]):
+                glstmp[:, genotype_idx, site_idx] = gls[
+                    site_idx, :, genotype_idx
+                ]
+        self.gls = np.moveaxis(glstmp, 2, 0)
 
     @property
     def root(self):
@@ -205,8 +213,12 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         and their ancestors"""
         n_node_updates = 0
         attach_ll = self._attachment_log_like
+        seen_nodes = set()
         for start in self._changed_nodes:
             for node in it.chain([start], nx.ancestors(self.g, start)):
+                if node in seen_nodes:
+                    continue
+                seen_nodes.add(node)
                 n_node_updates += 1
                 leaves = self.g.nodes[node]["leaves"]
                 other_leaves = self.leaf_nodes - leaves
