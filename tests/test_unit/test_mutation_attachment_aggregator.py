@@ -2,11 +2,11 @@ import math
 
 import numpy as np
 import pytest
-
-from pigglet.likelihoods import MutationAttachmentAggregator
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
+
+from pigglet.likelihoods import MutationAttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:

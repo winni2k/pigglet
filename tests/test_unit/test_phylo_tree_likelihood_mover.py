@@ -7,22 +7,22 @@ All attributes are private.
 All methods prefixed with "_" are private.
 Call build() to obtain the constructed object.
 """
+import itertools as it
 import math
 import random
-import itertools as it
+
 import numpy as np
 import pytest
+from pigglet_testing.builders.tree_likelihood import (
+    MCMCBuilder,
+    PhyloMoveExecutorBuilder,
+    PhyloTreeLikelihoodCalculatorBuilder,
+)
 from pytest import approx
 
 from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
 from pigglet.tree_interactor import PhyloTreeInteractor
 from pigglet.tree_likelihood_mover import PhyloTreeLikelihoodMover
-
-from pigglet_testing.builders.tree_likelihood import (
-    MCMCBuilder,
-    PhyloTreeLikelihoodCalculatorBuilder,
-    PhyloMoveExecutorBuilder,
-)
 
 
 def get_mutation_likelihood(calc, site_idx):

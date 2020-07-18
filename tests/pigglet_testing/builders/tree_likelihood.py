@@ -4,6 +4,7 @@ from typing import Set
 
 import networkx as nx
 import numpy as np
+from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 from pigglet.constants import NUM_GLS, ROOT_LABEL
 from pigglet.gl_manipulator import GLManipulator
@@ -16,7 +17,6 @@ from pigglet.tree_likelihood_mover import (
     MutationTreeMoveCaretaker,
     PhyloTreeMoveCaretaker,
 )
-from pigglet_testing.builders.tree import MutationTreeBuilder, PhyloTreeBuilder
 
 
 @dataclass

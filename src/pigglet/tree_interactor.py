@@ -1,17 +1,17 @@
 import collections
 import itertools
+import itertools as it
 import logging
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, FrozenSet
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 
 import networkx as nx
 
 from pigglet.constants import TMP_LABEL, TreeIsTooSmallError
 from pigglet.tree import MutationTreeMoveMemento, RandomWalkStopType
 from pigglet.tree_utils import roots_of_tree
-import itertools as it
 
 Node = int
 logger = logging.getLogger(__name__)
@@ -25,10 +25,10 @@ class GraphAnnotator:
     """
 
     g: nx.DiGraph
-    updated_nodes: Dict[int, frozenset] = field(default_factory=dict)
+    _updated_nodes: Dict[int, frozenset] = field(default_factory=dict)
 
     def annotate_all_nodes_with_descendant_leaves(self, start):
-        self.updated_nodes.clear()
+        self._updated_nodes.clear()
         for node in nx.dfs_postorder_nodes(self.g, start):
             if self.g.out_degree(node) == 0:
                 self._annotate_leaf(node)
@@ -44,11 +44,11 @@ class GraphAnnotator:
             | self.g.nodes[children[1]]["leaves"]
         )
         if "leaves" not in node_view:
-            assert node not in self.updated_nodes
-            self.updated_nodes[node] = frozenset()
+            assert node not in self._updated_nodes
+            self._updated_nodes[node] = frozenset()
         elif new_leaves != node_view["leaves"]:
-            if node not in self.updated_nodes:
-                self.updated_nodes[node] = node_view["leaves"]
+            if node not in self._updated_nodes:
+                self._updated_nodes[node] = node_view["leaves"]
         else:
             return
         node_view["leaves"] = new_leaves
@@ -56,40 +56,42 @@ class GraphAnnotator:
     def _annotate_leaf(self, node):
         node_view = self.g.nodes[node]
         if "leaves" not in self.g.nodes[node]:
-            self.updated_nodes[node] = frozenset()
+            self._updated_nodes[node] = frozenset()
             node_view["leaves"] = {node}
 
     def annotate_leaves_of_nodes_and_their_ancestors(self, *nodes):
-        self.updated_nodes.clear()
-        for node in self._postorder_nodes(nodes):
+        self._updated_nodes.clear()
+        for node in postorder_nodes_from_frontier(self.g, nodes):
             if self.g.out_degree(node) == 0:
                 self._annotate_leaf(node)
             else:
                 self._annotate_leaves_from_successors(node)
 
-    def _postorder_nodes(self, nodes):
-        nodes = set(nodes)
-        ancestors = collections.Counter(
-            it.chain(
-                it.chain.from_iterable(nx.ancestors(self.g, u) for u in nodes),
-                nodes,
-            )
-        )
-        seen = set()
-        frontier = collections.deque(nodes)
-        while frontier:
-            current = frontier.pop()
-            if ancestors[current] > 1 and current not in seen:
-                seen.add(current)
-                frontier.appendleft(current)
-                continue
-            yield current
+
+def postorder_nodes_from_frontier(g, frontier):
+    if frontier in g:
+        frontier = {frontier}
+    else:
+        frontier = set(frontier)
+    ancestors = collections.Counter(
+        it.chain.from_iterable(nx.ancestors(g, u) for u in frontier),
+    )
+    seen = set()
+    frontier = collections.deque(u for u in frontier if u not in ancestors)
+    while frontier:
+        current = frontier.pop()
+        if ancestors[current] > 1 and current not in seen:
             seen.add(current)
-            parents = list(self.g.predecessors(current))
-            if not parents:
-                return
-            if parents[0] not in seen:
-                frontier.append(parents[0])
+            frontier.appendleft(current)
+            continue
+        yield current
+        seen.add(current)
+        try:
+            parent = next(g.predecessors(current))
+        except StopIteration:
+            return
+        if parent not in seen:
+            frontier.append(parent)
 
 
 def random_graph_walk_with_memory_from(g, start, seen=None):
@@ -230,7 +232,7 @@ class PhyloTreeInteractor(TreeInteractor):
             logger.error(self.g.nodes(data=True))
             logger.error(self.g.edges)
             raise
-        self.changed_nodes = self._annotator.updated_nodes
+        self.changed_nodes = self._annotator._updated_nodes
         return memento
 
     def rooted_prune_and_regraft(self, node: Node):
@@ -252,7 +254,7 @@ class PhyloTreeInteractor(TreeInteractor):
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(
             parent_parent
         )
-        self.changed_nodes = self._annotator.updated_nodes
+        self.changed_nodes = self._annotator._updated_nodes
         return self._memento_builder.of_prune_and_regraft(
             node, (parent_parent, parent_child)
         )
@@ -281,7 +283,7 @@ class PhyloTreeInteractor(TreeInteractor):
             self.g.add_edge(parent, node)
         self.changed_nodes.clear()
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(*parents)
-        self.changed_nodes = self._annotator.updated_nodes
+        self.changed_nodes = self._annotator._updated_nodes
         return self._memento_builder.of_swap_leaves(u, v)
 
     def extend_prune_and_regraft(

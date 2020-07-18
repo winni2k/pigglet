@@ -108,11 +108,12 @@ def infer(
 
     configure_logger(log_level=log_level, log_file=out_prefix + ".log")
     import logging
+
     import numpy as np
 
+    from pigglet.constants import HET_NUM, HOM_REF_NUM
     from pigglet.gl_loader import LikelihoodLoader
     from pigglet.mcmc import MCMCRunner
-    from pigglet.constants import HOM_REF_NUM, HET_NUM
 
     version = get_version()
     logging.info(f"The PIGGLET v{version}")
@@ -278,6 +279,7 @@ def store_phylo_tree_results(out_prefix, output_store, runner):
     import h5py
     import networkx as nx
     import numpy as np
+
     from pigglet.tree import strip_tree
 
     with h5py.File(output_store, mode="a") as fh:

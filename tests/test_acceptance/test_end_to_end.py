@@ -7,9 +7,9 @@ import networkx as nx
 import numpy as np
 import pytest
 from click.testing import CliRunner
+from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
-from pigglet_testing.builders.vcf import VCFBuilder
 
 
 @pytest.mark.parametrize(

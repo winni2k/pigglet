@@ -5,16 +5,16 @@ import msprime
 import networkx as nx
 import pytest
 from hypothesis import given, strategies
-
-from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
-from pigglet.mcmc import as_dict_of_dicts
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     MutationMoveExecutorBuilder,
+    PhyloMoveExecutorBuilder,
     add_gl_at_ancestor_mutations_for,
     add_gl_at_each_ancestor_node_for_nodes,
-    PhyloMoveExecutorBuilder,
 )
+
+from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
+from pigglet.mcmc import as_dict_of_dicts
 
 logging.basicConfig(level=logging.INFO)
 

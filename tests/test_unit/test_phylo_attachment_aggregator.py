@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
-from scipy.special import logsumexp
-
-from pigglet.likelihoods import PhyloAttachmentAggregator
 from pigglet_testing.builders.tree_likelihood import (
     PhyloTreeLikelihoodCalculatorBuilder,
 )
+from scipy.special import logsumexp
+
+from pigglet.likelihoods import PhyloAttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:

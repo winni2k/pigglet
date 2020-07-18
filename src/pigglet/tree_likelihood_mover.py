@@ -11,10 +11,7 @@ from pigglet.likelihoods import (
     PhyloTreeLikelihoodCalculator,
 )
 from pigglet.tree import MutationTreeMoveMemento
-from pigglet.tree_interactor import (
-    MutationTreeInteractor,
-    PhyloTreeInteractor,
-)
+from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
 from pigglet.tree_utils import parent_node_of, roots_of_tree
 
 

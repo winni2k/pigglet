@@ -3,7 +3,7 @@ import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
-import itertools as it
+
 import networkx as nx
 import numpy as np
 
@@ -217,19 +217,18 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         n_node_updates = 0
         attach_ll = self._attachment_log_like
         seen_nodes = set()
-        for start in self._changed_nodes:
-            for node in it.chain([start], nx.ancestors(self.g, start)):
-                if node in seen_nodes:
-                    continue
-                seen_nodes.add(node)
-                n_node_updates += 1
-                leaves = self.g.nodes[node]["leaves"]
-                other_leaves = self.leaf_nodes - leaves
-                sample_idxs = [self._sample_lookup[u] for u in leaves]
-                other_idxs = [self._sample_lookup[u] for u in other_leaves]
-                attach_ll[node] = np.sum(
-                    self.gls[:, sample_idxs, HET_NUM], 1
-                ) + np.sum(self.gls[:, other_idxs, HOM_REF_NUM], 1)
+        for node in self._changed_nodes:
+            if node in seen_nodes:
+                continue
+            seen_nodes.add(node)
+            n_node_updates += 1
+            leaves = self.g.nodes[node]["leaves"]
+            other_leaves = self.leaf_nodes - leaves
+            sample_idxs = [self._sample_lookup[u] for u in leaves]
+            other_idxs = [self._sample_lookup[u] for u in other_leaves]
+            attach_ll[node] = np.sum(
+                self.gls[:, sample_idxs, HET_NUM], 1
+            ) + np.sum(self.gls[:, other_idxs, HOM_REF_NUM], 1)
         self._changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
         self._attachment_log_like = attach_ll

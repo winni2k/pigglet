@@ -11,11 +11,10 @@ import math
 
 import numpy as np
 import pytest
-from pytest import approx
-
 from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
+from pytest import approx
 
 
 def get_sample_likelihood(calc, sample_idx):
