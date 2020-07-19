@@ -86,6 +86,11 @@ def cli():
     help="Use a mutation tree instead of a phylogenetic tree for inference",
 )
 @click.option("--seed", default=None, type=int, help="Set random seed")
+@click.option(
+    "--double-check-likelihood-calculation",
+    default=False,
+    help="This is slow and only meant for debugging. ",
+)
 def infer(
     gl_vcf,
     out_prefix,
@@ -98,6 +103,7 @@ def infer(
     check_logsumexp_accuracy,
     mutation_tree,
     seed,
+    double_check_likelihood_calculation,
 ):
     """Infer phylogenetic or mutation tree from genotype likelihoods stored in
     GL_VCF.
@@ -152,9 +158,10 @@ def infer(
         runner = MCMCRunner.mutation_tree_from_gls(gls)
     else:
         runner = MCMCRunner.phylogenetic_tree_from_gls(
-            gls, tree_move_weights=[int(gls.shape[1] != 3), 1]
+            gls,
+            tree_move_weights=[int(gls.shape[1] != 3), 1],
+            double_check_ll_calculation=double_check_likelihood_calculation,
         )
-        runner.mover.mover.double_check_ll_calculations = False
 
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling

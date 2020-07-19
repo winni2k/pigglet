@@ -81,7 +81,6 @@ def postorder_nodes_from_frontier(g, frontier):
     for u in frontier:
         for anc in nx.ancestors(g, u):
             ancestors.add(anc)
-    logging.info(ancestors)
     target = ancestors | frontier
     roots = roots_of_tree(g)
     assert len(roots) == 1

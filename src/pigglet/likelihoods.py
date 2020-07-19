@@ -150,6 +150,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     _attachment_log_like: Optional[np.ndarray] = None
     leaf_nodes: frozenset = field(init=False)
     double_check_ll_calculations: bool = True
+    handbrake_warning_given: bool = False
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -246,6 +247,10 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     def _double_check_attachment_likelihoods(
         self, attach_ll, child1, child2, node
     ):
+        if not self.handbrake_warning_given:
+            logging.warning("You're driving with a pulled handbrake!")
+            logging.warning("Turn off likelihood double-checking to go fast.")
+            self.handbrake_warning_given = True
         leaves = self.g.nodes[node]["leaves"]
         other_leaves = self.leaf_nodes - leaves
         sample_idxs = [self._sample_lookup[u] for u in leaves]

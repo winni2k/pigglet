@@ -83,6 +83,10 @@ class MCMCRunner:
             kwargs["tree_move_weights"] = [1] * len(
                 mover.mover.available_moves
             )
+        if "double_check_ll_calculation" in kwargs:
+            mover.calc.double_check_ll_calculations = kwargs.pop(
+                "double_check_ll_calculation"
+            )
         return cls(
             gls=gls,
             map_g=graph.copy(),
