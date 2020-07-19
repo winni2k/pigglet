@@ -151,6 +151,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     leaf_nodes: frozenset = field(init=False)
     double_check_ll_calculations: bool = True
     handbrake_warning_given: bool = False
+    _null_sum: Optional[np.ndarray] = None
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -193,6 +194,12 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
             self._attachment_log_like_partial_recalculation()
         return self._attachment_log_like
 
+    @property
+    def null_sum(self) -> np.ndarray:
+        if self._null_sum is None:
+            self._null_sum = np.sum(self.gls[:, :, HOM_REF_NUM], 1)
+        return self._null_sum
+
     def _attachment_log_like_complete_recalculation(self):
         """Completely recalculate attachment log likelihoods"""
         n_node_updates = 0
@@ -222,6 +229,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         n_node_updates = 0
         attach_ll = self._attachment_log_like
         seen_nodes = set()
+        null_sum = self.null_sum
         for node in postorder_nodes_from_frontier(self.g, self.changed_nodes):
             if node in seen_nodes:
                 raise Exception(
@@ -230,11 +238,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
             seen_nodes.add(node)
             n_node_updates += 1
             child1, child2 = list(self.g.successors(node))
-            attach_ll[node] = (
-                attach_ll[child1]
-                + attach_ll[child2]
-                - np.sum(self.gls[:, :, HOM_REF_NUM], 1)
-            )
+            attach_ll[node] = attach_ll[child1] + attach_ll[child2] - null_sum
 
             if self.double_check_ll_calculations:
                 self._double_check_attachment_likelihoods(
