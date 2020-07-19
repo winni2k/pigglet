@@ -1,4 +1,5 @@
 import logging
+import random
 
 import msprime
 import networkx as nx
@@ -135,6 +136,33 @@ def test_arbitrary_phylo_trees():
     )
 
 
+@pytest.mark.parametrize("n_samples", range(5, 11))
+def test_arbitrary_phylo_trees_with_internal_checks(n_samples):
+    # given
+    prng = random
+    random.seed(42)
+    ts = msprime.simulate(
+        sample_size=n_samples,
+        recombination_rate=0,
+        random_seed=prng.randrange(1, 2 ^ 32),
+    )
+    rand_g = nx.DiGraph(as_dict_of_dicts(ts.first()))
+
+    b = MCMCBuilder()
+    b.with_prng(prng)
+    b.reporting_interval = 100
+    b.with_phylogenetic_tree()
+    b.with_n_sampling_iter(1)
+    b.with_n_burnin_iter(100)
+    b.with_internal_attach_like_double_checking()
+    # b.with_n_sampling_iter(10 * 2 ** n_samples)
+    add_gl_at_each_ancestor_node_for_nodes(b, rand_g)
+    mcmc = b.build()
+
+    # when/then
+    mcmc.run()
+
+
 @pytest.mark.parametrize("burnin,sampling", [(0, 3), (3, 0), (3, 3)])
 def test_aggregates_the_correct_number_of_runs(burnin, sampling):
     b = MCMCBuilder()
@@ -187,7 +215,7 @@ class TestPhyloMoveExecutor:
     def test_a_bunch_of_moves(self, prng):
         # given
         b = PhyloMoveExecutorBuilder(prng=prng)
-        b.with_balanced_tree(height=3)
+        b.with_balanced_tree(height=4)
         exe = b.build()
 
         for i in range(20):

@@ -154,6 +154,7 @@ def infer(
         runner = MCMCRunner.phylogenetic_tree_from_gls(
             gls, tree_move_weights=[int(gls.shape[1] != 3), 1]
         )
+        runner.mover.mover.double_check_ll_calculations = False
 
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling

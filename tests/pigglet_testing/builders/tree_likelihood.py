@@ -152,6 +152,10 @@ class MCMCBuilder(LikelihoodBuilder):
         self.normalize_gls = False
         self.mutation_tree = True
         self.reporting_interval = 10
+        self.internal_attach_like_double_checking = True
+
+    def with_internal_attach_like_double_checking(self):
+        self.internal_attach_like_double_checking = True
 
     def with_n_burnin_iter(self, n_iter):
         self.n_burnin_iter = n_iter
@@ -184,6 +188,8 @@ class MCMCBuilder(LikelihoodBuilder):
             runner = MCMCRunner.mutation_tree_from_gls(gls, prng=self.prng)
         else:
             runner = MCMCRunner.phylogenetic_tree_from_gls(gls, prng=self.prng)
+            if self.internal_attach_like_double_checking:
+                runner.mover.double_check_ll_calculations = True
         runner.num_burnin_iter = self.n_burnin_iter
         runner.num_sampling_iter = self.n_sampling_iter
         runner.reporting_interval = self.reporting_interval

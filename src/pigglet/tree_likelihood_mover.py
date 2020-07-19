@@ -39,7 +39,7 @@ class TreeLikelihoodMover(ABC):
         return self.calc.attachment_log_like
 
     @property
-    def memento(self):
+    def memenpto(self):
         return self.mover.memento
 
 
@@ -49,6 +49,14 @@ class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     def __init__(self, g, gls, prng):
         self.mover = PhyloTreeMoveCaretaker(g, prng=prng)
         self.calc = PhyloTreeLikelihoodCalculator(g, gls)
+
+    @property
+    def double_check_ll_calculations(self):
+        return self.calc.double_check_ll_calculations
+
+    @double_check_ll_calculations.setter
+    def double_check_ll_calculations(self, value):
+        self.calc.double_check_ll_calculations = value
 
 
 class MutationTreeLikelihoodMover(TreeLikelihoodMover):
@@ -113,12 +121,15 @@ class PhyloTreeMoveCaretaker:
             self.swap_leaf,
         ]
         self.move_tracker = MoveTracker(len(self.available_moves))
-        self.changed_nodes = None
         self.ext_choice_prob = 0.33
 
     @property
     def mh_correction(self):
         return self.interactor.mh_correction
+
+    @property
+    def changed_nodes(self):
+        return self.interactor.changed_nodes
 
     def undo(self, memento):
         self.interactor.undo(memento)
@@ -140,7 +151,6 @@ class PhyloTreeMoveCaretaker:
             self.memento, edge = self.interactor.extend_prune_and_regraft(
                 node, prop_attach=self.ext_choice_prob
             )
-            self.changed_nodes = self.interactor.changed_nodes
             if self.changed_nodes:
                 break
         return node, edge
@@ -153,7 +163,6 @@ class PhyloTreeMoveCaretaker:
         while True:
             n1, n2 = self._get_two_distinct_leaves()
             self.memento = self.interactor.swap_leaves(n1, n2)
-            self.changed_nodes = self.interactor.changed_nodes
             if self.changed_nodes:
                 break
         return n1, n2

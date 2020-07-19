@@ -221,7 +221,6 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         n_node_updates = 0
         attach_ll = self._attachment_log_like
         seen_nodes = set()
-        logging.debug(f"Changed nodes: {self.changed_nodes}")
         for node in postorder_nodes_from_frontier(self.g, self.changed_nodes):
             if node in seen_nodes:
                 raise Exception(
@@ -257,16 +256,18 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         try:
             assert np.allclose(attach_ll[node], other_ll)
         except AssertionError:
-            logging.error(f"Graph edges: {self.g.edges}")
-            logging.error(f"node leaves: {leaves}")
-            logging.error(f"other leaves: {other_leaves}")
+            logger.error("Likelihoods mismatch!")
+            logger.error(f"Node: {node}")
+            logger.error(f"Graph edges: {self.g.edges}")
+            logger.error(f"Node leaves: {leaves}")
+            logger.error(f"Non-node leaves: {other_leaves}")
             child1_leaves = self.g.nodes[child1]["leaves"]
-            logging.error(f"child1 leaves: {child1_leaves}")
+            logger.error(f"child1 ({child1}) leaves: {child1_leaves}")
             child2_leaves = self.g.nodes[child2]["leaves"]
-            logging.error(f"child2 leaves: {child2_leaves}")
-            logging.error(f"GLs: {self.gls}")
-            logging.error(f"child1_attach_ll: {attach_ll[child1]}")
-            logging.error(f"child2_attach_ll: {attach_ll[child2]}")
+            logger.error(f"child2 ({child2}) leaves: {child2_leaves}")
+            # logger.error(f"GLs: {self.gls}")
+            logger.error(f"child1_attach_ll: {attach_ll[child1]}")
+            logger.error(f"child2_attach_ll: {attach_ll[child2]}")
             raise
 
     def node_sample_ids(self):

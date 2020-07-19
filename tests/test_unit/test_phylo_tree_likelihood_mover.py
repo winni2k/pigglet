@@ -54,6 +54,7 @@ class TestPruneAndRegraft:
 
         # when
         inter.prune_and_regraft(1, (0, 4))
+        calc.register_changed_nodes(*list(inter.changed_nodes))
 
         # then
         assert calc.log_likelihood() == like
@@ -74,6 +75,7 @@ class TestPruneAndRegraft:
 
         # when
         inter.prune_and_regraft(4, (1, 2))
+        calc.register_changed_nodes(*list(inter.changed_nodes))
 
         like1 = get_mutation_likelihood(calc, 0)
 
@@ -197,9 +199,48 @@ class TestChangedNodes:
         if edge[0] in (2, 5, 6, 11, 12, 13, 14):
             assert inter.changed_nodes == {3, 1}
 
+    def test_double_change_prune_and_regraft(self):
+        # given
+        b = PhyloTreeBuilder(prng=None)
+        b.with_balanced_tree(height=4)
+
+        inter = PhyloTreeInteractor(b.build(), prng=None)
+
+        # when/then
+        inter.prune_and_regraft(7, (2, 5))
+        assert inter.changed_nodes == {1, 3}
+        inter.prune_and_regraft(14, (4, 9))
+        assert inter.changed_nodes == {6, 2}
+
+    def test_double_change_rooted_prune_and_regraft(self):
+        # given
+        b = PhyloTreeBuilder(prng=None)
+        b.with_balanced_tree(height=4)
+
+        inter = PhyloTreeInteractor(b.build(), prng=None)
+
+        # when/then
+        inter.rooted_prune_and_regraft(7)
+        assert inter.changed_nodes == {1, 3}
+        inter.rooted_prune_and_regraft(14)
+        assert inter.changed_nodes == {6, 2}
+
+    def test_double_change_swap_leaves(self):
+        # given
+        b = PhyloTreeBuilder(prng=None)
+        b.with_balanced_tree(height=4)
+
+        inter = PhyloTreeInteractor(b.build(), prng=None)
+
+        # when/then
+        inter.swap_leaves(15, 17)
+        assert inter.changed_nodes == {7, 8}
+        inter.swap_leaves(18, 19)
+        assert inter.changed_nodes == {8, 9}
+
 
 @given(
-    st.integers(min_value=4, max_value=10), st.randoms(),
+    st.integers(min_value=4, max_value=10), st.randoms(use_true_random=False),
 )
 def test_arbitrary_trees_and_moves_undo_ok(n_samples, prng):
     # given

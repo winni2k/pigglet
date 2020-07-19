@@ -1,6 +1,4 @@
-import collections
 import itertools
-import itertools as it
 import logging
 import random
 from abc import ABC, abstractmethod
@@ -79,25 +77,17 @@ def postorder_nodes_from_frontier(g, frontier):
         frontier = {frontier}
     else:
         frontier = set(frontier)
-    ancestors = collections.Counter(
-        it.chain.from_iterable(nx.ancestors(g, u) for u in frontier),
-    )
-    seen = set()
-    frontier = collections.deque(u for u in frontier if u not in ancestors)
-    while frontier:
-        current = frontier.pop()
-        if ancestors[current] > 1 and current not in seen:
-            seen.add(current)
-            frontier.appendleft(current)
-            continue
-        yield current
-        seen.add(current)
-        try:
-            parent = next(g.predecessors(current))
-        except StopIteration:
-            return
-        if parent not in seen:
-            frontier.append(parent)
+    ancestors = set()
+    for u in frontier:
+        for anc in nx.ancestors(g, u):
+            ancestors.add(anc)
+    logging.info(ancestors)
+    target = ancestors | frontier
+    roots = roots_of_tree(g)
+    assert len(roots) == 1
+    for u in nx.dfs_postorder_nodes(g, source=roots[0]):
+        if u in target:
+            yield u
 
 
 @dataclass
@@ -113,6 +103,21 @@ class PhyloTreeMoveMemento:
 
 
 @dataclass
+class PhyloTreePruneRegraftMemento(PhyloTreeMoveMemento):
+    pass
+
+
+@dataclass
+class PhyloTreeRootedPruneRegraftMemento(PhyloTreeMoveMemento):
+    pass
+
+
+@dataclass
+class PhyloTreeSwapLeavesMemento(PhyloTreeMoveMemento):
+    pass
+
+
+@dataclass
 class PhyloTreeMoveMementoBuilder:
     interactor: Any
 
@@ -120,17 +125,17 @@ class PhyloTreeMoveMementoBuilder:
         self, node, edge: Optional[Tuple[Node, Node]] = None
     ):
         if not edge:
-            return PhyloTreeMoveMemento(
+            return PhyloTreeRootedPruneRegraftMemento(
                 commands=[self.interactor.rooted_prune_and_regraft],
                 args=[{"node": node}],
             )
-        return PhyloTreeMoveMemento(
+        return PhyloTreePruneRegraftMemento(
             commands=[self.interactor.prune_and_regraft],
             args=[{"node": node, "edge": edge}],
         )
 
     def of_swap_leaves(self, u, v):
-        return PhyloTreeMoveMemento(
+        return PhyloTreeSwapLeavesMemento(
             commands=[self.interactor.swap_leaves], args=[{"u": u, "v": v}]
         )
 
@@ -242,8 +247,8 @@ class PhyloTreeInteractor(TreeInteractor):
             logger.error(self.g.nodes(data=True))
             logger.error(self.g.edges)
             raise
-        for u in updated_nodes:
-            self.changed_nodes.add(u)
+
+        self.changed_nodes = set(updated_nodes)
         return memento
 
     def rooted_prune_and_regraft(self, node: Node):
@@ -264,7 +269,7 @@ class PhyloTreeInteractor(TreeInteractor):
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(
             parent_parent
         )
-        self.changed_nodes.add(parent_parent)
+        self.changed_nodes = {parent, parent_parent}
         return self._memento_builder.of_prune_and_regraft(
             node, (parent_parent, parent_child)
         )
@@ -281,8 +286,7 @@ class PhyloTreeInteractor(TreeInteractor):
         for node, parent in zip([u, v], reversed(parents)):
             self.g.add_edge(parent, node)
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(*parents)
-        for u_node in parents:
-            self.changed_nodes.add(u_node)
+        self.changed_nodes = set(parents)
         return self._memento_builder.of_swap_leaves(u, v)
 
     def extend_prune_and_regraft(
