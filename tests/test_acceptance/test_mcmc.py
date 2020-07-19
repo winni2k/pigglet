@@ -1,10 +1,10 @@
 import logging
-import random
 
 import msprime
 import networkx as nx
 import pytest
 from hypothesis import given, strategies
+from hypothesis import strategies as st
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     MutationMoveExecutorBuilder,
@@ -91,9 +91,9 @@ def test_arbitrary_trees(n_mutations):
     assert set(mcmc.map_g.edges()) == set(rand_g.edges())
 
 
-@pytest.mark.parametrize("n_samples", [3, 4])
-def test_arbitrary_phylo_trees(n_samples):
+def test_arbitrary_phylo_trees():
     # given
+    n_samples = 4
     ts = msprime.simulate(
         sample_size=n_samples, recombination_rate=0, random_seed=42
     )
@@ -156,12 +156,14 @@ class TestMutationMoveExecutor:
         strategies.data(),
         strategies.integers(min_value=1, max_value=3),
         strategies.integers(min_value=2, max_value=10),
+        strategies.randoms(),
     )
-    def test_undoes_any_move(self, data, num_moves, n_mutations):
+    def test_undoes_any_move(self, data, num_moves, n_mutations, prng):
         # given
         b = MutationMoveExecutorBuilder()
+
         b.with_random_tree(n_mutations)
-        exe = b.build()
+        exe = b.build(prng)
         original_tree = exe.g.copy()
 
         for idx in range(num_moves):
@@ -181,13 +183,12 @@ class TestMutationMoveExecutor:
 
 
 class TestPhyloMoveExecutor:
-    @pytest.mark.parametrize("seed", range(4))
-    def test_a_bunch_of_moves(self, seed):
+    @given(st.randoms())
+    def test_a_bunch_of_moves(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder()
+        b = PhyloMoveExecutorBuilder(prng=prng)
         b.with_balanced_tree(height=3)
         exe = b.build()
-        random.seed(seed)
 
         for i in range(20):
             old_g = exe.g.copy()

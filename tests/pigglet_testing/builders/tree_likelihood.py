@@ -131,21 +131,22 @@ class MutationTreeLikelihoodCalculatorBuilder(MutationTreeLikelihoodBuilder):
 
 
 class MutationMoveExecutorBuilder(MutationTreeBuilder):
-    def build(self):
+    def build(self, prng):
         g = super().build()
-        return MutationTreeMoveCaretaker(g)
+        return MutationTreeMoveCaretaker(g, prng=prng)
 
 
 class PhyloMoveExecutorBuilder(PhyloTreeBuilder):
     def build(self):
         g = super().build()
-        return PhyloTreeMoveCaretaker(g)
+        return PhyloTreeMoveCaretaker(g, prng=self.prng)
 
 
 class MCMCBuilder(LikelihoodBuilder):
     def __init__(self):
         super().__init__()
         self.seed = None
+        self.prng = random
         self.n_burnin_iter = 10
         self.n_sampling_iter = 10
         self.normalize_gls = False
@@ -168,16 +169,21 @@ class MCMCBuilder(LikelihoodBuilder):
         self.normalize_gls = True
         return self
 
+    def with_prng(self, prng):
+        self.prng = prng
+
     def build(self):
-        if self.seed is None:
-            random.seed(42)
+        if self.prng is random:
+            if self.seed is None:
+                self.seed = 42
+            self.prng.seed(self.seed)
         gls = super().build()
         if self.normalize_gls:
             gls = GLManipulator(gls).normalize().gls
         if self.mutation_tree:
-            runner = MCMCRunner.mutation_tree_from_gls(gls)
+            runner = MCMCRunner.mutation_tree_from_gls(gls, prng=self.prng)
         else:
-            runner = MCMCRunner.phylogenetic_tree_from_gls(gls)
+            runner = MCMCRunner.phylogenetic_tree_from_gls(gls, prng=self.prng)
         runner.num_burnin_iter = self.n_burnin_iter
         runner.num_sampling_iter = self.n_sampling_iter
         runner.reporting_interval = self.reporting_interval

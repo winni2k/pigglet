@@ -7,12 +7,13 @@ All attributes are private.
 All methods prefixed with "_" are private.
 Call build() to obtain the constructed object.
 """
-import itertools as it
 import math
-import random
 
 import numpy as np
-import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
+from pigglet_testing.builders.tree import PhyloTreeBuilder
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     PhyloMoveExecutorBuilder,
@@ -96,14 +97,15 @@ class TestSampleMarginalizedLikelihood:
 
 
 class TestRecalculateAttachmentLogLikeFromNodes:
-    @pytest.mark.parametrize(
-        "n_samples,seed", list(it.product(range(3, 10), (0, 1)))
+    @given(
+        st.integers(min_value=4, max_value=10),
+        st.randoms(use_true_random=False),
     )
-    def test_arbitrary_trees(self, n_samples, seed):
+    def test_arbitrary_trees(self, n_samples, prng):
         # given
         b = MCMCBuilder()
+        b.with_prng(prng)
         b.with_phylogenetic_tree()
-        random.seed(seed)
 
         for sample in range(n_samples):
             b.with_mutated_gl_at(sample, sample)
@@ -129,10 +131,10 @@ class TestRecalculateAttachmentLogLikeFromNodes:
 
 
 class TestChangedNodes:
-    @pytest.mark.parametrize("seed", range(10))
-    def test_swap_leaf(self, seed):
+    @given(st.randoms())
+    def test_swap_leaf(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder()
+        b = PhyloMoveExecutorBuilder(prng=prng)
         b.with_path(6, 5, 0)
         b.with_branch(5, 1)
         b.with_branch(6, 4)
@@ -146,14 +148,15 @@ class TestChangedNodes:
 
         # then
         if {n1, n2} in ({0, 1}, {2, 3}):
-            assert caretaker.changed_nodes == {}
+            assert caretaker.changed_nodes == set()
         else:
-            assert caretaker.changed_nodes == {4: {2, 3}, 5: {0, 1}}
+            assert set(caretaker.changed_nodes) == {4, 5}
+            # assert caretaker.changed_nodes == {4: {2, 3}, 5: {0, 1}}
 
-    @pytest.mark.parametrize("seed", range(4))
-    def test_espr(self, seed):
+    @given(st.randoms(use_true_random=False))
+    def test_espr(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder()
+        b = PhyloMoveExecutorBuilder(prng=prng)
         b.with_path(6, 5, 0)
         b.with_branch(5, 1)
         b.with_branch(6, 4)
@@ -166,26 +169,50 @@ class TestChangedNodes:
         node, edge = caretaker.extending_subtree_prune_and_regraft()
 
         # then
-        assert caretaker.changed_nodes.keys().isdisjoint(set(range(4)))
+        assert set(caretaker.changed_nodes).isdisjoint(set(range(4)))
         assert node not in caretaker.changed_nodes
         if node == 4 and edge in ((5, 0), (5, 1)):
-            assert caretaker.changed_nodes == {5: {0, 1}, 6: set()}
+            assert caretaker.changed_nodes == {6}
+            # assert caretaker.changed_nodes == {5: {0, 1}, 6: set()}
         elif node == 5 and edge in ((4, 2), (4, 3)):
-            assert caretaker.changed_nodes == {4: {2, 3}, 6: set()}
+            assert caretaker.changed_nodes == {6}
+            # assert caretaker.changed_nodes == {4: {2, 3}, 6: set()}
+
+    @given(st.randoms(use_true_random=False))
+    def test_espr_bigger(self, prng):
+        # given
+        b = PhyloTreeBuilder(prng=prng)
+        b.with_balanced_tree(height=4)
+
+        inter = PhyloTreeInteractor(b.build(), prng=prng)
+
+        # when
+        node = 7
+        memento, edge = inter.extend_prune_and_regraft(node, 0.0001)
+
+        # then
+        assert set(inter.changed_nodes).isdisjoint(set(range(7, 15)))
+        assert node not in inter.changed_nodes
+
+        if edge[0] in (2, 5, 6, 11, 12, 13, 14):
+            assert inter.changed_nodes == {3, 1}
 
 
-@pytest.mark.parametrize("n_samples", list(range(3, 10)))
-def test_arbitrary_trees_and_moves_undo_ok(n_samples):
+@given(
+    st.integers(min_value=4, max_value=10), st.randoms(),
+)
+def test_arbitrary_trees_and_moves_undo_ok(n_samples, prng):
     # given
     b = MCMCBuilder()
+    b.with_prng(prng)
     b.with_phylogenetic_tree()
 
     for sample in range(n_samples):
         b.with_mutated_gl_at(sample, sample)
 
     mcmc = b.build()
-    mover = PhyloTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls)
-    like = mover.attachment_log_like
+    mover = PhyloTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls, prng=prng)
+    like = mover.attachment_log_like.copy()
 
     # when/then
     mover.random_move()

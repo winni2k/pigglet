@@ -85,6 +85,7 @@ def cli():
     default=False,
     help="Use a mutation tree instead of a phylogenetic tree for inference",
 )
+@click.option("--seed", default=None, type=int, help="Set random seed")
 def infer(
     gl_vcf,
     out_prefix,
@@ -96,6 +97,7 @@ def infer(
     logsumexp_refresh_rate,
     check_logsumexp_accuracy,
     mutation_tree,
+    seed,
 ):
     """Infer phylogenetic or mutation tree from genotype likelihoods stored in
     GL_VCF.
@@ -110,6 +112,8 @@ def infer(
     import logging
 
     import numpy as np
+    import random
+    import sys
 
     from pigglet.constants import HET_NUM, HOM_REF_NUM
     from pigglet.gl_loader import LikelihoodLoader
@@ -117,6 +121,10 @@ def infer(
 
     version = get_version()
     logging.info(f"The PIGGLET v{version}")
+    if seed is None:
+        seed = random.randrange(sys.maxsize)
+    logging.info(f"Random seed: {seed}")
+    random.seed(seed)
 
     logging.info("Loading GLs in %s", gl_vcf)
     loader = LikelihoodLoader(vcf_file=gl_vcf)
@@ -143,7 +151,9 @@ def infer(
     if mutation_tree:
         runner = MCMCRunner.mutation_tree_from_gls(gls)
     else:
-        runner = MCMCRunner.phylogenetic_tree_from_gls(gls)
+        runner = MCMCRunner.phylogenetic_tree_from_gls(
+            gls, tree_move_weights=[int(gls.shape[1] != 3), 1]
+        )
 
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
@@ -180,13 +190,14 @@ def convert(
     import h5py
     import networkx as nx
     import numpy as np
+    import random
 
     from pigglet.tree import strip_tree
     from pigglet.tree_converter import PhylogeneticTreeConverter
 
     g = nx.read_gml(mutation_tree)
     g = nx.relabel_nodes(g, int)
-    converter = PhylogeneticTreeConverter(g)
+    converter = PhylogeneticTreeConverter(g, prng=random)
     with h5py.File(hdf5, "r") as fh:
         sample_attachments = fh[hdf5_sample_attachment_descriptor][:]
     phylo_g = converter.convert(sample_attachments)

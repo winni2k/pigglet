@@ -41,8 +41,11 @@ class TestRecalculateAttachmentLogLikeFromNodes:
         assert np.allclose(root_like, like)
 
 
-@given(strategies.integers(min_value=2, max_value=10))
-def test_arbitrary_trees_and_moves_undo_ok(n_mutations):
+@given(
+    strategies.integers(min_value=2, max_value=10),
+    strategies.randoms(note_method_calls=True, use_true_random=False),
+)
+def test_arbitrary_trees_and_moves_undo_ok(n_mutations, prng):
     # given
     rand_g = nx.gnr_graph(n_mutations, 0).reverse()
     nx.relabel_nodes(rand_g, {n: n - 1 for n in rand_g}, copy=False)
@@ -55,7 +58,7 @@ def test_arbitrary_trees_and_moves_undo_ok(n_mutations):
         add_gl_at_ancestor_mutations_for(attachment_point, b, rand_g, sample)
 
     mcmc = b.build()
-    mover = MutationTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls)
+    mover = MutationTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls, prng=prng)
     like = mover.attachment_log_like
 
     # when/then

@@ -1,3 +1,4 @@
+import random
 from dataclasses import dataclass, field
 
 import networkx as nx
@@ -10,6 +11,7 @@ from pigglet.tree_interactor import PhyloTreeInteractor
 @dataclass
 class PhyloTreeBuilder:
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
+    prng: random.Random = None
 
     def with_branch(self, u, v):
         self.g.add_edge(u, v)
@@ -24,7 +26,7 @@ class PhyloTreeBuilder:
         return self
 
     def build(self):
-        return PhyloTreeInteractor(self.g).g
+        return PhyloTreeInteractor(self.g, prng=self.prng).g
 
 
 class MutationTreeBuilder:
@@ -61,8 +63,10 @@ class MutationTreeBuilder:
 
 
 class PhylogeneticTreeConverterBuilder(MutationTreeBuilder):
-    def build(self):
-        return PhylogeneticTreeConverter(super().build())
+    def build(self, prng=None):
+        if prng is None:
+            prng = random
+        return PhylogeneticTreeConverter(super().build(), prng=prng)
 
 
 class PhylogeneticTreeConverterTestDriver(PhylogeneticTreeConverterBuilder):
@@ -74,8 +78,8 @@ class PhylogeneticTreeConverterTestDriver(PhylogeneticTreeConverterBuilder):
         self.sample_attachments = list(attachments)
         return self
 
-    def build(self):
-        converter = super().build()
+    def build(self, prng=None):
+        converter = super().build(prng=prng)
         return PhyloTreeExpectation(
             converter.convert(sample_attachments=self.sample_attachments)
         )

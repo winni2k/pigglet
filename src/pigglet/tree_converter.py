@@ -5,8 +5,9 @@ from pigglet.tree_utils import roots_of_tree
 
 
 class PhylogeneticTreeConverter:
-    def __init__(self, g):
+    def __init__(self, g, prng):
         self.g = g
+        self.prng = prng
         self.phylo_g = None
         self.sample_attachments = None
         self.mutation_ids = None
@@ -64,7 +65,7 @@ class PhylogeneticTreeConverter:
 
     def _merge_tree(self):
         """"""
-        inter = MutationTreeInteractor(self.phylo_g)
+        inter = MutationTreeInteractor(self.phylo_g, self.prng)
         start_over = True
         while start_over:
             start_over = False

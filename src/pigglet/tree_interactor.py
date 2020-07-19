@@ -5,7 +5,7 @@ import logging
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Iterable, Set
 
 import networkx as nx
 
@@ -26,6 +26,12 @@ class GraphAnnotator:
 
     g: nx.DiGraph
     _updated_nodes: Dict[int, frozenset] = field(default_factory=dict)
+
+    def traversed_inner_nodes(self) -> Iterable:
+        return self._updated_nodes.keys()
+
+    # def updated_nodes(self) -> Iterable:
+    #     return self._updated_nodes.keys()
 
     def annotate_all_nodes_with_descendant_leaves(self, start):
         self._updated_nodes.clear()
@@ -94,30 +100,6 @@ def postorder_nodes_from_frontier(g, frontier):
             frontier.append(parent)
 
 
-def random_graph_walk_with_memory_from(g, start, seen=None):
-    """Walks the graph starting from start
-
-    Does not yield start node.
-
-    :yields: current node, number of unvisited neighbors of current node
-    """
-    if not seen:
-        seen = set()
-    seen.add(start)
-    current_node = start
-    neighbors = [n for n in nx.all_neighbors(g, current_node) if n not in seen]
-    current_node = random.choice(neighbors)
-    while True:
-        seen.add(current_node)
-        neighbors = [
-            n for n in nx.all_neighbors(g, current_node) if n not in seen
-        ]
-        yield current_node, neighbors
-        if not neighbors:
-            return
-        current_node = random.choice(neighbors)
-
-
 @dataclass
 class PhyloTreeMoveMemento:
     """Stores the information necessary to undo a PhyloTreeInteractor move"""
@@ -158,10 +140,38 @@ class TreeInteractor(ABC):
     def undo(self, memento):
         pass
 
+    def random_graph_walk_with_memory_from(self, start, seen=None):
+        """Walks the graph starting from start
+
+        Does not yield start node.
+
+        :yields: current node, number of unvisited neighbors of current node
+        """
+        if not seen:
+            seen = set()
+        seen.add(start)
+        current_node = start
+        neighbors = [
+            n for n in nx.all_neighbors(self.g, current_node) if n not in seen
+        ]
+        current_node = self.prng.choice(neighbors)
+        while True:
+            seen.add(current_node)
+            neighbors = [
+                n
+                for n in nx.all_neighbors(self.g, current_node)
+                if n not in seen
+            ]
+            yield current_node, neighbors
+            if not neighbors:
+                return
+            current_node = self.prng.choice(neighbors)
+
 
 @dataclass
 class PhyloTreeInteractor(TreeInteractor):
     g: nx.DiGraph = field(default_factory=nx.DiGraph)
+    prng: Any = field(default_factory=lambda: random)
     leaf_nodes: frozenset = field(init=False)
     leaf_node_list: list = field(init=False)
     mh_correction: float = 0
@@ -169,7 +179,7 @@ class PhyloTreeInteractor(TreeInteractor):
     _last_node_id: int = 0
     _memento_builder: PhyloTreeMoveMementoBuilder = field(init=False)
     _annotator: GraphAnnotator = field(init=False)
-    changed_nodes: Dict[int, FrozenSet[int]] = field(default_factory=dict)
+    changed_nodes: Set[int] = field(default_factory=set)
 
     def __post_init__(self):
         self._memento_builder = PhyloTreeMoveMementoBuilder(self)
@@ -232,7 +242,8 @@ class PhyloTreeInteractor(TreeInteractor):
             logger.error(self.g.nodes(data=True))
             logger.error(self.g.edges)
             raise
-        self.changed_nodes = self._annotator._updated_nodes
+        for u in updated_nodes:
+            self.changed_nodes.add(u)
         return memento
 
     def rooted_prune_and_regraft(self, node: Node):
@@ -240,9 +251,9 @@ class PhyloTreeInteractor(TreeInteractor):
         g = self.g
         root = self.root
         parent = next(g.predecessors(node))
-        predecessors = list(g.predecessors(parent))
-        if not predecessors:
+        if parent == root:
             return PhyloTreeMoveMemento()
+        predecessors = list(g.predecessors(parent))
         parent_parent = predecessors[0]
         parent_child = next(u for u in g.successors(parent) if u != node)
         g.add_edge(parent_parent, parent_child)
@@ -250,40 +261,28 @@ class PhyloTreeInteractor(TreeInteractor):
         g.add_edge(parent, root)
         g.add_edge(parent, node)
         self.check_binary_rooted_tree()
-        self.changed_nodes.clear()
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(
             parent_parent
         )
-        self.changed_nodes = self._annotator._updated_nodes
+        self.changed_nodes.add(parent_parent)
         return self._memento_builder.of_prune_and_regraft(
             node, (parent_parent, parent_child)
         )
-
-    def check_binary_rooted_tree(self):
-        assert nx.is_directed_acyclic_graph(self.g)
-        for node in self.g:
-            if node == self.root:
-                assert self.g.in_degree(node) == 0
-                assert self.g.out_degree(node) == 2
-            elif node in self.leaf_nodes:
-                assert self.g.in_degree(node) == 1
-                assert self.g.out_degree(node) == 0
-            else:
-                assert self.g.in_degree(node) == 1
-                assert self.g.out_degree(node) == 2
 
     def swap_leaves(self, u, v) -> PhyloTreeMoveMemento:
         assert u != v
         assert u in self.leaf_nodes
         assert v in self.leaf_nodes
         parents = [next(self.g.predecessors(node)) for node in [u, v]]
+        if parents[0] == parents[1]:
+            return PhyloTreeMoveMemento()
         for node, parent in zip([u, v], parents):
             self.g.remove_edge(parent, node)
         for node, parent in zip([u, v], reversed(parents)):
             self.g.add_edge(parent, node)
-        self.changed_nodes.clear()
         self._annotator.annotate_leaves_of_nodes_and_their_ancestors(*parents)
-        self.changed_nodes = self._annotator._updated_nodes
+        for u_node in parents:
+            self.changed_nodes.add(u_node)
         return self._memento_builder.of_swap_leaves(u, v)
 
     def extend_prune_and_regraft(
@@ -300,12 +299,12 @@ class PhyloTreeInteractor(TreeInteractor):
         else:
             start_constraint = RandomWalkStopType.UNCONSTRAINED
         previous_node = start
-        for attach_node, neighbors in random_graph_walk_with_memory_from(
-            self.g, start, seen={node}
+        for attach_node, neighbors in self.random_graph_walk_with_memory_from(
+            start, seen={node}
         ):
             if not neighbors:
                 break
-            if random.random() < prop_attach:
+            if self.prng.random() < prop_attach:
                 break
             previous_node = attach_node
         self.mh_correction = determine_espr_mh_correction(
@@ -321,6 +320,19 @@ class PhyloTreeInteractor(TreeInteractor):
             attach_edge = (attach_edge[1], attach_edge[0])
         assert attach_edge in self.g.edges, attach_edge
         return self.prune_and_regraft(node, attach_edge), attach_edge
+
+    def check_binary_rooted_tree(self):
+        assert nx.is_directed_acyclic_graph(self.g)
+        for node in self.g:
+            if node == self.root:
+                assert self.g.in_degree(node) == 0
+                assert self.g.out_degree(node) == 2
+            elif node in self.leaf_nodes:
+                assert self.g.in_degree(node) == 1
+                assert self.g.out_degree(node) == 0
+            else:
+                assert self.g.in_degree(node) == 1
+                assert self.g.out_degree(node) == 2
 
 
 def determine_espr_mh_correction(neighbors, prop_attach, start_constraint):
@@ -344,8 +356,9 @@ class MutationTreeInteractor(TreeInteractor):
     All public methods return a memento object that can be used to undo a move
     """
 
-    def __init__(self, g):
+    def __init__(self, g, prng):
         self.g = g
+        self.prng = prng
         self.root = roots_of_tree(g)
         assert len(self.root) == 1, self.root
         self.root = self.root[0]
@@ -378,7 +391,7 @@ class MutationTreeInteractor(TreeInteractor):
         return self._uniform_attach_to_nodes(node, valid_attachment_points)
 
     def extend_attach(self, node, start, prop_attach):
-        assert 0 <= prop_attach < 1
+        assert 0 <= prop_attach <= 1
         assert node != start
 
         if len(list(nx.all_neighbors(self.g, start))) == 0:
@@ -387,10 +400,10 @@ class MutationTreeInteractor(TreeInteractor):
             start_constraint = RandomWalkStopType.CONSTRAINED
         else:
             start_constraint = RandomWalkStopType.UNCONSTRAINED
-        for attach_node, neighbors in random_graph_walk_with_memory_from(
-            self.g, start
+        for attach_node, neighbors in self.random_graph_walk_with_memory_from(
+            start
         ):
-            if random.random() < prop_attach:
+            if self.prng.random() < prop_attach:
                 break
 
         constraint = RandomWalkStopType.UNCONSTRAINED
@@ -458,7 +471,7 @@ class MutationTreeInteractor(TreeInteractor):
 
     def _uniform_attach_to_nodes(self, node, target_nodes):
         target_nodes = list(target_nodes)
-        attach_idx = random.randrange(len(target_nodes))
+        attach_idx = self.prng.randrange(len(target_nodes))
         return self.attach(node, target_nodes[attach_idx])
 
     def merge_mutation_nodes(self, keep, merge):

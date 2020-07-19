@@ -2,6 +2,9 @@ import random
 
 import networkx as nx
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
 from builders.tree_interactor import (
     MutationTreeInteractorBuilder,
     PhyloTreeInteractorBuilder,
@@ -44,15 +47,14 @@ class TestAttach:
 
 
 class TestUniformAttach:
-    @pytest.mark.parametrize("seed", range(4))
-    def test_only_reattaches_to_root_connected_nodes(self, seed):
+    @given(st.randoms(use_true_random=False))
+    def test_only_reattaches_to_root_connected_nodes(self, prng):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_balanced_tree(2)
         inter = b.build()
 
         inter.prune(0)
-        random.seed(seed)
 
         # when
         inter.uniform_attach(0)
@@ -60,9 +62,10 @@ class TestUniformAttach:
         # then
         assert nx.ancestors(inter.g, 0) <= {-1, 1, 4, 5}
 
-    def test_also_reattaches_to_root(self):
+    @given(st.randoms(use_true_random=False))
+    def test_also_reattaches_to_root(self, prng):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_mutation_at(-1, 0)
         inter = b.build()
 
@@ -76,17 +79,16 @@ class TestUniformAttach:
 
 
 class TestExtendAttach:
-    @pytest.mark.parametrize("seed", range(4))
+    @given(st.randoms(use_true_random=False))
     def test_only_reattaches_to_root_connected_nodes_with_appropriate_mh(
-        self, seed
+        self, prng
     ):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_balanced_tree(2)
         inter = b.build()
 
         inter.prune(0)
-        random.seed(seed)
 
         # when
         inter.extend_attach(0, -1, prop_attach=0.45)
@@ -113,9 +115,10 @@ class TestExtendAttach:
         with pytest.raises(TreeIsTooSmallError):
             inter.extend_attach(0, -1, prop_attach=0.45)
 
-    def test_double_constrained_move_mh_correction_is_one(self):
+    @given(st.randoms(use_true_random=False))
+    def test_double_constrained_move_mh_correction_is_one(self, prng):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_path(2)
         inter = b.build()
 
@@ -127,26 +130,26 @@ class TestExtendAttach:
         # then
         assert inter.mh_correction == 1
 
-    def test_start_constrained_move_mh_correction(self):
+    @given(st.randoms(use_true_random=False))
+    def test_start_constrained_move_mh_correction(self, prng):
         # given
-        random.seed(1)
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_path(3)
         inter = b.build()
 
         inter.prune(2)
 
         # when
-        inter.extend_attach(2, -1, 0.999)
+        inter.extend_attach(2, -1, 1)
 
         # then
         print(inter.g.edges)
-        assert inter.mh_correction == 1 - 0.999
+        assert inter.mh_correction == 0
 
-    def test_end_constrained_move_mh_correction(self):
+    @given(st.randoms(use_true_random=False))
+    def test_end_constrained_move_mh_correction(self, prng):
         # given
-        random.seed(1)
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_path(3)
         inter = b.build()
 

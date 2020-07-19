@@ -2,14 +2,17 @@ import logging
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Set
 
 import networkx as nx
 import numpy as np
 
 from pigglet.constants import HET_NUM, HOM_REF_NUM, LOG_LIKE_DTYPE
 from pigglet.scipy_import import logsumexp
-from pigglet.tree_interactor import GraphAnnotator
+from pigglet.tree_interactor import (
+    GraphAnnotator,
+    postorder_nodes_from_frontier,
+)
 from pigglet.tree_utils import roots_of_tree
 
 logger = logging.getLogger(__name__)
@@ -141,11 +144,12 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     gls: np.ndarray
     n_sites: int = 0
     n_samples: int = 0
-    _changed_nodes: set = field(default_factory=set)
+    changed_nodes: Set[int] = field(default_factory=set)
     _sample_lookup: dict = field(default_factory=dict)
     n_node_update_list: list = field(default_factory=list)
     _attachment_log_like: Optional[np.ndarray] = None
     leaf_nodes: frozenset = field(init=False)
+    double_check_ll_calculations: bool = True
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -184,7 +188,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         """
         if self._attachment_log_like is None:
             self._attachment_log_like_complete_recalculation()
-        elif self._changed_nodes:
+        elif self.has_changed_nodes():
             self._attachment_log_like_partial_recalculation()
         return self._attachment_log_like
 
@@ -207,7 +211,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 + np.sum(self.gls[:, update_idxs, HOM_REF_NUM], 1)
                 - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
-        self._changed_nodes.clear()
+        self.changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
         self._attachment_log_like = attach_ll
 
@@ -217,21 +221,53 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         n_node_updates = 0
         attach_ll = self._attachment_log_like
         seen_nodes = set()
-        for node in self._changed_nodes:
+        logging.debug(f"Changed nodes: {self.changed_nodes}")
+        for node in postorder_nodes_from_frontier(self.g, self.changed_nodes):
             if node in seen_nodes:
-                continue
+                raise Exception(
+                    f"Changed nodes should be postordered {self.changed_nodes}"
+                )
             seen_nodes.add(node)
             n_node_updates += 1
-            leaves = self.g.nodes[node]["leaves"]
-            other_leaves = self.leaf_nodes - leaves
-            sample_idxs = [self._sample_lookup[u] for u in leaves]
-            other_idxs = [self._sample_lookup[u] for u in other_leaves]
-            attach_ll[node] = np.sum(
-                self.gls[:, sample_idxs, HET_NUM], 1
-            ) + np.sum(self.gls[:, other_idxs, HOM_REF_NUM], 1)
-        self._changed_nodes.clear()
+            child1, child2 = list(self.g.successors(node))
+            attach_ll[node] = (
+                attach_ll[child1]
+                + attach_ll[child2]
+                - np.sum(self.gls[:, :, HOM_REF_NUM], 1)
+            )
+
+            if self.double_check_ll_calculations:
+                self._double_check_attachment_likelihoods(
+                    attach_ll, child1, child2, node
+                )
+        self.changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
         self._attachment_log_like = attach_ll
+
+    def _double_check_attachment_likelihoods(
+        self, attach_ll, child1, child2, node
+    ):
+        leaves = self.g.nodes[node]["leaves"]
+        other_leaves = self.leaf_nodes - leaves
+        sample_idxs = [self._sample_lookup[u] for u in leaves]
+        other_idxs = [self._sample_lookup[u] for u in other_leaves]
+        other_ll = np.sum(self.gls[:, sample_idxs, HET_NUM], 1) + np.sum(
+            self.gls[:, other_idxs, HOM_REF_NUM], 1
+        )
+        try:
+            assert np.allclose(attach_ll[node], other_ll)
+        except AssertionError:
+            logging.error(f"Graph edges: {self.g.edges}")
+            logging.error(f"node leaves: {leaves}")
+            logging.error(f"other leaves: {other_leaves}")
+            child1_leaves = self.g.nodes[child1]["leaves"]
+            logging.error(f"child1 leaves: {child1_leaves}")
+            child2_leaves = self.g.nodes[child2]["leaves"]
+            logging.error(f"child2 leaves: {child2_leaves}")
+            logging.error(f"GLs: {self.gls}")
+            logging.error(f"child1_attach_ll: {attach_ll[child1]}")
+            logging.error(f"child2_attach_ll: {attach_ll[child2]}")
+            raise
 
     def node_sample_ids(self):
         """Iterate over node ids and associated samples (leaves)"""
@@ -252,13 +288,14 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
 
     def register_changed_nodes(self, *nodes):
         """Marks these nodes and all ancestors of these nodes to have changed
-        position in the graph"""
-        for node in nodes:
-            self._changed_nodes.add(node)
+        position in the graph
+        """
+        for u in nodes:
+            self.changed_nodes.add(u)
         return self
 
     def has_changed_nodes(self):
-        return len(self._changed_nodes) != 0
+        return len(self.changed_nodes) != 0
 
 
 class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):

@@ -3,6 +3,9 @@ import random
 
 import networkx as nx
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
 from builders.tree_interactor import (
     MutationTreeInteractorBuilder,
     PhyloTreeInteractorBuilder,
@@ -37,15 +40,14 @@ class TestMutationTreeInteractor:
         # then
         assert list(interactor.g.edges()) == []
 
-    @pytest.mark.parametrize("seed", range(4))
-    def test_uniform_attach_to_root_connected_nodes(self, seed):
+    @given(st.randoms())
+    def test_uniform_attach_to_root_connected_nodes(self, prng):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=prng)
         b.with_balanced_tree(2)
         inter = b.build()
 
         inter.prune(0)
-        random.seed(seed)
 
         # when
         memento = inter.uniform_attach(0)
@@ -88,7 +90,7 @@ class TestMutationTreeInteractor:
     @pytest.mark.parametrize("swap_nodes", [(0, 2), (2, 0)])
     def test_swap_subtree_of_two_nodes_in_line(self, swap_nodes):
         # given
-        b = MutationTreeInteractorBuilder()
+        b = MutationTreeInteractorBuilder(prng=random)
         b.with_balanced_tree(3)
         inter = b.build()
 

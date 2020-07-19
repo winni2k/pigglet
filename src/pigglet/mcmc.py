@@ -2,7 +2,7 @@ import logging
 import math
 import random
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Any
 
 import networkx as nx
 import numpy as np
@@ -37,6 +37,7 @@ class MCMCRunner:
     tree_interactor: TreeInteractor
     mover: TreeLikelihoodMover
     agg: AttachmentAggregator
+    prng: Any
     num_sampling_iter: int = 1
     num_burnin_iter: int = 1
     reporting_interval: int = 1
@@ -53,35 +54,42 @@ class MCMCRunner:
 
     @classmethod
     def mutation_tree_from_gls(
-        cls, gls, **kwargs,
+        cls, gls, prng=random, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
-        mover = MutationTreeLikelihoodMover(graph, gls)
+        mover = MutationTreeLikelihoodMover(graph, gls, prng=prng)
         return cls(
             gls=gls,
             map_g=graph.copy(),
             tree_move_weights=[1] * len(mover.mover.available_moves),
-            tree_interactor=MutationTreeInteractor(graph),
+            tree_interactor=MutationTreeInteractor(graph, prng=prng),
             mover=mover,
             agg=MutationAttachmentAggregator(),
+            prng=prng,
             **kwargs,
         )
 
     @classmethod
     def phylogenetic_tree_from_gls(
-        cls, gls, **kwargs,
+        cls, gls, prng=random, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
-        graph = build_random_phylogenetic_tree(num_samples=gls.shape[1])
-        mover = PhyloTreeLikelihoodMover(graph, gls)
+        graph = build_random_phylogenetic_tree(
+            num_samples=gls.shape[1], seed=prng.randrange(1, 2 ^ 32)
+        )
+        mover = PhyloTreeLikelihoodMover(graph, gls, prng)
+        if "tree_move_weights" not in kwargs:
+            kwargs["tree_move_weights"] = [1] * len(
+                mover.mover.available_moves
+            )
         return cls(
             gls=gls,
             map_g=graph.copy(),
-            tree_move_weights=[1] * len(mover.mover.available_moves),
             tree_interactor=PhyloTreeInteractor(graph),
             mover=mover,
             agg=PhyloAttachmentAggregator(),
+            prng=prng,
             **kwargs,
         )
 
@@ -175,7 +183,7 @@ class MCMCRunner:
             * self.mover.mh_correction
         )
 
-        rand_val = random.random()
+        rand_val = self.prng.random()
         if rand_val < ratio:
             return True
         return False
@@ -198,12 +206,15 @@ class MCMCRunner:
         raise ValueError
 
 
-def build_random_phylogenetic_tree(num_samples):
+def build_random_phylogenetic_tree(num_samples, seed):
     assert num_samples > 1
     import msprime
 
     ts = msprime.simulate(
-        sample_size=num_samples, Ne=100 * num_samples, recombination_rate=0
+        sample_size=num_samples,
+        Ne=100 * num_samples,
+        recombination_rate=0,
+        random_seed=seed,
     )
     tree = ts.first()
     g = nx.DiGraph(as_dict_of_dicts(tree))
