@@ -32,12 +32,13 @@ setup(
         "numpy",
         "numexpr",
         "pysam==0.15.3",
-        "click",
+        "click==7.1.2",
         "h5py",
         "tqdm",
         "scipy==1.5.*",
         "msprime",
         "tskit",
+        "pyfiglet==0.8.post1",
     ],
     packages=find_packages(
         "src", exclude=["contrib", "docs", "tests", "test_utils"]

@@ -15,13 +15,29 @@ def configure_logger(log_level, log_file):
     )
 
 
+def get_version():
+    import pkg_resources  # part of setuptools
+
+    return pkg_resources.require("pigglet")[0].version
+
+
 @click.group()
 @click.version_option()
 def cli():
-    pass
+    """The PIGGLET: The Phylogenetic Inference from Genotype Likelihoods Tool
+
+    Author: Warren W. Kretzschmar
+    """
 
 
-@cli.command()
+def set_numexpr_threads():
+    import os
+
+    if "NUMEXPR_MAX_THREADS" not in os.environ:
+        os.environ["NUMEXPR_MAX_THREADS"] = "8"
+
+
+@cli.command(context_settings=dict(show_default=True))
 @click.argument("gl_vcf", type=click.Path(exists=True))
 @click.argument("out_prefix", type=click.Path())
 @click.option(
@@ -87,7 +103,8 @@ def cli():
 )
 @click.option("--seed", default=None, type=int, help="Set random seed")
 @click.option(
-    "--double-check-likelihood-calculation",
+    "--double-check-likelihood-calculation/"
+    "--no-double-check-likelihood-calculation",
     default=False,
     help="This is slow and only meant for debugging. ",
 )
@@ -105,8 +122,8 @@ def infer(
     seed,
     double_check_likelihood_calculation,
 ):
-    """Infer phylogenetic or mutation tree from genotype likelihoods stored in
-    GL_VCF.
+    """Infer phylogenetic or mutation tree from genotype likelihoods
+    stored in GL_VCF.
 
     Save the resulting tree and mutation probabilities to OUT_PREFIX.
 
@@ -116,40 +133,49 @@ def infer(
 
     configure_logger(log_level=log_level, log_file=out_prefix + ".log")
     import logging
+    import sys
+
+    logger = logging.getLogger(__name__)
+    if logger.isEnabledFor(logging.INFO):
+        version = get_version()
+        from pyfiglet import Figlet
+
+        f = Figlet(font="speed")
+        print(f.renderText("The PIGGLET"), file=sys.stderr)
+        logger.info(f"v{version}")
+
+    set_numexpr_threads()
 
     import numpy as np
     import random
-    import sys
 
     from pigglet.constants import HET_NUM, HOM_REF_NUM
     from pigglet.gl_loader import LikelihoodLoader
     from pigglet.mcmc import MCMCRunner
 
-    version = get_version()
-    logging.info(f"The PIGGLET v{version}")
     if seed is None:
         seed = random.randrange(sys.maxsize)
-    logging.info(f"Random seed: {seed}")
+    logger.info(f"Random seed: {seed}")
     random.seed(seed)
 
-    logging.info("Loading GLs in %s", gl_vcf)
+    logger.info("Loading GLs in %s", gl_vcf)
     loader = LikelihoodLoader(vcf_file=gl_vcf)
     gls = loader.load()
 
-    logging.info("Storing input")
+    logger.info("Storing input")
     output_store = out_prefix + ".h5"
     store_input(gls, loader, output_store, store_gls)
     del loader
 
-    logging.info("Loaded %s sites and %s samples", gls.shape[0], gls.shape[1])
+    logger.info("Loaded %s sites and %s samples", gls.shape[0], gls.shape[1])
     missingness = (
         np.sum(gls[:, :, HOM_REF_NUM] == gls[:, :, HET_NUM])
         / gls.shape[0]
         / gls.shape[1]
     )
-    logging.info(f"Proportion missing sites: {missingness}")
+    logger.info(f"Proportion missing sites: {missingness}")
 
-    logging.info(
+    logger.info(
         "Running MCMC with %s burnin and %s sampling iterations",
         burnin,
         sampling,
@@ -167,14 +193,14 @@ def infer(
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
     if mutation_tree:
-        logging.info("Using a mutation tree")
+        logger.info("Using a mutation tree")
         runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
         runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     else:
-        logging.info("Using a phylogenetic tree")
+        logger.info("Using a phylogenetic tree")
     runner.run()
 
-    logging.info("Storing results")
+    logger.info("Storing results")
     if mutation_tree:
         store_mutation_tree_results(gls, out_prefix, output_store, runner)
     else:
@@ -229,12 +255,6 @@ def convert(
             data=attachments,
         )
     nx.write_gml(phylo_g, out_prefix + ".gml")
-
-
-def get_version():
-    import pkg_resources  # part of setuptools
-
-    return pkg_resources.require("pigglet")[0].version
 
 
 def store_input(gls, loader, output_store, store_gls):

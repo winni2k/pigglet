@@ -252,8 +252,8 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         self, attach_ll, child1, child2, node
     ):
         if not self.handbrake_warning_given:
-            logging.warning("You're driving with a pulled handbrake!")
-            logging.warning("Turn off likelihood double-checking to go fast.")
+            logger.warning("You're driving with a pulled handbrake!")
+            logger.warning("Turn off likelihood double-checking to go fast.")
             self.handbrake_warning_given = True
         leaves = self.g.nodes[node]["leaves"]
         other_leaves = self.leaf_nodes - leaves

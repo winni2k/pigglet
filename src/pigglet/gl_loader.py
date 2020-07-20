@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from pysam.libcbcf import VariantFile
+from pysam import VariantFile
 
 from pigglet.constants import GL_DTYPE
 
