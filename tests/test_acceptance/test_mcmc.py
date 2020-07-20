@@ -8,8 +8,8 @@ from hypothesis import given, strategies
 from hypothesis import strategies as st
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
-    MutationMoveExecutorBuilder,
-    PhyloMoveExecutorBuilder,
+    MutationMoveCaretakerBuilder,
+    PhyloMoveCaretakerBuilder,
     add_gl_at_ancestor_mutations_for,
     add_gl_at_each_ancestor_node_for_nodes,
 )
@@ -181,24 +181,23 @@ def test_aggregates_the_correct_number_of_runs(burnin, sampling):
 
 class TestMutationMoveExecutor:
     @given(
-        strategies.data(),
-        strategies.integers(min_value=1, max_value=3),
+        st.lists(
+            st.integers(min_value=0, max_value=2), min_size=1, max_size=5
+        ),
         strategies.integers(min_value=2, max_value=10),
-        strategies.randoms(),
+        strategies.randoms(use_true_random=False),
     )
-    def test_undoes_any_move(self, data, num_moves, n_mutations, prng):
+    def test_undoes_any_move(self, moves, n_mutations, prng):
         # given
-        b = MutationMoveExecutorBuilder()
+        b = MutationMoveCaretakerBuilder()
 
         b.with_random_tree(n_mutations)
         exe = b.build(prng)
         original_tree = exe.g.copy()
 
-        for idx in range(num_moves):
-            exe.available_moves[
-                data.draw(strategies.integers(min_value=0, max_value=2))
-            ]()
-            if idx == 0:
+        for move_idx, move in enumerate(moves):
+            exe.available_moves[move]()
+            if move_idx == 0:
                 memento = exe.memento
             else:
                 memento.append(exe.memento)
@@ -211,10 +210,10 @@ class TestMutationMoveExecutor:
 
 
 class TestPhyloMoveExecutor:
-    @given(st.randoms())
+    @given(st.randoms(use_true_random=False))
     def test_a_bunch_of_moves(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder(prng=prng)
+        b = PhyloMoveCaretakerBuilder(prng=prng)
         b.with_balanced_tree(height=4)
         exe = b.build()
 
@@ -228,3 +227,30 @@ class TestPhyloMoveExecutor:
                 logging.error(old_g.edges)
                 raise
             exe.register_mh_result(True)
+
+    @given(
+        st.lists(
+            st.integers(min_value=0, max_value=1), min_size=1, max_size=5
+        ),
+        strategies.integers(min_value=4, max_value=10),
+        strategies.randoms(use_true_random=False),
+    )
+    def test_undoes_any_move(self, moves, n_mutations, prng):
+        # given
+        b = PhyloMoveCaretakerBuilder(prng=prng)
+        b.with_random_tree(n_mutations)
+        exe = b.build()
+        original_tree = exe.g.copy()
+
+        for move_idx, move in enumerate(moves):
+            exe.available_moves[move]()
+            if move_idx == 0:
+                memento = exe.memento
+            else:
+                memento.append(exe.memento)
+
+        # when
+        exe.undo(memento)
+
+        # then
+        assert set(exe.g.edges) == set(original_tree.edges)

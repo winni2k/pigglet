@@ -16,7 +16,7 @@ from hypothesis import strategies as st
 from pigglet_testing.builders.tree import PhyloTreeBuilder
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
-    PhyloMoveExecutorBuilder,
+    PhyloMoveCaretakerBuilder,
     PhyloTreeLikelihoodCalculatorBuilder,
 )
 from pytest import approx
@@ -133,10 +133,10 @@ class TestRecalculateAttachmentLogLikeFromNodes:
 
 
 class TestChangedNodes:
-    @given(st.randoms())
+    @given(st.randoms(use_true_random=True))
     def test_swap_leaf(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder(prng=prng)
+        b = PhyloMoveCaretakerBuilder(prng=prng)
         b.with_path(6, 5, 0)
         b.with_branch(5, 1)
         b.with_branch(6, 4)
@@ -153,12 +153,11 @@ class TestChangedNodes:
             assert caretaker.changed_nodes == set()
         else:
             assert set(caretaker.changed_nodes) == {4, 5}
-            # assert caretaker.changed_nodes == {4: {2, 3}, 5: {0, 1}}
 
     @given(st.randoms(use_true_random=False))
     def test_espr(self, prng):
         # given
-        b = PhyloMoveExecutorBuilder(prng=prng)
+        b = PhyloMoveCaretakerBuilder(prng=prng)
         b.with_path(6, 5, 0)
         b.with_branch(5, 1)
         b.with_branch(6, 4)

@@ -130,13 +130,13 @@ class MutationTreeLikelihoodCalculatorBuilder(MutationTreeLikelihoodBuilder):
         return MutationTreeLikelihoodCalculator(g, gls)
 
 
-class MutationMoveExecutorBuilder(MutationTreeBuilder):
+class MutationMoveCaretakerBuilder(MutationTreeBuilder):
     def build(self, prng):
         g = super().build()
         return MutationTreeMoveCaretaker(g, prng=prng)
 
 
-class PhyloMoveExecutorBuilder(PhyloTreeBuilder):
+class PhyloMoveCaretakerBuilder(PhyloTreeBuilder):
     def build(self):
         g = super().build()
         return PhyloTreeMoveCaretaker(g, prng=self.prng)

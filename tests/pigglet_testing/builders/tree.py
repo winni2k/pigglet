@@ -1,7 +1,10 @@
 import random
 from dataclasses import dataclass, field
 
+import msprime
 import networkx as nx
+
+from pigglet.mcmc import as_dict_of_dicts
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
 from pigglet.tree_converter import PhylogeneticTreeConverter
@@ -23,6 +26,17 @@ class PhyloTreeBuilder:
 
     def with_balanced_tree(self, height=2, n_branches=2):
         self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
+        return self
+
+    def with_random_tree(self, n_samples):
+        ts = msprime.simulate(
+            n_samples,
+            recombination_rate=0,
+            random_seed=self.prng.randrange(1, 2 ^ 32),
+        )
+        self.g = nx.from_dict_of_dicts(
+            as_dict_of_dicts(ts.first()), create_using=self.g
+        )
         return self
 
     def build(self):

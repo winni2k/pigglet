@@ -68,7 +68,7 @@ class TestPostorderNodesFromFrontier:
         st.tuples(
             st.lists(st.sampled_from([6, 8, 9]), max_size=3), st.just((7, 10))
         ).map(lambda x: list(x[0]) + list(x[1])),
-        st.randoms(),
+        st.randoms(use_true_random=False),
     )
     def test_bug1_in_run_of_nodes(self, frontier, prng):
         prng.shuffle(frontier)

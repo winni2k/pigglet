@@ -22,15 +22,15 @@ np.seterr(all="raise")
 
 
 @dataclass
-class MutationTreeLikelihoodSummer:
+class TreeLikelihoodSummer:
     """Calculates efficient summed attachment log likelihood updates"""
 
     n_nodes: int
-    n_samples: int
+    len_axis_1: int
     max_diffs = 100
     _n_diffs = 0
     _ll_sum = None
-    _update_mask = None
+    _update_mask: Optional[Set[int]] = None
     _last_ll = None
     check_calc = False
     _weights = None
@@ -38,9 +38,9 @@ class MutationTreeLikelihoodSummer:
     def __post_init__(self):
         self._weights = np.vstack(
             [
-                np.ones(self.n_samples),
-                np.ones(self.n_samples),
-                np.ones(self.n_samples) * -1,
+                np.ones(self.len_axis_1),
+                np.ones(self.len_axis_1),
+                np.ones(self.len_axis_1) * -1,
             ]
         )
 
@@ -48,7 +48,8 @@ class MutationTreeLikelihoodSummer:
         """
         Update the log of the sum of exponentiated attachment likelihoods.
 
-        Every self.n_diffs calculations, the complete summation is performed.
+        Every self.n_diffs calculations, or whenever a floating point error
+        is raised, the complete summation is performed.
         In between, only differences are calculated for the nodes that have
         been updated in the tree.
         """
@@ -67,7 +68,7 @@ class MutationTreeLikelihoodSummer:
             self._last_ll[:] = attach_ll[:]
             self._n_diffs = 0
         elif self._update_mask:
-            mask = sorted([i + 1 for i in self._update_mask])
+            mask = sorted(self._update_mask)
             try:
                 last_sum_delta = logsumexp(self._last_ll[mask, :], axis=0)
                 new_sum_delta = logsumexp(attach_ll[mask, :], axis=0)
@@ -81,6 +82,9 @@ class MutationTreeLikelihoodSummer:
                 self._ll_sum = self._calculate_gold(attach_ll)
                 self._last_ll[:] = attach_ll[:]
                 self._n_diffs = 0
+            except IndexError:
+                logger.error(f"Mask: {mask}")
+                raise
             if self.check_calc:
                 self._calculate_and_report_gold(
                     attach_ll, logger.getEffectiveLevel()
@@ -92,11 +96,14 @@ class MutationTreeLikelihoodSummer:
         """Gold standard calculation of log sum of attachment likelihoods"""
         return logsumexp(attach_ll, axis=0)
 
-    def register_changed_node(self, n):
+    def register_changed_mutation_node(self, u):
+        self.register_changed_node(u + 1)
+
+    def register_changed_node(self, u):
         if self._update_mask is None:
             self._update_mask = set()
-        assert n < self.n_nodes
-        self._update_mask.add(n)
+        assert u < self.n_nodes
+        self._update_mask.add(u)
 
     def _calculate_and_report_gold(self, attach_ll, log_level):
         gold = self._calculate_gold(attach_ll)
@@ -152,6 +159,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     double_check_ll_calculations: bool = True
     handbrake_warning_given: bool = False
     _null_sum: Optional[np.ndarray] = None
+    summer: TreeLikelihoodSummer = field(init=False)
 
     def __post_init__(self):
         self.n_sites = self.gls.shape[0]
@@ -173,6 +181,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                     site_idx, :, genotype_idx
                 ]
         self.gls = np.moveaxis(glstmp, 2, 0)
+        self.summer = TreeLikelihoodSummer(len(self.g), self.n_sites)
 
     @property
     def root(self):
@@ -208,6 +217,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         # If a mutation attaches to the root,
         # then all samples have the mutation
         attach_ll[self.root] = np.sum(self.gls[:, :, HET_NUM], 1)
+        self.summer.register_changed_node(self.root)
         for u, v in nx.dfs_edges(self.g, self.root):
             n_node_updates += 1
             update_idxs = [
@@ -219,6 +229,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 + np.sum(self.gls[:, update_idxs, HOM_REF_NUM], 1)
                 - np.sum(self.gls[:, update_idxs, HET_NUM], 1,)
             )
+            self.summer.register_changed_node(v)
         self.changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
         self._attachment_log_like = attach_ll
@@ -230,19 +241,20 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         attach_ll = self._attachment_log_like
         seen_nodes = set()
         null_sum = self.null_sum
-        for node in postorder_nodes_from_frontier(self.g, self.changed_nodes):
-            if node in seen_nodes:
+        for u in postorder_nodes_from_frontier(self.g, self.changed_nodes):
+            if u in seen_nodes:
                 raise Exception(
                     f"Changed nodes should be postordered {self.changed_nodes}"
                 )
-            seen_nodes.add(node)
+            seen_nodes.add(u)
             n_node_updates += 1
-            child1, child2 = list(self.g.successors(node))
-            attach_ll[node] = attach_ll[child1] + attach_ll[child2] - null_sum
+            child1, child2 = list(self.g.successors(u))
+            attach_ll[u] = attach_ll[child1] + attach_ll[child2] - null_sum
+            self.summer.register_changed_node(u)
 
             if self.double_check_ll_calculations:
                 self._double_check_attachment_likelihoods(
-                    attach_ll, child1, child2, node
+                    attach_ll, child1, child2, u
                 )
         self.changed_nodes.clear()
         self.n_node_update_list.append(n_node_updates)
@@ -290,7 +302,7 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         attachments for each of m mutations
 
         :returns: ndarray of shape len(g)"""
-        return logsumexp(self.attachment_log_like, axis=0)
+        return self.summer.calculate(self.attachment_log_like)
 
     def log_likelihood(self):
         """Calculate the tree likelihood"""
@@ -327,9 +339,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         self.n_samples = self.gls.shape[1]
         self.paths = None
         self._attachment_log_like = None
-        self.summer = MutationTreeLikelihoodSummer(
-            self.n_sites + 1, self.n_samples
-        )
+        self.summer = TreeLikelihoodSummer(self.n_sites + 1, self.n_samples)
         self.g = g
         roots = roots_of_tree(g)
         assert len(roots) == 1
@@ -408,7 +418,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
     def _recalculate_attachment_log_like_from(self, start):
         attachment_log_like = self._attachment_log_like
         self._n_node_updates = 1
-        self.summer.register_changed_node(start)
+        self.summer.register_changed_mutation_node(start)
         if start == self.root:
             attachment_log_like = np.zeros(
                 (self.n_sites + 1, self.n_samples), dtype=LOG_LIKE_DTYPE
@@ -425,7 +435,7 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
             )
         for u, v in nx.dfs_edges(self.g, start):
             self._n_node_updates += 1
-            self.summer.register_changed_node(v)
+            self.summer.register_changed_mutation_node(v)
             attachment_log_like[v + 1] = (
                 attachment_log_like[u + 1]
                 + self.gls[v, :, HET_NUM]
