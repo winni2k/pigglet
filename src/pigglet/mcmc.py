@@ -170,7 +170,7 @@ class MCMCRunner:
         self.mover.random_move(weights=self.tree_move_weights)
         self.new_like = self.mover.log_likelihood()
         accepted = self._mh_acceptance()
-        self.mover.mover.move_tracker.register_mh_result(accepted)
+        self.mover.mover.register_mh_result(accepted)
         if not accepted:
             self.mover.undo()
         else:

@@ -38,10 +38,6 @@ class TreeLikelihoodMover(ABC):
     def attachment_log_like(self):
         return self.calc.attachment_log_like
 
-    @property
-    def memenpto(self):
-        return self.mover.memento
-
 
 class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     """Make phylogenetic tree moves while keeping tree likelihoods updated"""
