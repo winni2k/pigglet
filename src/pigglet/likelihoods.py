@@ -111,14 +111,15 @@ class TreeLikelihoodSummer:
             gold_diff = np.abs(gold - self._ll_sum)
             sd = np.std(gold_diff)
             max_diff = np.max(gold_diff / np.abs(gold))
+            logger.log(
+                log_level,
+                f"logsumexp drift"
+                f"|mean(gold): {np.mean(gold)}"
+                f"|max(abs(diff)/abs(gold)): {max_diff}|SD: {sd}",
+            )
         except FloatingPointError:
             pass
-        logger.log(
-            log_level,
-            f"logsumexp drift"
-            f"|mean(gold): {np.mean(gold)}"
-            f"|max(abs(diff)/abs(gold)): {max_diff}|SD: {sd}",
-        )
+
         return gold
 
 
