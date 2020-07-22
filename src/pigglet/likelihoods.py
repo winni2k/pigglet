@@ -97,9 +97,12 @@ class MutationTreeLikelihoodSummer:
 
     def _calculate_and_report_gold(self, attach_ll, log_level):
         gold = self._calculate_gold(attach_ll)
-        gold_diff = np.abs(gold - self._ll_sum)
-        sd = np.std(gold_diff)
-        max_diff = np.max(gold_diff / np.abs(gold))
+        try:
+            gold_diff = np.abs(gold - self._ll_sum)
+            sd = np.std(gold_diff)
+            max_diff = np.max(gold_diff / np.abs(gold))
+        except FloatingPointError:
+            pass
         logger.log(
             log_level,
             f"logsumexp drift"
