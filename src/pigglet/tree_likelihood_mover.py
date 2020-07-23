@@ -104,7 +104,23 @@ class UnchangedTopologyError(Exception):
     pass
 
 
-class PhyloTreeMoveCaretaker:
+class TreeMoveCaretaker(ABC):
+    def __init__(self):
+        self.move_tracker = None
+        self.interactor = None
+
+    def register_mh_result(self, accepted: bool):
+        self.move_tracker.register_mh_result(accepted)
+
+    @property
+    def mh_correction(self):
+        return self.interactor.mh_correction
+
+    def undo(self, memento):
+        self.interactor.undo(memento)
+
+
+class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
     """In charge of undoing moves"""
 
     def __init__(self, g, prng):
@@ -120,15 +136,8 @@ class PhyloTreeMoveCaretaker:
         self.ext_choice_prob = 0.33
 
     @property
-    def mh_correction(self):
-        return self.interactor.mh_correction
-
-    @property
     def changed_nodes(self):
         return self.interactor.changed_nodes
-
-    def undo(self, memento):
-        self.interactor.undo(memento)
 
     def extending_subtree_prune_and_regraft(
         self,
@@ -172,9 +181,6 @@ class PhyloTreeMoveCaretaker:
         self.available_moves[choice]()
         self.move_tracker.register_try(choice)
 
-    def register_mh_result(self, accepted: bool):
-        self.move_tracker.register_mh_result(accepted)
-
     def _get_two_distinct_leaves(self):
         n1 = n2 = 0
         leaf_nodes = self.interactor.leaf_node_list
@@ -184,7 +190,7 @@ class PhyloTreeMoveCaretaker:
         return n1, n2
 
 
-class MutationTreeMoveCaretaker:
+class MutationTreeMoveCaretaker(TreeMoveCaretaker):
     def __init__(self, g, prng):
         self.g = g
         self.prng = prng
@@ -199,13 +205,6 @@ class MutationTreeMoveCaretaker:
         self.move_tracker = MoveTracker(len(self.available_moves))
         self.changed_nodes = list(roots_of_tree(g))
         self.ext_choice_prob = 0.5
-
-    @property
-    def mh_correction(self):
-        return self.interactor.mh_correction
-
-    def undo(self, memento):
-        self.interactor.undo(memento)
 
     def extending_subtree_prune_and_regraft(self):
         """AKA eSPR, as described in Lakner et al. 2008"""

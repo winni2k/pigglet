@@ -40,7 +40,7 @@ class TestMutationTreeInteractor:
         # then
         assert list(interactor.g.edges()) == []
 
-    @given(st.randoms())
+    @given(st.randoms(use_true_random=False))
     def test_uniform_attach_to_root_connected_nodes(self, prng):
         # given
         b = MutationTreeInteractorBuilder(prng=prng)

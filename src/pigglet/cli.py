@@ -152,6 +152,7 @@ def infer(
     from pigglet.constants import HET_NUM, HOM_REF_NUM
     from pigglet.gl_loader import LikelihoodLoader
     from pigglet.mcmc import MCMCRunner
+    from pigglet.aggregator import TreeAggregator
 
     if seed is None:
         seed = random.randrange(sys.maxsize)
@@ -188,15 +189,15 @@ def infer(
             tree_move_weights=[int(gls.shape[1] != 3), 1],
             double_check_ll_calculation=double_check_likelihood_calculation,
         )
-
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
+    runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
+    runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     if mutation_tree:
         logger.info("Using a mutation tree")
-        runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
-        runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
     else:
+        runner.tree_aggregator = TreeAggregator()
         logger.info("Using a phylogenetic tree")
     runner.run()
 
@@ -335,3 +336,6 @@ def store_phylo_tree_results(out_prefix, output_store, runner):
         )
     output_graph = out_prefix + ".map_tree.gml"
     nx.write_gml(strip_tree(runner.map_g), output_graph)
+    with open(out_prefix + ".t", "w") as fh:
+        nw_trees = runner.tree_aggregator.to_newick()
+        fh.write("\n".join(nw_trees) + "\n")

@@ -5,7 +5,7 @@ from pigglet_testing.builders.tree_likelihood import (
 )
 from scipy.special import logsumexp
 
-from pigglet.likelihoods import PhyloAttachmentAggregator
+from pigglet.aggregator import PhyloAttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:

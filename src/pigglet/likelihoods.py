@@ -1,5 +1,4 @@
 import logging
-import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional, Set
@@ -443,70 +442,3 @@ class MutationTreeLikelihoodCalculator(TreeLikelihoodCalculator):
                 - self.gls[v, :, HOM_REF_NUM]
             )
         self._attachment_log_like = attachment_log_like
-
-
-class AttachmentAggregator(ABC):
-    pass
-
-
-class MutationAttachmentAggregator(AttachmentAggregator):
-    """Aggregates attachment scores"""
-
-    def __init__(self):
-        self.attachment_scores = None
-        self.num_additions = 0
-
-    def add_attachment_log_likes(self, calc: MutationTreeLikelihoodCalculator):
-        sum_likes = calc.attachment_marginalized_log_likelihoods()
-        log_likes = calc.attachment_log_like - sum_likes
-        if self.attachment_scores is None:
-            self.attachment_scores = log_likes
-        else:
-            with np.errstate(under="ignore"):
-                self.attachment_scores = np.logaddexp(
-                    self.attachment_scores, log_likes
-                )
-        self.num_additions += 1
-
-    def normalized_attachment_probabilities(self):
-        return self.attachment_scores - math.log(self.num_additions)
-
-
-class PhyloAttachmentAggregator(AttachmentAggregator):
-    """Aggregates attachment scores for phylogenetic trees
-
-    The results of aggregation are stored in attachment_scores, an m x n
-    matrix of mutation probabilities
-    """
-
-    def __init__(self):
-        self.attachment_scores = None
-        self.num_additions = 0
-
-    def add_attachment_log_likes(self, calc: PhyloTreeLikelihoodCalculator):
-        """Calculate normalized mutation probabilities and aggregate
-        in attachment_scores"""
-        site_like_total = calc.attachment_marginalized_log_likelihoods()
-        # log_likes.shape = len(g) x m
-        log_likes = calc.attachment_log_like - site_like_total
-        scores = np.zeros((calc.n_sites, calc.n_samples))
-        node_sample_indicator = np.zeros(
-            (len(calc.g), calc.n_samples), dtype=np.bool
-        )
-        for node, leaves in calc.node_sample_ids():
-            node_sample_indicator[node, leaves] = True
-        for leaf in range(calc.n_samples):
-            scores[:, leaf] = logsumexp(
-                log_likes[node_sample_indicator[:, leaf], :], axis=0
-            )
-        if self.attachment_scores is None:
-            self.attachment_scores = scores
-        else:
-            with np.errstate(under="ignore"):
-                self.attachment_scores = np.logaddexp(
-                    self.attachment_scores, scores
-                )
-        self.num_additions += 1
-
-    def averaged_mutation_probabilities(self):
-        return self.attachment_scores - math.log(self.num_additions)

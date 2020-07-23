@@ -6,7 +6,7 @@ from pigglet_testing.builders.tree_likelihood import (
     MutationTreeLikelihoodCalculatorBuilder,
 )
 
-from pigglet.likelihoods import MutationAttachmentAggregator
+from pigglet.aggregator import MutationAttachmentAggregator
 
 
 class TestAddAttachmentlogLikes:

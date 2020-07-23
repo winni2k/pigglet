@@ -1,12 +1,13 @@
 import itertools as it
 import math
-from subprocess import run
 
 import h5py
 import networkx as nx
 import numpy as np
 import pytest
 from click.testing import CliRunner
+
+from pigglet.cli import infer
 from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
@@ -26,6 +27,7 @@ def test_single_mutation_one_sample_creates_trivial_graph(
     prefix = tmpdir / "out"
     out_gml = str(prefix) + ".map_tree.gml"
     out_h5 = str(prefix) + ".h5"
+    out_nw = str(prefix) + ".t"
 
     # when
     command = ["pigglet", "infer", str(vcf_file), str(prefix)]
@@ -33,8 +35,10 @@ def test_single_mutation_one_sample_creates_trivial_graph(
         command.append("--mutation-tree")
     else:
         command.append("--no-mutation-tree")
-    result = run(command)
-    assert result.returncode == 0
+    runner = CliRunner()
+
+    result = runner.invoke(infer, command[2:], catch_exceptions=False)
+    assert result.exit_code == 0
 
     # then
     if mutation_tree:
@@ -46,9 +50,6 @@ def test_single_mutation_one_sample_creates_trivial_graph(
             assert list(fh["map_tree/map_sample_attachments"]) == [0, 0, 0]
             assert list(fh["map_tree/edge_list"][0]) == [-1, 0]
     else:
-        # all_node_attachment_likes = np.array([0, -1, -2, -2])
-        # site_sum_like = logsumexp(all_node_attachment_likes)
-        # sample_prob = logsumexp([0, -1]) - site_sum_like
         g = nx.read_gml(out_gml)
         assert nx.is_directed_acyclic_graph(g)
         assert len(g) == 5
@@ -61,6 +62,10 @@ def test_single_mutation_one_sample_creates_trivial_graph(
             assert mut_probs.shape == (1, 3)
             # assert mut_probs[0] == pytest.approx([sample_prob]*3)
             assert len([e for e in fh["map_phylo_tree/edge_list"]]) == 4
+        with open(out_nw) as fh:
+            lines = fh.readlines()
+        assert len(lines) == 10
+        assert set(set("".join(lines))) == set("012()\n, ")
 
 
 @pytest.mark.parametrize("invoke", [True, False])

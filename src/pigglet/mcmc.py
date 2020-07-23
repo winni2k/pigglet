@@ -2,16 +2,17 @@ import logging
 import math
 import random
 from dataclasses import dataclass, field
-from typing import List, Any
+from typing import List, Any, Optional
 
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
-from pigglet.likelihoods import (
+from pigglet.aggregator import (
     AttachmentAggregator,
     MutationAttachmentAggregator,
     PhyloAttachmentAggregator,
+    TreeAggregator,
 )
 from pigglet.tree_interactor import (
     MutationTreeInteractor,
@@ -47,6 +48,7 @@ class MCMCRunner:
     mcmc_moves: List[int] = field(
         default_factory=lambda: list(range(NUM_MCMC_MOVES))
     )
+    tree_aggregator: Optional[TreeAggregator] = None
 
     def __post_init__(self):
         self.current_like = self.mover.calc.log_likelihood()
@@ -109,12 +111,13 @@ class MCMCRunner:
                 continue
             if iteration >= self.num_burnin_iter:
                 self._update_map(iteration)
+                self.agg.add_attachment_log_likes(self.mover.calc)
+                if self.tree_aggregator:
+                    self.tree_aggregator.store_tree(self.g)
             if iteration % self.reporting_interval == 0 and iteration != 0:
                 if logger.isEnabledFor(logging.INFO):
                     self._iteration_logging(iteration)
             iteration += 1
-            if iteration > self.num_burnin_iter:
-                self.agg.add_attachment_log_likes(self.mover.calc)
             pbar.update()
 
     def _iteration_logging(self, iteration):
