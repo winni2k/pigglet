@@ -1,10 +1,10 @@
 import math
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import List
 
 import networkx as nx
 import numpy as np
-from dataclasses import field, dataclass
 
 from pigglet.likelihoods import (
     MutationTreeLikelihoodCalculator,

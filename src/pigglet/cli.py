@@ -296,30 +296,6 @@ def store_gls(gl_vcf, output_h5):
     store_input(gls, loader, output_h5, store_gls=True)
 
 
-def calc_phylo_mutation_probs_for_tree(
-    h5_file, shared_gls_name, gls_shape, gls_dtype, tree_idx
-):
-    import h5py
-    import numpy as np
-    from pigglet.aggregator import PhyloAttachmentAggregator
-    from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
-    from pigglet.tree_interactor import GraphAnnotator
-
-    import networkx as nx
-    from multiprocessing import shared_memory
-
-    existing_shm = shared_memory.SharedMemory(name=shared_gls_name)
-    gls = np.ndarray(gls_shape, dtype=gls_dtype, buffer=existing_shm.buf)
-    with h5py.File(h5_file, "r") as fh:
-        g = nx.DiGraph(list(fh[f"phylo_tree/samples/{tree_idx}"]))
-    GraphAnnotator(g).annotate_all_nodes_with_descendant_leaves()
-    agg = PhyloAttachmentAggregator()
-    agg.add_attachment_log_likes(PhyloTreeLikelihoodCalculator(g, gls))
-    mut_probs = agg.averaged_mutation_probabilities()
-    existing_shm.close()
-    return mut_probs
-
-
 @cli.command()
 @click.argument("h5_file")
 @click.option(
@@ -328,19 +304,11 @@ def calc_phylo_mutation_probs_for_tree(
     default=None,
     help="Number of processes to parallelize over",
 )
-def calc_phylo_mutation_probs(h5_file, jobs=1):
+def calc(h5_file, jobs=1):
     """Calculate mutation probabilities for posterior phylogenetic tree samples
 
     H5_FILE is the output file of pigglet infer ending in .h5
     """
-
-    import h5py
-    import numpy as np
-    import math
-    from tqdm import tqdm
-    from multiprocessing import Pool, shared_memory
-    import functools as ft
-    from pigglet.scipy_import import logsumexp
 
     configure_logger("INFO", h5_file + ".calc_phylo_mutation_probs.log")
     import logging
@@ -350,48 +318,17 @@ def calc_phylo_mutation_probs(h5_file, jobs=1):
         "Calculating mutation probabilities for stored phylogenetic trees"
     )
     logger.info(f"Opening store: {h5_file}")
+    import h5py
+
     with h5py.File(h5_file, "r") as fh:
         n_sampling_iterations = len(list(fh["phylo_tree/samples"]))
         if "input/gls" not in fh:
             raise Exception("Please run pigglet infer with --store-gls.")
         gls = fh["input/gls"][:]
-    shm = shared_memory.SharedMemory(create=True, size=gls.nbytes)
-    shared_gls = np.ndarray(gls.shape, dtype=gls.dtype, buffer=shm.buf)
-    shared_gls[:] = gls[:]
-    func = ft.partial(
-        calc_phylo_mutation_probs_for_tree,
-        h5_file,
-        shm.name,
-        shared_gls.shape,
-        shared_gls.dtype,
-    )
-    summed_attach_probs = None
-    with Pool(jobs) as p:
-        for idx, attach_probs in enumerate(
-            tqdm(
-                p.imap_unordered(func, range(n_sampling_iterations)),
-                unit="trees",
-                desc="Mutation probabilities",
-                total=n_sampling_iterations,
-            )
-        ):
-            if summed_attach_probs is None:
-                summed_attach_probs = attach_probs
-            else:
-                summed_attach_probs = logsumexp(
-                    [summed_attach_probs, attach_probs], 0
-                )
-    shm.close()
-    shm.unlink()
-    sum_ll = summed_attach_probs - math.log(n_sampling_iterations)
-    with h5py.File(h5_file, "r+") as fh:
-        if "phylo_tree/mutation_probabilities" in fh:
-            del fh["phylo_tree/mutation_probabilities"]
-        fh.create_dataset(
-            "phylo_tree/mutation_probabilities",
-            data=sum_ll,
-            compression="gzip",
-        )
+
+    from pigglet.calc import calc_impl
+
+    calc_impl(gls, h5_file, jobs, n_sampling_iterations)
 
 
 def store_input(gls, loader, output_store, store_gls):

@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-from pigglet.cli import infer, calc_phylo_mutation_probs, store_gls
+from pigglet.cli import infer, calc, store_gls
 from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
@@ -175,9 +175,7 @@ def test_calc_phylo_mutation_probs(tmpdir):
     with h5py.File(out_h5_2, "a") as fh:
         del fh["phylo_tree/mutation_probabilities"]
     result2 = runner.invoke(
-        calc_phylo_mutation_probs,
-        [out_h5_2, "--jobs", "2"],
-        catch_exceptions=False,
+        calc, [out_h5_2, "--jobs", "2"], catch_exceptions=False,
     )
 
     # then

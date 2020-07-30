@@ -3,7 +3,7 @@ import logging
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Iterable, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import networkx as nx
 

@@ -2,7 +2,7 @@ import logging
 import math
 import random
 from dataclasses import dataclass, field
-from typing import List, Any, Optional
+from typing import Any, List, Optional
 
 import networkx as nx
 import numpy as np
