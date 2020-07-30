@@ -20,8 +20,7 @@ setup(
         # These classifiers are *not* checked by 'pip install'. See instead
         # 'python_requires' below.
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     author="Warren Kretzschmar",
     author_email="warren.kretzschmar@ki.se",
@@ -31,7 +30,7 @@ setup(
         "networkx==2.4",
         "numpy",
         "numexpr",
-        "pysam==0.15.3",
+        "pysam==0.16.0.1",
         "click==7.1.2",
         "h5py",
         "tqdm",
@@ -43,7 +42,7 @@ setup(
     packages=find_packages(
         "src", exclude=["contrib", "docs", "tests", "test_utils"]
     ),
-    python_requires=">=3.6, <4",
+    python_requires=">=3.8, <4",
     package_dir={"": "src"},
     entry_points="""
     [console_scripts]

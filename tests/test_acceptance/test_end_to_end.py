@@ -1,5 +1,6 @@
 import itertools as it
 import math
+import shutil
 
 import h5py
 import networkx as nx
@@ -7,7 +8,7 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-from pigglet.cli import infer
+from pigglet.cli import infer, calc_phylo_mutation_probs, store_gls
 from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
@@ -58,7 +59,7 @@ def test_single_mutation_one_sample_creates_trivial_graph(
         assert len([u for u, d in g.out_degree() if d == 0]) == 3
         assert len([u for u, d in g.out_degree() if d == 2]) == 2
         with h5py.File(out_h5, "r") as fh:
-            mut_probs = fh["map_phylo_tree/mutation_probabilities"]
+            mut_probs = fh["phylo_tree/mutation_probabilities"]
             assert mut_probs.shape == (1, 3)
             # assert mut_probs[0] == pytest.approx([sample_prob]*3)
             assert len([e for e in fh["map_phylo_tree/edge_list"]]) == 4
@@ -118,3 +119,100 @@ def test_converts_mutation_tree_to_phylogenetic_tree(tmpdir, invoke):
         assert list(
             fh["map_phylogenetic_tree/mutation_attachments/attachments"]
         ) == [3, 4, 4,]
+
+
+def test_defers_mutation_prob_calc(tmpdir):
+    # given
+    gl_tag = "PL"
+    b = VCFBuilder(tmpdir)
+    b.with_tag(gl_tag)
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    vcf_file = b.build()
+    prefix = tmpdir / "out"
+    out_h5 = str(prefix) + ".h5"
+    n_sampling = 10
+
+    # when
+    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    command += (
+        f"--burnin 10 --sampling {n_sampling} --no-mutation-tree "
+        "--defer-mutation-probability-calc"
+    ).split()
+    runner = CliRunner()
+    result = runner.invoke(infer, command[2:], catch_exceptions=False)
+
+    # then
+    assert result.exit_code == 0
+    with h5py.File(out_h5, "r") as fh:
+        assert len(fh["phylo_tree/samples"]) == n_sampling
+        for idx in range(n_sampling):
+            assert len([e for e in fh[f"phylo_tree/samples/{idx}"]]) == 4
+        assert "phylo_tree/mutation_probabilities" not in fh
+
+
+def test_calc_phylo_mutation_probs(tmpdir):
+    # given
+    gl_tag = "PL"
+    b = VCFBuilder(tmpdir)
+    b.with_tag(gl_tag)
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    vcf_file = b.build()
+    prefix = tmpdir / "out"
+    out_h5 = str(prefix) + ".h5"
+    out_h5_2 = str(prefix) + ".2.h5"
+    n_sampling = 10
+
+    # when
+    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    command += (
+        f"--seed 42 --burnin 10 --sampling {n_sampling} --no-mutation-tree "
+        "--store-gls"
+    ).split()
+    runner = CliRunner()
+    result = runner.invoke(infer, command[2:], catch_exceptions=False)
+    shutil.copy(out_h5, out_h5_2)
+    with h5py.File(out_h5_2, "a") as fh:
+        del fh["phylo_tree/mutation_probabilities"]
+    result2 = runner.invoke(
+        calc_phylo_mutation_probs,
+        [out_h5_2, "--jobs", "2"],
+        catch_exceptions=False,
+    )
+
+    # then
+    assert result.exit_code == 0
+    assert result2.exit_code == 0
+    with h5py.File(out_h5, "r") as fh:
+        assert len(fh["phylo_tree/samples"]) == n_sampling
+        for idx in range(n_sampling):
+            assert len([e for e in fh[f"phylo_tree/samples/{idx}"]]) == 4
+        mut_probs_agg = fh["phylo_tree/mutation_probabilities"][:]
+
+    with h5py.File(out_h5_2, "r") as fh:
+        mut_probs = fh["phylo_tree/mutation_probabilities"][:]
+    assert mut_probs.shape == (2, 3)
+    assert np.alltrue(np.exp(mut_probs) > 0.5)
+    assert mut_probs == pytest.approx(mut_probs_agg)
+
+
+def test_store_gls(tmpdir):
+    # given
+    gl_tag = "PL"
+    b = VCFBuilder(tmpdir)
+    b.with_tag(gl_tag)
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    vcf_file = b.build()
+    prefix = tmpdir / "out"
+    out_h5 = str(prefix) + ".h5"
+
+    # when
+    command = f"pigglet store-gls {vcf_file} {out_h5}".split()
+    runner = CliRunner()
+    result = runner.invoke(store_gls, command[2:], catch_exceptions=False)
+
+    # then
+    assert result.exit_code == 0
+    with h5py.File(out_h5, "r") as fh:
+        assert "input/gls" in fh
+        assert fh["input/gls"].shape == (1, 3, 3)

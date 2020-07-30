@@ -31,7 +31,11 @@ class GraphAnnotator:
     # def updated_nodes(self) -> Iterable:
     #     return self._updated_nodes.keys()
 
-    def annotate_all_nodes_with_descendant_leaves(self, start):
+    def annotate_all_nodes_with_descendant_leaves(self, start=None):
+        if start is None:
+            roots = roots_of_tree(self.g)
+            assert len(roots) == 1
+            start = roots[0]
         self._updated_nodes.clear()
         for node in nx.dfs_postorder_nodes(self.g, start):
             if self.g.out_degree(node) == 0:

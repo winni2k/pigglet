@@ -1,5 +1,5 @@
 import math
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List
 
 import networkx as nx
@@ -9,12 +9,20 @@ from dataclasses import field, dataclass
 from pigglet.likelihoods import (
     MutationTreeLikelihoodCalculator,
     PhyloTreeLikelihoodCalculator,
+    TreeLikelihoodCalculator,
 )
 from pigglet.scipy_import import logsumexp
 
 
 class AttachmentAggregator(ABC):
-    pass
+    @abstractmethod
+    def add_attachment_log_likes(self, calc):
+        pass
+
+
+class NullAttachmentAggregator(AttachmentAggregator):
+    def add_attachment_log_likes(self, calc: TreeLikelihoodCalculator):
+        pass
 
 
 class MutationAttachmentAggregator(AttachmentAggregator):
