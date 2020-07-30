@@ -315,7 +315,9 @@ def calc_phylo_mutation_probs_for_tree(
     GraphAnnotator(g).annotate_all_nodes_with_descendant_leaves()
     agg = PhyloAttachmentAggregator()
     agg.add_attachment_log_likes(PhyloTreeLikelihoodCalculator(g, gls))
-    return agg.averaged_mutation_probabilities()
+    mut_probs = agg.averaged_mutation_probabilities()
+    existing_shm.close()
+    return mut_probs
 
 
 @cli.command()
@@ -340,14 +342,18 @@ def calc_phylo_mutation_probs(h5_file, jobs=1):
     import functools as ft
     from pigglet.scipy_import import logsumexp
 
+    configure_logger("INFO", h5_file + ".calc_phylo_mutation_probs.log")
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info(
+        "Calculating mutation probabilities for stored phylogenetic trees"
+    )
+    logger.info(f"Opening store: {h5_file}")
     with h5py.File(h5_file, "r") as fh:
         n_sampling_iterations = len(list(fh["phylo_tree/samples"]))
         if "input/gls" not in fh:
             raise Exception("Please run pigglet infer with --store-gls.")
-        n_sites, n_samples = (
-            fh["input/site_info"].shape[0],
-            fh["input/samples"].shape[0],
-        )
         gls = fh["input/gls"][:]
     shm = shared_memory.SharedMemory(create=True, size=gls.nbytes)
     shared_gls = np.ndarray(gls.shape, dtype=gls.dtype, buffer=shm.buf)
@@ -359,9 +365,7 @@ def calc_phylo_mutation_probs(h5_file, jobs=1):
         shared_gls.shape,
         shared_gls.dtype,
     )
-    attachment_probs = np.zeros(
-        shape=(n_sampling_iterations, n_sites, n_samples)
-    )
+    summed_attach_probs = None
     with Pool(jobs) as p:
         for idx, attach_probs in enumerate(
             tqdm(
@@ -371,11 +375,18 @@ def calc_phylo_mutation_probs(h5_file, jobs=1):
                 total=n_sampling_iterations,
             )
         ):
-            attachment_probs[idx] = attach_probs
-    sum_ll = logsumexp(np.array(attachment_probs), 0) - math.log(
-        n_sampling_iterations
-    )
+            if summed_attach_probs is None:
+                summed_attach_probs = attach_probs
+            else:
+                summed_attach_probs = logsumexp(
+                    [summed_attach_probs, attach_probs], 0
+                )
+    shm.close()
+    shm.unlink()
+    sum_ll = summed_attach_probs - math.log(n_sampling_iterations)
     with h5py.File(h5_file, "r+") as fh:
+        if "phylo_tree/mutation_probabilities" in fh:
+            del fh["phylo_tree/mutation_probabilities"]
         fh.create_dataset(
             "phylo_tree/mutation_probabilities",
             data=sum_ll,
