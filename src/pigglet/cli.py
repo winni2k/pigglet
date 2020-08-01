@@ -331,6 +331,39 @@ def calc(h5_file, jobs=1):
     calc_impl(gls, h5_file, jobs, n_sampling_iterations)
 
 
+@cli.command()
+@click.argument("h5_file")
+@click.option(
+    "--phylo-nexus",
+    help="Extract posterior phylogenetic trees to NEXUS format "
+    "(list of newick trees)",
+)
+@click.option(
+    "--phylo-newicks",
+    help="Extract posterior phylogenetic trees to list of NEWICK trees",
+)
+def extract(h5_file, phylo_nexus, phylo_newicks):
+    """Extract trees (etc.) from output h5 file"""
+
+    configure_logger("INFO", h5_file + ".extract.log")
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if phylo_nexus:
+        from pigglet.extract import phylo_nexus_impl
+
+        logger.info(f"Extracting posterior trees to NEXUS file: {phylo_nexus}")
+        phylo_nexus_impl(h5_file, phylo_nexus)
+    if phylo_newicks:
+        from pigglet.extract import phylo_newicks_impl
+
+        logger.info(
+            f"Extracting posterior trees to newicks file: {phylo_newicks}"
+        )
+        phylo_newicks_impl(h5_file, phylo_newicks)
+
+
 def store_input(gls, loader, output_store, store_gls):
     import h5py
     import numpy as np
