@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-from pigglet.cli import infer, calc, store_gls
+from pigglet.cli import infer, calc, store_gls, extract
 from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
@@ -214,3 +214,35 @@ def test_store_gls(tmpdir):
     with h5py.File(out_h5, "r") as fh:
         assert "input/gls" in fh
         assert fh["input/gls"].shape == (1, 3, 3)
+
+
+def test_extract_trees(tmpdir):
+    # given
+    b = VCFBuilder(tmpdir)
+    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    vcf_file = b.build()
+    prefix = tmpdir / "out"
+    out_h5 = str(prefix) + ".h5"
+    out_nw = str(prefix) + ".nws"
+
+    # when
+    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    command += (
+        "--burnin 1 --sampling 1 --no-mutation-tree "
+        "--defer-mutation-probability-calc"
+    ).split()
+    runner = CliRunner()
+    result = runner.invoke(infer, command[2:], catch_exceptions=False)
+    assert result.exit_code == 0
+    result = runner.invoke(
+        extract,
+        f"{out_h5} --phylo-newicks {out_nw} --label-leaves".split(),
+        catch_exceptions=False,
+    )
+
+    # then
+    assert result.exit_code == 0
+    with open(out_nw) as fh:
+        tree = fh.readline().rstrip()
+        for sample in b.sample_names:
+            assert sample in tree

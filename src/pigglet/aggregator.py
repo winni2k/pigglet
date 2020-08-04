@@ -101,7 +101,7 @@ class TreeAggregator:
             yield tree_to_newick(g)
 
 
-def tree_to_newick(g, root=None, one_base=False):
+def tree_to_newick(g, root=None, one_base=False, leaf_lookup=None):
     if root is None:
         roots = [u for u, d in g.in_degree() if d == 0]
         assert 1 == len(roots)
@@ -109,12 +109,18 @@ def tree_to_newick(g, root=None, one_base=False):
     subgs = []
     for child in g[root]:
         if len(g[child]) > 0:
-            subgs.append(tree_to_newick(g, root=child, one_base=one_base))
+            subgs.append(
+                tree_to_newick(
+                    g, root=child, one_base=one_base, leaf_lookup=leaf_lookup
+                )
+            )
         else:
             if "label" in g.nodes[child]:
                 name = g.nodes[child]["label"].split("\\n")[0]
             else:
-                if one_base:
+                if leaf_lookup:
+                    name = leaf_lookup[child]
+                elif one_base:
                     name = int(child) + 1
                 else:
                     name = child

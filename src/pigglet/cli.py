@@ -335,14 +335,21 @@ def calc(h5_file, jobs=1):
 @click.argument("h5_file")
 @click.option(
     "--phylo-nexus",
+    type=click.File("w"),
     help="Extract posterior phylogenetic trees to NEXUS format "
     "(list of newick trees)",
 )
 @click.option(
     "--phylo-newicks",
+    type=click.File("w"),
     help="Extract posterior phylogenetic trees to list of NEWICK trees",
 )
-def extract(h5_file, phylo_nexus, phylo_newicks):
+@click.option(
+    "--label-leaves/--no-label-leaves",
+    default=True,
+    help="Use sample labels on output trees",
+)
+def extract(h5_file, phylo_nexus, phylo_newicks, label_leaves):
     """Extract trees (etc.) from output h5 file"""
 
     configure_logger("INFO", h5_file + ".extract.log")
@@ -354,14 +361,14 @@ def extract(h5_file, phylo_nexus, phylo_newicks):
         from pigglet.extract import phylo_nexus_impl
 
         logger.info(f"Extracting posterior trees to NEXUS file: {phylo_nexus}")
-        phylo_nexus_impl(h5_file, phylo_nexus)
+        phylo_nexus_impl(h5_file, phylo_nexus, label_leaves)
     if phylo_newicks:
         from pigglet.extract import phylo_newicks_impl
 
         logger.info(
             f"Extracting posterior trees to newicks file: {phylo_newicks}"
         )
-        phylo_newicks_impl(h5_file, phylo_newicks)
+        phylo_newicks_impl(h5_file, phylo_newicks, label_leaves)
 
 
 def store_input(gls, loader, output_store, store_gls):

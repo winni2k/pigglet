@@ -21,6 +21,10 @@ class VCFBuilder:
         self.likelihood_tag = "GL"
         self.gl_header_line = GL_HEADER_LINES["GL"]
 
+    @property
+    def sample_names(self):
+        return [f"sample_{sample_idx}" for sample_idx in range(self.n_samples)]
+
     def build_header(self):
         header = (
             "##fileformat=VCFv4.2\n"
@@ -35,9 +39,7 @@ class VCFBuilder:
         with open(self.vcf_file, "w") as fh:
             fh.write(header)
             fh.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
-            for samp_num in range(self.n_samples):
-                fh.write(f"\tsample_{samp_num}")
-            fh.write("\n")
+            fh.write("\t" + "\t".join(self.sample_names) + "\n")
             for idx, site_gls in enumerate(self.gls):
                 row = (
                     f"20\t{idx + 1}\t.\tG\tA\t29\tPASS\t.\t"
