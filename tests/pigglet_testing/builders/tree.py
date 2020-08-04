@@ -24,8 +24,13 @@ class PhyloTreeBuilder:
         nx.add_path(self.g, nodes)
         return self
 
-    def with_balanced_tree(self, height=2, n_branches=2):
+    def with_balanced_tree(self, height=2, n_branches=2, rev=False):
         self.g = nx.balanced_tree(n_branches, height, nx.DiGraph())
+        if rev:
+            self.g = nx.relabel_nodes(
+                self.g,
+                {a: b for a, b in zip(list(self.g), reversed(list(self.g)))},
+            )
         return self
 
     def with_random_tree(self, n_samples):
@@ -40,6 +45,8 @@ class PhyloTreeBuilder:
         return self
 
     def build(self):
+        if len(self.g) < 3:
+            self.with_balanced_tree(1, rev=True)
         return PhyloTreeInteractor(self.g, prng=self.prng).g
 
 

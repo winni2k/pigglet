@@ -42,9 +42,10 @@ class TestPruneAndRegraft:
     def test_prune_regraft_to_root_edge_does_not_change_likelihoods(self):
         # given
         b = PhyloTreeLikelihoodCalculatorBuilder()
-        b.with_path(0, 1, 2)
-        b.with_branch(1, 3)
-        b.with_branch(0, 4)
+        b.with_path(4, 3, 0)
+        b.with_branch(3, 1)
+        b.with_branch(4, 2)
+
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 0)
         b.with_unmutated_gl_at(2, 0)
@@ -53,7 +54,7 @@ class TestPruneAndRegraft:
         inter = PhyloTreeInteractor(calc.g)
 
         # when
-        inter.prune_and_regraft(1, (0, 4))
+        inter.prune_and_regraft(3, (4, 2))
         calc.register_changed_nodes(*list(inter.changed_nodes))
 
         # then
@@ -66,15 +67,18 @@ class TestPruneAndRegraft:
         b.with_unmutated_gl_at(1, 0)
         b.with_mutated_gl_at(2, 0)
 
-        b.with_path(0, 1, 2)
-        b.with_branch(1, 3)
-        b.with_branch(0, 4)
+        b.with_path(4, 3, 0)
+        b.with_branch(3, 1)
+        b.with_branch(4, 2)
+        # b.with_path(0, 1, 2)
+        # b.with_branch(1, 3)
+        # b.with_branch(0, 4)
 
         calc = b.build()
         inter = PhyloTreeInteractor(calc.g)
 
         # when
-        inter.prune_and_regraft(4, (1, 2))
+        inter.prune_and_regraft(2, (3, 0))
         calc.register_changed_nodes(*list(inter.changed_nodes))
 
         like1 = get_mutation_likelihood(calc, 0)

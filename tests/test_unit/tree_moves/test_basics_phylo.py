@@ -1,7 +1,5 @@
 from builders.tree_interactor import PhyloTreeInteractorBuilder
 
-from pigglet.tree_interactor import PhyloTreeInteractor
-
 
 class TestPruneAndRegraft:
     def test_leaves_tree_unchanged_with_two_leaf_nodes(self):
@@ -122,10 +120,12 @@ class TestPruneAndRegraft:
 class TestCalculateDescendantLeavesOf:
     def test_two_leaves(self):
         # given
-        inter = PhyloTreeInteractor()
+        b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(1, rev=True)
+        inter = b.build()
 
         # then
-        assert inter.g.nodes[0]["leaves"] == {1, 2}
+        assert inter.g.nodes[2]["leaves"] == {0, 1}
 
     def test_four_leaves(self):
         # given

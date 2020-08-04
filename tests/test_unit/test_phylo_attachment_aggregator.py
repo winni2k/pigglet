@@ -19,7 +19,7 @@ class TestAddAttachmentlogLikes:
     def test_two_samples_one_site_no_mutation(self):
         # given
         b = PhyloTreeLikelihoodCalculatorBuilder()
-        b.with_balanced_tree(height=1)
+        b.with_balanced_tree(height=1, rev=True)
         b.with_unmutated_gl_at(0, 0)
         b.with_unmutated_gl_at(1, 0)
         calc = b.build()
@@ -45,6 +45,7 @@ class TestAddAttachmentlogLikes:
         b.with_unmutated_gl_at(0, 1)
         b.with_mutated_gl_at(1, 2)
         b.with_unmutated_gl_at(0, 2)
+        b.with_balanced_tree(1, rev=True)
         calc = b.build()
         agg = PhyloAttachmentAggregator()
 
@@ -70,6 +71,7 @@ class TestAddAttachmentlogLikes:
         b.with_unmutated_gl_at(0, 1)
         b.with_mutated_gl_at(1, 1)
         b.with_unmutated_gl_at(1, 0)
+        b.with_balanced_tree(1, rev=True)
         calc = b.build()
         agg = PhyloAttachmentAggregator()
 

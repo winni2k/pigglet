@@ -16,7 +16,7 @@ from pigglet_testing.builders.tree_likelihood import (
 from pytest import approx
 
 
-def get_mutation_likelihood(calc, site_idx):
+def get_mutation_likelihood_of_site(calc, site_idx):
     return np.exp(calc.attachment_marginalized_log_likelihoods()[site_idx])
 
 
@@ -37,7 +37,7 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        like = get_mutation_likelihood(calc, 0)
+        like = get_mutation_likelihood_of_site(calc, 0)
 
         # then
         assert like == approx(sum_of_exp_of(-2, -1, -1))
@@ -51,7 +51,7 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        like = get_mutation_likelihood(calc, 0)
+        like = get_mutation_likelihood_of_site(calc, 0)
 
         # then
         assert like == approx(sum_of_exp_of(-1, 0, -2))
@@ -66,8 +66,8 @@ class TestSampleLikelihood:
         calc = b.build()
 
         # when
-        like1 = get_mutation_likelihood(calc, 0)
-        like2 = get_mutation_likelihood(calc, 1)
+        like1 = get_mutation_likelihood_of_site(calc, 0)
+        like2 = get_mutation_likelihood_of_site(calc, 1)
 
         # then
         assert like1 == approx(sum_of_exp_of(-1, 0, -2))
@@ -79,13 +79,14 @@ class TestSampleLikelihood:
         b.with_mutated_gl_at(0, 0)
         b.with_unmutated_gl_at(1, 0)
         b.with_unmutated_gl_at(2, 0)
-        b.with_path(0, 1, 2)
-        b.with_branch(1, 3)
-        b.with_branch(0, 4)
+
+        b.with_path(4, 3, 0)
+        b.with_branch(3, 1)
+        b.with_branch(4, 2)
         calc = b.build()
 
         # when
-        like1 = get_mutation_likelihood(calc, 0)
+        like1 = get_mutation_likelihood_of_site(calc, 0)
 
         # then
         assert like1 == approx(sum_of_exp_of(-2, -1, 0, -2, -2))
@@ -100,15 +101,15 @@ class TestSampleLikelihood:
         b.with_unmutated_gl_at(2, 0)
         b.with_mutated_gl_at(2, 1)
 
-        b.with_path(0, 1, 2)
-        b.with_branch(1, 3)
-        b.with_branch(0, 4)
+        b.with_path(4, 3, 0)
+        b.with_branch(3, 1)
+        b.with_branch(4, 2)
 
         calc = b.build()
 
         # when
-        like1 = get_mutation_likelihood(calc, 0)
-        like2 = get_mutation_likelihood(calc, 1)
+        like1 = get_mutation_likelihood_of_site(calc, 0)
+        like2 = get_mutation_likelihood_of_site(calc, 1)
 
         # then
         assert like1 == approx(sum_of_exp_of(-2, -1, 0, -2, -2))

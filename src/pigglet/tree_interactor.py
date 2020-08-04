@@ -191,8 +191,8 @@ class PhyloTreeInteractor(TreeInteractor):
 
     def __post_init__(self):
         self._memento_builder = PhyloTreeMoveMementoBuilder(self)
-        if len(self.g) == 0:
-            self.g.add_edges_from([(0, 1), (0, 2)])
+        if len(self.g) < 3:
+            raise ValueError
         self.leaf_nodes = frozenset(
             u for u in self.g if self.g.out_degree[u] == 0
         )
