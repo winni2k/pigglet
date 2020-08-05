@@ -1,5 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -68,19 +69,28 @@ class MoveTracker:
     n_moves: int
     _move_tries: List[int] = field(default_factory=list)
     _move_acceptances: List[int] = field(default_factory=list)
+    _move_times: List[float] = field(default_factory=list)
     _current_try: Optional[int] = None
+    _timer_start: Optional[float] = None
+
     n_tries: int = 0
 
     def __post_init__(self):
         self.flush()
 
-    def register_try(self, move_idx: int):
+    def register_try(self, move_idx: int) -> None:
         assert self._current_try is None
         self._current_try = move_idx
+        self._timer_start = perf_counter()
 
-    def register_mh_result(self, accepted: bool):
+    def register_mh_result(self, accepted: bool) -> None:
         assert self._current_try is not None
+        assert self._timer_start is not None
+        try_time = perf_counter() - self._timer_start
+        self._timer_start = None
         self.n_tries += 1
+
+        self._move_times[self._current_try] += try_time
         self._move_tries[self._current_try] += 1
         if accepted:
             self._move_acceptances[self._current_try] += 1
@@ -92,9 +102,18 @@ class MoveTracker:
             for a, t in zip(self._move_acceptances, self._move_tries)
         ]
 
+    def get_successful_proposal_time_proportions(self) -> List[float]:
+        prop_succ_time = [
+            t / r if r else np.nan
+            for t, r in zip(self._move_times, self.get_acceptance_ratios())
+        ]
+        total_time = sum(prop_succ_time)
+        return [t / total_time for t in prop_succ_time]
+
     def flush(self):
         self._move_tries = [0] * self.n_moves
         self._move_acceptances = [0] * self.n_moves
+        self._move_times = [0] * self.n_moves
         self.n_tries = 0
 
 

@@ -145,13 +145,17 @@ class MCMCRunner:
             f"{self.reporting_interval / tracker.n_tries:.1%}"
         )
         acceptance_ratios = tracker.get_acceptance_ratios()
+        move_times = tracker.get_successful_proposal_time_proportions()
         for move_idx, move in enumerate(self.mover.mover.available_moves):
             logger.info(
                 f"Iteration {iteration} "
                 f"| function: {move.__name__} "
-                f"| acceptance rate:"
-                f" {acceptance_ratios[move_idx]:.1%}"
+                "| acceptance rate:"
+                f" {acceptance_ratios[move_idx]:.1%} "
+                "| proportion time per acceptance:"
+                f" {move_times[move_idx]:.1%} "
             )
+
         tracker.flush()
 
     @property
