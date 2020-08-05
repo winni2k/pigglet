@@ -35,3 +35,11 @@ def phylo_newicks_impl(h5_file, newicks, label_leaves=False):
     with h5py.File(h5_file, "r") as fh5:
         for nw in get_newicks(fh5, label_leaves=label_leaves):
             newicks.write(f"{nw};\n")
+
+
+def phylo_map_newick_impl(h5_file, newick, label_leaves=False):
+    with h5py.File(h5_file, "r") as fh5:
+        for nw in get_newicks(
+            fh5, trees="map_phylo_tree", label_leaves=label_leaves
+        ):
+            newick.write(f"{nw};\n")

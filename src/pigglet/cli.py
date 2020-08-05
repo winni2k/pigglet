@@ -345,11 +345,18 @@ def calc(h5_file, jobs=1):
     help="Extract posterior phylogenetic trees to list of NEWICK trees",
 )
 @click.option(
+    "--phylo-map-newick",
+    type=click.File("w"),
+    help="Extract maximum a posteriori phylogenetic tree as NEWICK tree",
+)
+@click.option(
     "--label-leaves/--no-label-leaves",
     default=True,
     help="Use sample labels on output trees",
 )
-def extract(h5_file, phylo_nexus, phylo_newicks, label_leaves):
+def extract(
+    h5_file, phylo_nexus, phylo_newicks, phylo_map_newick, label_leaves
+):
     """Extract trees (etc.) from output h5 file"""
 
     configure_logger("INFO", h5_file + ".extract.log")
@@ -369,6 +376,13 @@ def extract(h5_file, phylo_nexus, phylo_newicks, label_leaves):
             f"Extracting posterior trees to newicks file: {phylo_newicks}"
         )
         phylo_newicks_impl(h5_file, phylo_newicks, label_leaves)
+    if phylo_map_newick:
+        from pigglet.extract import phylo_map_newick_impl
+
+        logger.info(f"Extracting MAP tree to newick file: {phylo_map_newick}")
+        phylo_map_newick_impl(
+            h5_file, phylo_map_newick, label_leaves=label_leaves
+        )
 
 
 def store_input(gls, loader, output_store, store_gls):
