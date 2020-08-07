@@ -31,6 +31,14 @@ def get_newicks(h5_fh, trees="phylo_tree/samples", label_leaves=False):
         yield tree_to_newick(g, one_base=True, leaf_lookup=leaf_labels)
 
 
+def get_newick(h5_fh, tree="map_phylo_tree/edge_list", label_leaves=False):
+    leaf_labels = None
+    if label_leaves:
+        leaf_labels = list(h5_fh["input/samples"])
+    g = nx.DiGraph(list(h5_fh[tree]))
+    return tree_to_newick(g, one_base=True, leaf_lookup=leaf_labels)
+
+
 def phylo_newicks_impl(h5_file, newicks, label_leaves=False):
     with h5py.File(h5_file, "r") as fh5:
         for nw in get_newicks(fh5, label_leaves=label_leaves):
@@ -39,7 +47,5 @@ def phylo_newicks_impl(h5_file, newicks, label_leaves=False):
 
 def phylo_map_newick_impl(h5_file, newick, label_leaves=False):
     with h5py.File(h5_file, "r") as fh5:
-        for nw in get_newicks(
-            fh5, trees="map_phylo_tree", label_leaves=label_leaves
-        ):
-            newick.write(f"{nw};\n")
+        nw = get_newick(fh5, label_leaves=label_leaves)
+        newick.write(f"{nw};\n")
