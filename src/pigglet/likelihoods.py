@@ -30,7 +30,7 @@ class TreeLikelihoodSummer:
     _n_diffs = 0
     _ll_sum = None
     _update_mask: Optional[Set[int]] = None
-    _last_ll = None
+    _last_attach_ll = None
     check_calc = False
     _weights = None
 
@@ -58,28 +58,28 @@ class TreeLikelihoodSummer:
         )
         if self._ll_sum is None:
             self._ll_sum = self._calculate_gold(attach_ll)
-            self._last_ll = attach_ll.copy()
+            self._last_attach_ll = attach_ll.copy()
             self._n_diffs = 0
         elif self._n_diffs == self.max_diffs:
             self._ll_sum = self._calculate_and_report_gold(
                 attach_ll, logging.INFO
             )
-            self._last_ll[:] = attach_ll[:]
+            self._last_attach_ll[:] = attach_ll[:]
             self._n_diffs = 0
         elif self._update_mask:
             mask = sorted(self._update_mask)
             try:
-                last_sum_delta = logsumexp(self._last_ll[mask, :], axis=0)
-                new_sum_delta = logsumexp(attach_ll[mask, :], axis=0)
+                last_sum_delta = logsumexp(self._last_attach_ll[mask], axis=0)
+                new_sum_delta = logsumexp(attach_ll[mask], axis=0)
                 stacked = np.vstack(
                     [self._ll_sum, new_sum_delta, last_sum_delta]
                 )
                 self._ll_sum = logsumexp(stacked, axis=0, b=self._weights)
-                self._last_ll[mask, :] = attach_ll[mask, :]
+                self._last_attach_ll[mask] = attach_ll[mask]
                 self._n_diffs += 1
             except FloatingPointError:
                 self._ll_sum = self._calculate_gold(attach_ll)
-                self._last_ll[:] = attach_ll[:]
+                self._last_attach_ll[:] = attach_ll[:]
                 self._n_diffs = 0
             except IndexError:
                 logger.error(f"Mask: {mask}")
@@ -303,7 +303,8 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
 
     def log_likelihood(self):
         """Calculate the tree likelihood"""
-        return np.sum(self.attachment_marginalized_log_likelihoods())
+        ll = self.attachment_marginalized_log_likelihoods()
+        return np.sum(ll)
 
     def register_changed_nodes(self, *nodes):
         """Marks these nodes and all ancestors of these nodes to have changed
