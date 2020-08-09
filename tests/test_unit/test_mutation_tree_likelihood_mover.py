@@ -26,7 +26,7 @@ class TestRecalculateAttachmentLogLikeFromNodes:
             )
 
         mcmc = b.build()
-        mover = mcmc.mover
+        mover = mcmc.like_mover
         calc = mover.calc
 
         # when

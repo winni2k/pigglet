@@ -36,7 +36,7 @@ class MCMCRunner:
     map_g: nx.DiGraph
     tree_move_weights: List[float]
     tree_interactor: TreeInteractor
-    mover: TreeLikelihoodMover
+    like_mover: TreeLikelihoodMover
     agg: AttachmentAggregator
     prng: Any
     num_sampling_iter: int = 1
@@ -51,22 +51,22 @@ class MCMCRunner:
     tree_aggregator: Optional[TreeAggregator] = None
 
     def __post_init__(self):
-        self.current_like = self.mover.calc.log_likelihood()
+        self.current_like = self.like_mover.calc.log_likelihood()
         self.map_like = self.current_like
 
     @classmethod
     def mutation_tree_from_gls(
-        cls, gls, prng=random, **kwargs,
+        cls, gls, prng=random, num_cpus=1, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_mutation_tree(gls.shape[0])
-        mover = MutationTreeLikelihoodMover(graph, gls, prng=prng)
+        like_mover = MutationTreeLikelihoodMover(graph, gls, prng=prng)
         return cls(
             gls=gls,
             map_g=graph.copy(),
-            tree_move_weights=[1] * len(mover.mover.available_moves),
+            tree_move_weights=[1] * len(like_mover.mover.available_moves),
             tree_interactor=MutationTreeInteractor(graph, prng=prng),
-            mover=mover,
+            like_mover=like_mover,
             agg=MutationAttachmentAggregator(),
             prng=prng,
             **kwargs,
@@ -74,26 +74,26 @@ class MCMCRunner:
 
     @classmethod
     def phylogenetic_tree_from_gls(
-        cls, gls, prng=random, **kwargs,
+        cls, gls, prng=random, num_cpus=1, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_phylogenetic_tree(
             num_samples=gls.shape[1], seed=prng.randrange(1, 2 ^ 32)
         )
-        mover = PhyloTreeLikelihoodMover(graph, gls, prng)
+        like_mover = PhyloTreeLikelihoodMover(graph, gls, prng)
         if "tree_move_weights" not in kwargs:
             kwargs["tree_move_weights"] = [1] * len(
-                mover.mover.available_moves
+                like_mover.mover.available_moves
             )
         if "double_check_ll_calculation" in kwargs:
-            mover.calc.double_check_ll_calculations = kwargs.pop(
+            like_mover.calc.double_check_ll_calculations = kwargs.pop(
                 "double_check_ll_calculation"
             )
         return cls(
             gls=gls,
             map_g=graph.copy(),
             tree_interactor=PhyloTreeInteractor(graph),
-            mover=mover,
+            like_mover=like_mover,
             agg=PhyloAttachmentAggregator(),
             prng=prng,
             **kwargs,
@@ -111,7 +111,7 @@ class MCMCRunner:
                 continue
             if iteration >= self.num_burnin_iter:
                 self._update_map(iteration)
-                self.agg.add_attachment_log_likes(self.mover.calc)
+                self.agg.add_attachment_log_likes(self.like_mover.calc)
                 if self.tree_aggregator:
                     self.tree_aggregator.store_tree(self.g)
             if iteration % self.reporting_interval == 0 and iteration != 0:
@@ -122,23 +122,23 @@ class MCMCRunner:
 
     def _iteration_logging(self, iteration):
         """Logging for a reporting interval"""
-        tracker = self.mover.mover.move_tracker
+        tracker = self.like_mover.mover.move_tracker
         logger.info(
             f"Iteration {iteration} "
             f"| current like: {self.current_like} "
             f"| MAP like: {self.map_like}"
         )
         percentiles = np.percentile(
-            self.mover.calc.n_node_update_list,
+            self.like_mover.calc.n_node_update_list,
             [5, 25, 50, 75, 95],
             interpolation="higher",
         )
         logger.info(
             f"Iteration {iteration} "
-            f"| {len(self.mover.calc.n_node_update_list)} updates "
+            f"| {len(self.like_mover.calc.n_node_update_list)} updates "
             f"| 5, 25, 50, 75, 95 percentile nodes updated: {percentiles}"
         )
-        self.mover.calc.n_node_update_list.clear()
+        self.like_mover.calc.n_node_update_list.clear()
         logger.info(
             f"Iteration {iteration} "
             f"| acceptance rate: "
@@ -146,7 +146,7 @@ class MCMCRunner:
         )
         acceptance_ratios = tracker.get_acceptance_ratios()
         move_times = tracker.get_successful_proposal_time_proportions()
-        for move_idx, move in enumerate(self.mover.mover.available_moves):
+        for move_idx, move in enumerate(self.like_mover.mover.available_moves):
             logger.info(
                 f"Iteration {iteration} "
                 f"| function: {move.__name__} "
@@ -160,7 +160,7 @@ class MCMCRunner:
 
     @property
     def g(self):
-        return self.mover.mover.g
+        return self.like_mover.mover.g
 
     def _update_map(self, iteration):
         if self.new_like > self.map_like:
@@ -174,12 +174,12 @@ class MCMCRunner:
 
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
-        self.mover.random_move(weights=self.tree_move_weights)
-        self.new_like = self.mover.log_likelihood()
+        self.like_mover.random_move(weights=self.tree_move_weights)
+        self.new_like = self.like_mover.log_likelihood()
         accepted = self._mh_acceptance()
-        self.mover.mover.register_mh_result(accepted)
+        self.like_mover.mover.register_mh_result(accepted)
         if not accepted:
-            self.mover.undo()
+            self.like_mover.undo()
         else:
             self.current_like = self.new_like
         return accepted
@@ -191,7 +191,7 @@ class MCMCRunner:
             return True
         ratio = (
             math.exp(self.new_like - self.current_like)
-            * self.mover.mh_correction
+            * self.like_mover.mh_correction
         )
 
         rand_val = self.prng.random()

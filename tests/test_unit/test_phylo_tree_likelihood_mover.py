@@ -117,7 +117,7 @@ class TestRecalculateAttachmentLogLikeFromNodes:
             b.with_mutated_gl_at(sample, sample)
 
         mcmc = b.build()
-        mover = mcmc.mover
+        mover = mcmc.like_mover
         calc = mover.calc
 
         # when

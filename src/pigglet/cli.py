@@ -210,8 +210,8 @@ def infer(
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
-    runner.mover.calc.summer.check_calc = check_logsumexp_accuracy
-    runner.mover.calc.summer.max_diffs = logsumexp_refresh_rate
+    runner.like_mover.calc.summer.check_calc = check_logsumexp_accuracy
+    runner.like_mover.calc.summer.max_diffs = logsumexp_refresh_rate
     if mutation_tree:
         logger.info("Using a mutation tree")
     else:

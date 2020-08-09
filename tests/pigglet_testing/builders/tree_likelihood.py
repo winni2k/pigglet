@@ -189,7 +189,7 @@ class MCMCBuilder(LikelihoodBuilder):
         else:
             runner = MCMCRunner.phylogenetic_tree_from_gls(gls, prng=self.prng)
             if self.internal_attach_like_double_checking:
-                runner.mover.double_check_ll_calculations = True
+                runner.like_mover.double_check_ll_calculations = True
         runner.num_burnin_iter = self.n_burnin_iter
         runner.num_sampling_iter = self.n_sampling_iter
         runner.reporting_interval = self.reporting_interval
