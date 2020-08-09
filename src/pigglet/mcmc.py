@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MCMCRunner:
-    gls: np.ndarray
     map_g: nx.DiGraph
     tree_move_weights: List[float]
     tree_interactor: TreeInteractor
@@ -62,7 +61,6 @@ class MCMCRunner:
         graph = build_random_mutation_tree(gls.shape[0])
         like_mover = MutationTreeLikelihoodMover(graph, gls, prng=prng)
         return cls(
-            gls=gls,
             map_g=graph.copy(),
             tree_move_weights=[1] * len(like_mover.mover.available_moves),
             tree_interactor=MutationTreeInteractor(graph, prng=prng),
@@ -90,7 +88,6 @@ class MCMCRunner:
                 "double_check_ll_calculation"
             )
         return cls(
-            gls=gls,
             map_g=graph.copy(),
             tree_interactor=PhyloTreeInteractor(graph),
             like_mover=like_mover,
@@ -98,6 +95,10 @@ class MCMCRunner:
             prng=prng,
             **kwargs,
         )
+
+    @property
+    def gls(self):
+        return self.like_mover.calc.gls
 
     def run(self):
         iteration = 0
