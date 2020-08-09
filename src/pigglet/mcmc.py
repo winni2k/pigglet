@@ -14,11 +14,6 @@ from pigglet.aggregator import (
     PhyloAttachmentAggregator,
     TreeAggregator,
 )
-from pigglet.tree_interactor import (
-    MutationTreeInteractor,
-    PhyloTreeInteractor,
-    TreeInteractor,
-)
 from pigglet.tree_likelihood_mover import (
     MutationTreeLikelihoodMover,
     PhyloTreeLikelihoodMover,
@@ -34,7 +29,6 @@ logger = logging.getLogger(__name__)
 class MCMCRunner:
     map_g: nx.DiGraph
     tree_move_weights: List[float]
-    tree_interactor: TreeInteractor
     like_mover: TreeLikelihoodMover
     agg: AttachmentAggregator
     prng: Any
@@ -63,7 +57,6 @@ class MCMCRunner:
         return cls(
             map_g=graph.copy(),
             tree_move_weights=[1] * len(like_mover.mover.available_moves),
-            tree_interactor=MutationTreeInteractor(graph, prng=prng),
             like_mover=like_mover,
             agg=MutationAttachmentAggregator(),
             prng=prng,
@@ -89,7 +82,6 @@ class MCMCRunner:
             )
         return cls(
             map_g=graph.copy(),
-            tree_interactor=PhyloTreeInteractor(graph),
             like_mover=like_mover,
             agg=PhyloAttachmentAggregator(),
             prng=prng,
