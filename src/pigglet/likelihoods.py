@@ -172,14 +172,6 @@ class PhyloTreeLikelihoodCalculator(TreeLikelihoodCalculator):
         GraphAnnotator(self.g).annotate_all_nodes_with_descendant_leaves(
             self.root
         )
-        gls = self.gls
-        glstmp = np.zeros((gls.shape[1], gls.shape[2], gls.shape[0]))
-        for genotype_idx in range(gls.shape[2]):
-            for site_idx in range(gls.shape[0]):
-                glstmp[:, genotype_idx, site_idx] = gls[
-                    site_idx, :, genotype_idx
-                ]
-        self.gls = np.moveaxis(glstmp, 2, 0)
         self.summer = TreeLikelihoodSummer(len(self.g), self.n_sites)
 
     @property

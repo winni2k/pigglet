@@ -25,6 +25,14 @@ NUM_MCMC_MOVES = 3
 logger = logging.getLogger(__name__)
 
 
+def rearrange_gl_axes_for_performance(gls):
+    glstmp = np.zeros((gls.shape[1], gls.shape[2], gls.shape[0]))
+    for genotype_idx in range(gls.shape[2]):
+        for site_idx in range(gls.shape[0]):
+            glstmp[:, genotype_idx, site_idx] = gls[site_idx, :, genotype_idx]
+    return np.moveaxis(glstmp, 2, 0)
+
+
 @dataclass
 class MCMCRunner:
     map_g: nx.DiGraph
@@ -71,6 +79,7 @@ class MCMCRunner:
         graph = build_random_phylogenetic_tree(
             num_samples=gls.shape[1], seed=prng.randrange(1, 2 ^ 32)
         )
+        gls = rearrange_gl_axes_for_performance(gls)
         like_mover = PhyloTreeLikelihoodMover(graph, gls, prng)
         if "tree_move_weights" not in kwargs:
             kwargs["tree_move_weights"] = [1] * len(

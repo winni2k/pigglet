@@ -16,6 +16,10 @@ from pigglet.tree_utils import parent_node_of, roots_of_tree
 
 
 class TreeLikelihoodMover(ABC):
+    def __init__(self):
+        self.mover = None
+        self.calc = None
+
     def random_move(self, weights=None):
         self.mover.random_move(weights=weights)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
@@ -44,6 +48,7 @@ class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     """Make phylogenetic tree moves while keeping tree likelihoods updated"""
 
     def __init__(self, g, gls, prng):
+        super().__init__()
         self.mover = PhyloTreeMoveCaretaker(g, prng=prng)
         self.calc = PhyloTreeLikelihoodCalculator(g, gls)
 
@@ -60,6 +65,7 @@ class MutationTreeLikelihoodMover(TreeLikelihoodMover):
     """Make mutation tree moves while keeping tree likelihoods updated"""
 
     def __init__(self, g, gls, prng):
+        super().__init__()
         self.mover = MutationTreeMoveCaretaker(g, prng=prng)
         self.calc = MutationTreeLikelihoodCalculator(g, gls)
 
