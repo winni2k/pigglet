@@ -81,6 +81,11 @@ class MCMCRunner:
         )
         gls = rearrange_gl_axes_for_performance(gls)
         if num_actors > 1:
+            import ray
+
+            if not ray.is_initialized():
+                ray.init(num_cpus=num_actors)
+
             from pigglet.tree_likelihood_mover_ray import (
                 PhyloTreeLikelihoodMoverDirector,
             )
@@ -133,41 +138,44 @@ class MCMCRunner:
 
     def _iteration_logging(self, iteration):
         """Logging for a reporting interval"""
-        tracker = self.like_mover.mover.move_tracker
+        n_tries = self.like_mover.get_tracker_n_tries()
+        acceptance_ratios = self.like_mover.get_tracker_acceptance_ratios()
+        move_times = (
+            self.like_mover.get_tracker_successful_proposal_time_proportions()
+        )
+        update_list = list(self.like_mover.get_calc_n_node_update_list())
+        self.like_mover.clear_calc_n_node_update_list()
+
         logger.info(
             f"Iteration {iteration} "
             f"| current like: {self.current_like} "
             f"| MAP like: {self.map_like}"
         )
         percentiles = np.percentile(
-            self.like_mover.calc.n_node_update_list,
-            [5, 25, 50, 75, 95],
-            interpolation="higher",
+            update_list, [5, 25, 50, 75, 95], interpolation="higher",
         )
         logger.info(
             f"Iteration {iteration} "
-            f"| {len(self.like_mover.calc.n_node_update_list)} updates "
+            f"| {len(update_list)} updates "
             f"| 5, 25, 50, 75, 95 percentile nodes updated: {percentiles}"
         )
-        self.like_mover.calc.n_node_update_list.clear()
         logger.info(
             f"Iteration {iteration} "
             f"| acceptance rate: "
-            f"{self.reporting_interval / tracker.n_tries:.1%}"
+            f"{self.reporting_interval / n_tries:.1%}"
         )
-        acceptance_ratios = tracker.get_acceptance_ratios()
-        move_times = tracker.get_successful_proposal_time_proportions()
-        for move_idx, move in enumerate(self.like_mover.mover.available_moves):
+        for move_idx, move in enumerate(
+            self.like_mover.get_available_move_names()
+        ):
             logger.info(
                 f"Iteration {iteration} "
-                f"| function: {move.__name__} "
+                f"| function: {move} "
                 "| acceptance rate:"
                 f" {acceptance_ratios[move_idx]:.1%} "
                 "| proportion time per acceptance:"
                 f" {move_times[move_idx]:.1%} "
             )
-
-        tracker.flush()
+        self.like_mover.flush_tracker()
 
     @property
     def g(self):

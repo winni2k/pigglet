@@ -1,6 +1,7 @@
 import itertools as it
 import math
 import shutil
+import subprocess
 
 import h5py
 import networkx as nx
@@ -15,10 +16,11 @@ from pigglet import cli
 
 
 @pytest.mark.parametrize(
-    "gl_tag,mutation_tree", it.product(["GL", "PL"], [True, False])
+    "gl_tag,mutation_tree,invoke",
+    it.product(["GL", "PL"], [True, False], [True, False]),
 )
 def test_single_mutation_one_sample_creates_trivial_graph(
-    tmpdir, gl_tag, mutation_tree
+    tmpdir, gl_tag, mutation_tree, invoke
 ):
     # given
     b = VCFBuilder(tmpdir)
@@ -31,15 +33,25 @@ def test_single_mutation_one_sample_creates_trivial_graph(
     out_nw = str(prefix) + ".t"
 
     # when
-    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    command = [
+        "pigglet",
+        "infer",
+        str(vcf_file),
+        str(prefix),
+        "--reporting-interval",
+        "5",
+    ]
     if mutation_tree:
         command.append("--mutation-tree")
     else:
         command.append("--no-mutation-tree")
     runner = CliRunner()
 
-    result = runner.invoke(infer, command[2:], catch_exceptions=False)
-    assert result.exit_code == 0
+    if invoke:
+        result = runner.invoke(infer, command[2:], catch_exceptions=False)
+        assert result.exit_code == 0
+    else:
+        subprocess.run(command)
 
     # then
     if mutation_tree:

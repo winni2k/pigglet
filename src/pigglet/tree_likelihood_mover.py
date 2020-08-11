@@ -74,6 +74,29 @@ class TreeLikelihoodMover(ABC):
     def g(self):
         return self.mover.g
 
+    def get_tracker_n_tries(self):
+        return self.mover.move_tracker.n_tries
+
+    def get_tracker_acceptance_ratios(self):
+        return self.mover.move_tracker.get_acceptance_ratios()
+
+    def get_tracker_successful_proposal_time_proportions(self):
+        return (
+            self.mover.move_tracker.get_successful_proposal_time_proportions()
+        )
+
+    def flush_tracker(self):
+        return self.mover.move_tracker.flush()
+
+    def get_calc_n_node_update_list(self):
+        return self.calc.n_node_update_list
+
+    def clear_calc_n_node_update_list(self):
+        self.calc.n_node_update_list.clear()
+
+    def get_available_move_names(self):
+        return [m.__name__ for m in self.mover.available_moves]
+
 
 class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     """Make phylogenetic tree moves while keeping tree likelihoods updated"""

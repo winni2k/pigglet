@@ -5,6 +5,9 @@ from pigglet.tree_likelihood_mover import (
 
 import ray
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 if not ray.is_initialized():
     ray.init()
@@ -42,6 +45,9 @@ class PhyloTreeLikelihoodMoverActor(PhyloTreeLikelihoodMover):
     def get_g(self):
         return self.g
 
+    def get_mh_correction(self):
+        return self.mover.mh_correction
+
 
 def stride_ranges(num_items, num_chunks):
     min_stride = num_items // num_chunks
@@ -60,14 +66,16 @@ def stride_ranges(num_items, num_chunks):
 
 class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
     def __init__(self, g, gls, prng, num_actors=2):
-        super().__init__()
+        self.calc = None
+        self.mover = None
         seed = prng.random()
         n_sites = gls.shape[0]
         self.actors = []
-        if n_sites > num_actors:
+        if n_sites < num_actors:
             num_actors = n_sites
         g_id = ray.put(g)
-        for left, right in zip(*stride_ranges(n_sites, num_actors)):
+        lefts, rights = stride_ranges(n_sites, num_actors)
+        for left, right in zip(lefts, rights):
             self.actors.append(
                 PhyloTreeLikelihoodMoverActor.remote(
                     g_id, gls[left:right], prng
@@ -80,7 +88,8 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
         attachment_log_like = [
             ray.get(a.get_attachment_log_like.remote()) for a in self.actors
         ]
-        return np.vstack(attachment_log_like)
+        logger.error(attachment_log_like)
+        return np.hstack(attachment_log_like)
 
     def random_move(self, weights=None):
         for a in self.actors:
@@ -125,6 +134,10 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
     def g(self):
         return ray.get(self.actors[0].get_g.remote())
 
+    @property
+    def mh_correction(self):
+        return self._get_and_check_actors("get_mh_correction")
+
     def log_likelihood(self):
         likelihoods = [a.log_likelihood.remote() for a in self.actors]
         return sum(ray.get(v) for v in likelihoods)
@@ -138,3 +151,30 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
     def _set_for_all_actors(self, actor_func_name, val):
         for actor in self.actors:
             getattr(actor, actor_func_name).remote(val)
+
+    def get_tracker_n_tries(self):
+        return ray.get(self.actors[0].get_tracker_n_tries.remote())
+
+    def get_tracker_acceptance_ratios(self):
+        return ray.get(self.actors[0].get_tracker_acceptance_ratios.remote())
+
+    def get_tracker_successful_proposal_time_proportions(self):
+        return ray.get(
+            self.actors[
+                0
+            ].get_tracker_successful_proposal_time_proportions.remote()
+        )
+
+    def flush_tracker(self):
+        for actor in self.actors:
+            actor.flush_tracker.remote()
+
+    def get_calc_n_node_update_list(self):
+        return ray.get(self.actors[0].get_calc_n_node_update_list.remote())
+
+    def clear_calc_n_node_update_list(self):
+        for actor in self.actors:
+            actor.clear_calc_n_node_update_list.remote()
+
+    def get_available_move_names(self):
+        return ray.get(self.actors[0].get_available_move_names.remote())
