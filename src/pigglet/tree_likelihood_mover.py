@@ -31,6 +31,9 @@ class TreeLikelihoodMover(ABC):
     def log_likelihood(self):
         return self.calc.log_likelihood()
 
+    def register_mh_result(self, accepted: bool):
+        self.mover.move_tracker.register_mh_result(accepted)
+
     @property
     def mh_correction(self):
         return self.mover.mh_correction
@@ -42,6 +45,34 @@ class TreeLikelihoodMover(ABC):
     @property
     def attachment_log_like(self):
         return self.calc.attachment_log_like
+
+    @property
+    def prng(self):
+        return self.mover.prng
+
+    @property
+    def has_changed_nodes(self):
+        return self.calc.has_changed_nodes()
+
+    @property
+    def check_logsumexp_accuracy(self):
+        return self.calc.summer.check_calc
+
+    @check_logsumexp_accuracy.setter
+    def check_logsumexp_accuracy(self, value):
+        self.calc.summer.check_calc = value
+
+    @property
+    def logsumexp_refresh_rate(self):
+        return self.calc.summer.check_calc
+
+    @logsumexp_refresh_rate.setter
+    def logsumexp_refresh_rate(self, value):
+        self.calc.summer.max_diffs = value
+
+    @property
+    def g(self):
+        return self.mover.g
 
 
 class PhyloTreeLikelihoodMover(TreeLikelihoodMover):

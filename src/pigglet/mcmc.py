@@ -52,7 +52,7 @@ class MCMCRunner:
     tree_aggregator: Optional[TreeAggregator] = None
 
     def __post_init__(self):
-        self.current_like = self.like_mover.calc.log_likelihood()
+        self.current_like = self.like_mover.log_likelihood()
         self.map_like = self.current_like
 
     @classmethod
@@ -73,20 +73,29 @@ class MCMCRunner:
 
     @classmethod
     def phylogenetic_tree_from_gls(
-        cls, gls, prng=random, num_cpus=1, **kwargs,
+        cls, gls, prng=random, num_actors=1, **kwargs,
     ):
         assert np.alltrue(gls <= 0), gls
         graph = build_random_phylogenetic_tree(
             num_samples=gls.shape[1], seed=prng.randrange(1, 2 ^ 32)
         )
         gls = rearrange_gl_axes_for_performance(gls)
-        like_mover = PhyloTreeLikelihoodMover(graph, gls, prng)
+        if num_actors > 1:
+            from pigglet.tree_likelihood_mover_ray import (
+                PhyloTreeLikelihoodMoverDirector,
+            )
+
+            like_mover = PhyloTreeLikelihoodMoverDirector(
+                graph, gls, prng, num_actors=num_actors
+            )
+        else:
+            like_mover = PhyloTreeLikelihoodMover(graph, gls, prng)
         if "tree_move_weights" not in kwargs:
             kwargs["tree_move_weights"] = [1] * len(
                 like_mover.mover.available_moves
             )
         if "double_check_ll_calculation" in kwargs:
-            like_mover.calc.double_check_ll_calculations = kwargs.pop(
+            like_mover.double_check_ll_calculations = kwargs.pop(
                 "double_check_ll_calculation"
             )
         return cls(
@@ -162,7 +171,7 @@ class MCMCRunner:
 
     @property
     def g(self):
-        return self.like_mover.mover.g
+        return self.like_mover.g
 
     def _update_map(self, iteration):
         if self.new_like > self.map_like:
@@ -179,7 +188,7 @@ class MCMCRunner:
         self.like_mover.random_move(weights=self.tree_move_weights)
         self.new_like = self.like_mover.log_likelihood()
         accepted = self._mh_acceptance()
-        self.like_mover.mover.register_mh_result(accepted)
+        self.like_mover.register_mh_result(accepted)
         if not accepted:
             self.like_mover.undo()
         else:

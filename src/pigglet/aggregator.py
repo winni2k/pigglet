@@ -48,6 +48,7 @@ class MutationAttachmentAggregator(AttachmentAggregator):
         return self.attachment_scores - math.log(self.num_additions)
 
 
+@dataclass
 class PhyloAttachmentAggregator(AttachmentAggregator):
     """Aggregates attachment scores for phylogenetic trees
 
@@ -55,9 +56,8 @@ class PhyloAttachmentAggregator(AttachmentAggregator):
     matrix of mutation probabilities
     """
 
-    def __init__(self):
-        self.attachment_scores = None
-        self.num_additions = 0
+    attachment_scores = None
+    num_additions: int = 0
 
     def add_attachment_log_likes(self, calc: PhyloTreeLikelihoodCalculator):
         """Calculate normalized mutation probabilities and aggregate

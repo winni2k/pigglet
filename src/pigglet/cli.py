@@ -112,7 +112,7 @@ def create_store(output_store):
     "--double-check-likelihood-calculation/"
     "--no-double-check-likelihood-calculation",
     default=False,
-    help="This is slow and only meant for debugging. ",
+    help="This is slow and only meant for debugging.",
 )
 @click.option(
     "--defer-mutation-probability-calc/"
@@ -121,6 +121,12 @@ def create_store(output_store):
     help="Don't calculate mutation probabilities while sampling trees. "
     "Mutation probabilities can later be estimated in parallel using "
     "`pigglet calc`",
+)
+@click.option(
+    "--num-actors",
+    default=2,
+    type=int,
+    help="Number of actors to use for phylogenetic tree inference.",
 )
 def infer(
     gl_vcf,
@@ -136,6 +142,7 @@ def infer(
     seed,
     double_check_likelihood_calculation,
     defer_mutation_probability_calc,
+    num_actors,
 ):
     """Infer phylogenetic or mutation tree from genotype likelihoods
     stored in GL_VCF.
@@ -206,17 +213,19 @@ def infer(
             gls,
             tree_move_weights=[int(gls.shape[1] != 3), 1],
             double_check_ll_calculation=double_check_likelihood_calculation,
+            num_actors=num_actors,
         )
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
-    runner.like_mover.calc.summer.check_calc = check_logsumexp_accuracy
-    runner.like_mover.calc.summer.max_diffs = logsumexp_refresh_rate
+
+    runner.like_mover.check_logsumexp_accuracy_on = check_logsumexp_accuracy
+    runner.like_mover.logsumexp_refresh_rate = logsumexp_refresh_rate
     if mutation_tree:
         logger.info("Using a mutation tree")
     else:
         runner.tree_aggregator = TreeAggregator()
-        if defer_mutation_probability_calc:
+        if defer_mutation_probability_calc or num_actors > 1:
             runner.agg = NullAttachmentAggregator()
         logger.info("Using a phylogenetic tree")
     runner.run()
@@ -226,6 +235,12 @@ def infer(
         store_mutation_tree_results(gls, out_prefix, output_store, runner)
     else:
         store_phylo_tree_results(out_prefix, output_store, runner)
+        if not defer_mutation_probability_calc and num_actors > 1:
+            import subprocess
+
+            subprocess.run(
+                ["pigglet", "calc", output_store, "--jobs", str(num_actors)]
+            )
 
 
 @cli.command()
