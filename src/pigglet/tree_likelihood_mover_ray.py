@@ -92,6 +92,15 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
         logger.error(attachment_log_like)
         return np.hstack(attachment_log_like)
 
+    def random_move_and_get_like(self, weights=None):
+        likes = []
+        for a in self.actors:
+            if weights:
+                likes.append(a.random_move_and_get_like.remote(weights))
+            else:
+                likes.append(a.random_move_and_get_like.remote())
+        return sum(ray.get(v) for v in likes)
+
     def random_move(self, weights=None):
         for a in self.actors:
             if weights:

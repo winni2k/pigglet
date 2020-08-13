@@ -28,6 +28,10 @@ class TreeLikelihoodMover(ABC):
         self.mover.undo(memento=self.mover.memento)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
+    def random_move_and_get_like(self, weights=None):
+        self.random_move(weights=weights)
+        return self.log_likelihood()
+
     def log_likelihood(self):
         return self.calc.log_likelihood()
 

@@ -193,8 +193,9 @@ class MCMCRunner:
 
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
-        self.like_mover.random_move(weights=self.tree_move_weights)
-        self.new_like = self.like_mover.log_likelihood()
+        self.new_like = self.like_mover.random_move_and_get_like(
+            weights=self.tree_move_weights
+        )
         accepted = self._mh_acceptance()
         self.like_mover.register_mh_result(accepted)
         if not accepted:
