@@ -65,9 +65,10 @@ def stride_ranges(num_items, num_chunks):
 
 
 class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
-    def __init__(self, g, gls, prng, num_actors=2):
+    def __init__(self, g, gls, prng, num_actors=2, testing: bool = False):
         self.calc = None
         self.mover = None
+        self.testing = testing
         seed = prng.random()
         n_sites = gls.shape[0]
         self.actors = []
@@ -93,7 +94,10 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     def random_move(self, weights=None):
         for a in self.actors:
-            a.random_move.remote(weights)
+            if weights:
+                a.random_move.remote(weights)
+            else:
+                a.random_move.remote()
 
     def has_changed_nodes(self):
         return self._get_and_check_actors("get_has_changed_nodes")
@@ -143,9 +147,14 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
         return sum(ray.get(v) for v in likelihoods)
 
     def _get_and_check_actors(self, actor_func_name):
-        futures = [getattr(a, actor_func_name).remote() for a in self.actors]
+        futures = [getattr(self.actors[0], actor_func_name).remote()]
+        if self.testing:
+            futures += [
+                getattr(a, actor_func_name).remote() for a in self.actors[1:]
+            ]
         first = ray.get(futures[0])
-        assert all(ray.get(v) == first for v in futures)
+        if self.testing:
+            assert all(ray.get(v) == first for v in futures[1:])
         return first
 
     def _set_for_all_actors(self, actor_func_name, val):

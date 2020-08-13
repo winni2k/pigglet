@@ -20,7 +20,9 @@ def test_ray_arbitrary_trees_and_moves_undo_ok(n_samples):
 
     mcmc = b.build()
 
-    mover = PhyloTreeLikelihoodMoverDirector(g=mcmc.g, gls=mcmc.gls, prng=prng)
+    mover = PhyloTreeLikelihoodMoverDirector(
+        g=mcmc.g, gls=mcmc.gls, prng=prng, testing=True
+    )
     like = mover.attachment_log_like.copy()
 
     # when/then
