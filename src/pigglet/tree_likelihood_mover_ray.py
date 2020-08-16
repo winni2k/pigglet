@@ -3,6 +3,7 @@ from pigglet.tree_likelihood_mover import (
     PhyloTreeLikelihoodMover,
 )
 
+import numpy as np
 import ray
 import logging
 
@@ -49,18 +50,9 @@ class PhyloTreeLikelihoodMoverActor(PhyloTreeLikelihoodMover):
 
 
 def stride_ranges(num_items, num_chunks):
-    min_stride = num_items // num_chunks
-    left_over = num_items % num_chunks
-    strides = [0]
-    for i in range(num_chunks):
-        assert left_over < num_chunks
-        strides.append(strides[-1] + min_stride)
-        if left_over != 0:
-            strides[-1] = 1
-            left_over -= 1
-    strides_l = strides[:-1]
-    strides_r = strides[1:]
-    return strides_l, strides_r
+    cuts = [i / num_chunks for i in range(num_chunks + 1)]
+    cuts = np.around(np.quantile(np.arange(num_items), cuts)).astype(np.int64)
+    return cuts[0:-1], cuts[1:]
 
 
 class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
@@ -75,7 +67,9 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
             num_actors = n_sites
         g_id = ray.put(g)
         lefts, rights = stride_ranges(n_sites, num_actors)
-        for left, right in zip(lefts, rights):
+        logger.info(f"Creating ({len(lefts)} actors")
+        for idx, (left, right) in enumerate(zip(lefts, rights)):
+            logger.info(f"Actor {idx}: {right-left} sites")
             self.actors.append(
                 PhyloTreeLikelihoodMoverActor.remote(
                     g_id, gls[left:right], prng
