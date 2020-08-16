@@ -4,7 +4,6 @@ from pigglet.tree_likelihood_mover import (
 )
 
 import ray
-import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -86,11 +85,12 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def attachment_log_like(self):
-        attachment_log_like = [
-            ray.get(a.get_attachment_log_like.remote()) for a in self.actors
-        ]
-        logger.error(attachment_log_like)
-        return np.hstack(attachment_log_like)
+        raise NotImplementedError
+        # attachment_log_like = [
+        #     ray.get(a.get_attachment_log_like.remote()) for a in self.actors
+        # ]
+        # logger.error(attachment_log_like)
+        # return np.hstack(attachment_log_like)
 
     def random_move_and_get_like(self, weights=None):
         likes = []
@@ -114,9 +114,6 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
     def undo(self):
         for actor in self.actors:
             actor.undo.remote()
-
-    def register_mh_result(self, accepted: bool):
-        self._set_for_all_actors("register_mh_result", accepted)
 
     @property
     def double_check_ll_calculations(self):

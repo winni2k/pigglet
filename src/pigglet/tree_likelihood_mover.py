@@ -25,6 +25,7 @@ class TreeLikelihoodMover(ABC):
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
     def undo(self):
+        self.mover.move_tracker.register_failure()
         self.mover.undo(memento=self.mover.memento)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
@@ -34,9 +35,6 @@ class TreeLikelihoodMover(ABC):
 
     def log_likelihood(self):
         return self.calc.log_likelihood()
-
-    def register_mh_result(self, accepted: bool):
-        self.mover.move_tracker.register_mh_result(accepted)
 
     @property
     def mh_correction(self):
@@ -143,11 +141,16 @@ class MoveTracker:
         self.flush()
 
     def register_try(self, move_idx: int) -> None:
+        if self._current_try is not None:
+            self._register_mh_result(True)
         assert self._current_try is None
         self._current_try = move_idx
         self._timer_start = perf_counter()
 
-    def register_mh_result(self, accepted: bool) -> None:
+    def register_failure(self) -> None:
+        self._register_mh_result(False)
+
+    def _register_mh_result(self, accepted: bool) -> None:
         assert self._current_try is not None
         assert self._timer_start is not None
         try_time = perf_counter() - self._timer_start
@@ -191,9 +194,6 @@ class TreeMoveCaretaker(ABC):
     def __init__(self):
         self.move_tracker = None
         self.interactor = None
-
-    def register_mh_result(self, accepted: bool):
-        self.move_tracker.register_mh_result(accepted)
 
     @property
     def mh_correction(self):

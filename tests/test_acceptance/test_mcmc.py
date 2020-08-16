@@ -226,7 +226,6 @@ class TestPhyloMoveExecutor:
                 logging.error(old_g.nodes(data=True))
                 logging.error(old_g.edges)
                 raise
-            exe.register_mh_result(True)
 
     @given(
         st.lists(

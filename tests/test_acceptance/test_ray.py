@@ -1,6 +1,5 @@
 import random
 
-import numpy as np
 import pytest
 
 from pigglet_testing.builders.tree_likelihood import MCMCBuilder
@@ -23,17 +22,16 @@ def test_ray_arbitrary_trees_and_moves_undo_ok(n_samples):
     mover = PhyloTreeLikelihoodMoverDirector(
         g=mcmc.g, gls=mcmc.gls, prng=prng, testing=True
     )
-    like = mover.attachment_log_like.copy()
+    like = mover.log_likelihood()
 
     # when/then
     mover.random_move()
     assert mover.has_changed_nodes()
-    mover.attachment_log_like
+    mover.log_likelihood()
     assert not mover.has_changed_nodes()
     mover.undo()
     assert mover.has_changed_nodes()
 
     # then
     assert like is not None
-    for u in range(like.shape[0]):
-        assert np.allclose(like[u], mover.attachment_log_like[u])
+    assert like == pytest.approx(mover.log_likelihood())

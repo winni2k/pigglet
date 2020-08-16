@@ -197,7 +197,6 @@ class MCMCRunner:
             weights=self.tree_move_weights
         )
         accepted = self._mh_acceptance()
-        self.like_mover.register_mh_result(accepted)
         if not accepted:
             self.like_mover.undo()
         else:
