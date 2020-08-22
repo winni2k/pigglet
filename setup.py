@@ -38,6 +38,7 @@ setup(
         "msprime",
         "tskit",
         "pyfiglet==0.8.post1",
+        "ray",
     ],
     packages=find_packages(
         "src", exclude=["contrib", "docs", "tests", "test_utils"]
