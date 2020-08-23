@@ -71,7 +71,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
         for idx, (left, right) in enumerate(zip(lefts, rights)):
             logger.info(f"Actor {idx}: {right-left} sites")
             self.actors.append(
-                PhyloTreeLikelihoodMoverActor.remote(
+                PhyloTreeLikelihoodMoverActor.remote(  # type: ignore
                     g_id, gls[left:right], prng
                 )
             )
