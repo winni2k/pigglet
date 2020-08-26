@@ -239,7 +239,13 @@ def infer(
             import subprocess
 
             subprocess.run(
-                ["pigglet", "calc", output_store, "--jobs", str(num_actors)]
+                [
+                    "pigglet",
+                    "calc-mutation-probabilities",
+                    output_store,
+                    "--jobs",
+                    str(num_actors),
+                ]
             )
 
 
@@ -263,11 +269,11 @@ def convert(
     import random
 
     from pigglet.tree import strip_tree
-    from pigglet.tree_converter import PhylogeneticTreeConverter
+    from pigglet.tree_converter import MutationToPhylogeneticTreeConverter
 
     g = nx.read_gml(mutation_tree)
     g = nx.relabel_nodes(g, int)
-    converter = PhylogeneticTreeConverter(g, prng=random)
+    converter = MutationToPhylogeneticTreeConverter(g, prng=random)
     with h5py.File(hdf5, "r") as fh:
         sample_attachments = fh[hdf5_sample_attachment_descriptor][:]
     phylo_g = converter.convert(sample_attachments)
@@ -319,7 +325,7 @@ def store_gls(gl_vcf, output_h5):
     default=None,
     help="Number of processes to parallelize over",
 )
-def calc(h5_file, jobs=1):
+def calc_mutation_probabilities(h5_file, jobs=1):
     """Calculate mutation probabilities for posterior phylogenetic tree samples
 
     H5_FILE is the output file of pigglet infer ending in .h5
@@ -341,9 +347,51 @@ def calc(h5_file, jobs=1):
             raise Exception("Please run pigglet infer with --store-gls.")
         gls = fh["input/gls"][:]
 
-    from pigglet.calc import calc_impl
+    from pigglet.calc import calc_mutation_probabilities
 
-    calc_impl(gls, h5_file, jobs, n_sampling_iterations)
+    calc_mutation_probabilities(gls, h5_file, jobs, n_sampling_iterations)
+
+
+@cli.command()
+@click.argument("h5_file")
+@click.option(
+    "--jobs",
+    type=int,
+    default=None,
+    help="Number of processes to parallelize over",
+)
+def calc_branch_lengths(h5_file, jobs=1):
+    """Calculate branch lengths for posterior sampled and MAP phylogenetic
+    trees.
+
+    H5_FILE is the output file of pigglet infer ending in .h5
+    """
+
+    configure_logger("INFO", h5_file + ".calc_branch_lengths_probs.log")
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info("Calculating branch lengths for stored phylogenetic trees")
+    logger.info(f"Opening store: {h5_file}")
+    import h5py
+
+    with h5py.File(h5_file, "r") as fh:
+        n_sampling_iterations = len(list(fh["phylo_tree/samples"]))
+        if "input/gls" not in fh:
+            raise Exception("Please run pigglet infer with --store-gls.")
+        gls = fh["input/gls"][:]
+
+    import ray
+
+    if not ray.is_initialized():
+        ray.init(num_cpus=jobs)
+    from pigglet.calc_ray import (
+        calc_branch_lengths_samples,
+        calc_branch_lengths_map,
+    )
+
+    calc_branch_lengths_samples(gls, h5_file, n_sampling_iterations)
+    calc_branch_lengths_map(gls, h5_file)
 
 
 @cli.command()
@@ -369,8 +417,18 @@ def calc(h5_file, jobs=1):
     default=True,
     help="Use sample labels on output trees",
 )
+@click.option(
+    "--branch-lengths/--no-branch-lengths",
+    default=True,
+    help="Annotate Newick trees with branch lengths",
+)
 def extract(
-    h5_file, phylo_nexus, phylo_newicks, phylo_map_newick, label_leaves
+    h5_file,
+    phylo_nexus,
+    phylo_newicks,
+    phylo_map_newick,
+    label_leaves,
+    branch_lengths,
 ):
     """Extract trees (etc.) from output h5 file"""
 
@@ -379,25 +437,22 @@ def extract(
 
     logger = logging.getLogger(__name__)
 
+    from pigglet.extract import NewickTreeConverter
+
+    converter = NewickTreeConverter(
+        h5_file, label_leaves, branch_lengths=branch_lengths
+    )
     if phylo_nexus:
-        from pigglet.extract import phylo_nexus_impl
-
         logger.info(f"Extracting posterior trees to NEXUS file: {phylo_nexus}")
-        phylo_nexus_impl(h5_file, phylo_nexus, label_leaves)
+        converter.to_phylo_nexus(phylo_nexus)
     if phylo_newicks:
-        from pigglet.extract import phylo_newicks_impl
-
         logger.info(
             f"Extracting posterior trees to newicks file: {phylo_newicks}"
         )
-        phylo_newicks_impl(h5_file, phylo_newicks, label_leaves)
+        converter.to_phylo_newicks(phylo_newicks)
     if phylo_map_newick:
-        from pigglet.extract import phylo_map_newick_impl
-
         logger.info(f"Extracting MAP tree to newick file: {phylo_map_newick}")
-        phylo_map_newick_impl(
-            h5_file, phylo_map_newick, label_leaves=label_leaves
-        )
+        converter.to_phylo_map_newick(phylo_map_newick)
 
 
 def store_input(gls, loader, output_store, store_gls):

@@ -2,6 +2,7 @@ import itertools as it
 import math
 import shutil
 import subprocess
+import re
 
 import h5py
 import networkx as nx
@@ -9,7 +10,13 @@ import numpy as np
 import pytest
 from click.testing import CliRunner
 
-from pigglet.cli import infer, calc, store_gls, extract
+from pigglet.cli import (
+    infer,
+    calc_mutation_probabilities,
+    calc_branch_lengths,
+    store_gls,
+    extract,
+)
 from pigglet_testing.builders.vcf import VCFBuilder
 
 from pigglet import cli
@@ -187,7 +194,9 @@ def test_calc_phylo_mutation_probs(tmpdir):
     with h5py.File(out_h5_2, "a") as fh:
         del fh["phylo_tree/mutation_probabilities"]
     result2 = runner.invoke(
-        calc, [out_h5_2, "--jobs", "2"], catch_exceptions=False,
+        calc_mutation_probabilities,
+        [out_h5_2, "--jobs", "2"],
+        catch_exceptions=False,
     )
 
     # then
@@ -204,6 +213,48 @@ def test_calc_phylo_mutation_probs(tmpdir):
     assert mut_probs.shape == (2, 3)
     assert np.alltrue(np.exp(mut_probs) > 0.5)
     assert mut_probs == pytest.approx(mut_probs_agg)
+
+
+def test_calc_phylo_branch_lengths(tmpdir):
+    # given
+    num_sites = 2
+    gl_tag = "PL"
+    b = VCFBuilder(tmpdir)
+    b.with_tag(gl_tag)
+    for _ in range(num_sites):
+        b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    vcf_file = b.build()
+    prefix = tmpdir / "out"
+    out_h5 = str(prefix) + ".h5"
+    out_h5_2 = str(prefix) + ".2.h5"
+    n_sampling = 10
+
+    # when
+    runner = CliRunner()
+    command = ["pigglet", "infer", str(vcf_file), str(prefix)]
+    command += (
+        f"--seed 42 --burnin 10 --sampling {n_sampling} --no-mutation-tree "
+        "--store-gls"
+    ).split()
+    result = runner.invoke(infer, command[2:], catch_exceptions=False)
+    assert result.exit_code == 0
+
+    shutil.copy(out_h5, out_h5_2)
+    with h5py.File(out_h5_2, "a") as fh:
+        del fh["phylo_tree/mutation_probabilities"]
+    result2 = runner.invoke(
+        calc_branch_lengths, [out_h5_2, "--jobs", "2"], catch_exceptions=False,
+    )
+    assert result2.exit_code == 0
+
+    # then
+    with h5py.File(out_h5_2, "r") as fh:
+        assert len(fh["phylo_tree/samples"]) == n_sampling
+        for idx in range(n_sampling):
+            assert len([e for e in fh[f"phylo_tree/samples/{idx}"]]) == 4
+            br_lens = list(fh[f"phylo_tree/samples_br_lens/{idx}"])
+            assert len(br_lens) == 5
+            assert sum(br_lens) == num_sites
 
 
 def test_store_gls(tmpdir):
@@ -231,11 +282,12 @@ def test_store_gls(tmpdir):
 def test_extract_trees(tmpdir):
     # given
     b = VCFBuilder(tmpdir)
-    b.with_site_gls([-1, 0, -1], [-1, 0, -1], [-1, 0, -1])
+    b.with_site_gls([-100, 0, -100], [-100, 0, -100], [-100, 0, -100])
     vcf_file = b.build()
     prefix = tmpdir / "out"
     out_h5 = str(prefix) + ".h5"
     out_nw = str(prefix) + ".nws"
+    out_nw_map = str(prefix) + ".map.nw"
 
     # when
     command = ["pigglet", "infer", str(vcf_file), str(prefix)]
@@ -246,15 +298,27 @@ def test_extract_trees(tmpdir):
     runner = CliRunner()
     result = runner.invoke(infer, command[2:], catch_exceptions=False)
     assert result.exit_code == 0
+
+    result = runner.invoke(
+        calc_branch_lengths, [f"{out_h5}"], catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
     result = runner.invoke(
         extract,
-        f"{out_h5} --phylo-newicks {out_nw} --label-leaves".split(),
+        f"{out_h5} --phylo-map-newick {out_nw_map}"
+        f" --phylo-newicks {out_nw}"
+        f" --label-leaves"
+        f" --branch-lengths".split(),
         catch_exceptions=False,
     )
+    assert result.exit_code == 0
 
     # then
-    assert result.exit_code == 0
-    with open(out_nw) as fh:
-        tree = fh.readline().rstrip()
+    for nw in [out_nw, out_nw_map]:
+        with open(nw) as fh:
+            tree = fh.readline().rstrip()
+        print(nw, tree)
         for sample in b.sample_names:
-            assert sample in tree
+            assert f"{sample}:0.0" in tree
+        assert re.search(r"\):1.0*;$", tree)

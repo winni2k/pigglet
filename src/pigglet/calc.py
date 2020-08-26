@@ -28,7 +28,7 @@ def calc_phylo_mutation_probs_for_tree(
             tracking_q.put(tree_idx)
 
 
-def calc_impl(gls, h5_file, jobs, n_sampling_iterations):
+def calc_mutation_probabilities(gls, h5_file, jobs, n_sampling_iterations):
     processes = []
     input_q = SimpleQueue()
     for idx in range(n_sampling_iterations):

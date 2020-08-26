@@ -101,8 +101,16 @@ class TreeAggregator:
             yield tree_to_newick(g)
 
 
-def tree_to_newick(g, root=None, one_base=False, leaf_lookup=None):
+def tree_to_newick(
+    g,
+    root=None,
+    one_base=False,
+    leaf_lookup=None,
+    node_branch_length_lookup=None,
+):
+    first = False
     if root is None:
+        first = True
         roots = [u for u, d in g.in_degree() if d == 0]
         assert 1 == len(roots)
         root = roots[0]
@@ -111,7 +119,11 @@ def tree_to_newick(g, root=None, one_base=False, leaf_lookup=None):
         if len(g[child]) > 0:
             subgs.append(
                 tree_to_newick(
-                    g, root=child, one_base=one_base, leaf_lookup=leaf_lookup
+                    g,
+                    root=child,
+                    one_base=one_base,
+                    leaf_lookup=leaf_lookup,
+                    node_branch_length_lookup=node_branch_length_lookup,
                 )
             )
         else:
@@ -125,7 +137,12 @@ def tree_to_newick(g, root=None, one_base=False, leaf_lookup=None):
                 else:
                     name = child
             subgs.append(name)
+        if node_branch_length_lookup:
+            subgs[-1] += f":{node_branch_length_lookup[child]:f}"
     new_subg = subgs[0]
     for idx in range(1, len(subgs)):
         new_subg = f"({new_subg}, {subgs[idx]})"
+    if first:
+        if node_branch_length_lookup:
+            new_subg += f":{node_branch_length_lookup[root]:f}"
     return new_subg

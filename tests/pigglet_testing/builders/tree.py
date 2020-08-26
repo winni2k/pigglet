@@ -7,7 +7,7 @@ import networkx as nx
 from pigglet.mcmc import as_dict_of_dicts
 from pigglet_testing.expectations.tree import PhyloTreeExpectation
 
-from pigglet.tree_converter import PhylogeneticTreeConverter
+from pigglet.tree_converter import MutationToPhylogeneticTreeConverter
 from pigglet.tree_interactor import PhyloTreeInteractor
 
 
@@ -87,7 +87,7 @@ class PhylogeneticTreeConverterBuilder(MutationTreeBuilder):
     def build(self, prng=None):
         if prng is None:
             prng = random
-        return PhylogeneticTreeConverter(super().build(), prng=prng)
+        return MutationToPhylogeneticTreeConverter(super().build(), prng=prng)
 
 
 class PhylogeneticTreeConverterTestDriver(PhylogeneticTreeConverterBuilder):

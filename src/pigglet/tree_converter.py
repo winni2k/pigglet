@@ -4,7 +4,7 @@ from pigglet.tree_interactor import MutationTreeInteractor
 from pigglet.tree_utils import roots_of_tree
 
 
-class PhylogeneticTreeConverter:
+class MutationToPhylogeneticTreeConverter:
     def __init__(self, g, prng):
         self.g = g
         self.prng = prng
