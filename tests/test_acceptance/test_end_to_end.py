@@ -288,6 +288,8 @@ def test_extract_trees(tmpdir):
     out_h5 = str(prefix) + ".h5"
     out_nw = str(prefix) + ".nws"
     out_nw_map = str(prefix) + ".map.nw"
+    out_nw_no_label = str(prefix) + ".nl.nws"
+    out_nw_map_no_label = str(prefix) + ".nl.map.nw"
 
     # when
     command = ["pigglet", "infer", str(vcf_file), str(prefix)]
@@ -314,11 +316,28 @@ def test_extract_trees(tmpdir):
     )
     assert result.exit_code == 0
 
+    result = runner.invoke(
+        extract,
+        f"{out_h5} --phylo-map-newick {out_nw_map_no_label}"
+        f" --phylo-newicks {out_nw_no_label}"
+        f" --no-label-leaves"
+        f" --branch-lengths".split(),
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
     # then
     for nw in [out_nw, out_nw_map]:
         with open(nw) as fh:
             tree = fh.readline().rstrip()
         print(nw, tree)
         for sample in b.sample_names:
+            assert f"{sample}:0.0" in tree
+        assert re.search(r"\):1.0*;$", tree)
+    for nw in [out_nw_no_label, out_nw_map_no_label]:
+        with open(nw) as fh:
+            tree = fh.readline().rstrip()
+        print(nw, tree)
+        for sample in range(1, len(b.sample_names) + 1):
             assert f"{sample}:0.0" in tree
         assert re.search(r"\):1.0*;$", tree)

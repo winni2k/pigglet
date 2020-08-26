@@ -18,6 +18,9 @@ class PhyloTreeLikelihoodMoverActor(PhyloTreeLikelihoodMover):
     def set_seed(self, seed):
         self.prng.seed(seed)
 
+    def getattr(self, attribute):
+        return getattr(self, attribute)
+
     def get_attachment_log_like(self):
         return self.attachment_log_like
 
@@ -41,9 +44,6 @@ class PhyloTreeLikelihoodMoverActor(PhyloTreeLikelihoodMover):
 
     def set_logsumexp_refresh_rate(self, val):
         self.logsumexp_refresh_rate = val
-
-    def get_g(self):
-        return self.g
 
     def get_mh_correction(self):
         return self.mover.mh_correction
@@ -103,7 +103,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
                 a.random_move.remote()
 
     def has_changed_nodes(self):
-        return self._get_and_check_actors("get_has_changed_nodes")
+        return self._get_and_check_actors("has_changed_nodes")
 
     def undo(self):
         for actor in self.actors:
@@ -111,7 +111,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def double_check_ll_calculations(self):
-        return self._get_and_check_actors("get_double_check_ll_calculations")
+        return self._get_and_check_actors("double_check_ll_calculations")
 
     @double_check_ll_calculations.setter
     def double_check_ll_calculations(self, value):
@@ -119,7 +119,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def check_logsumexp_accuracy(self):
-        return self._get_and_check_actors("get_check_logsumexp_accuracy")
+        return self._get_and_check_actors("check_logsumexp_accuracy")
 
     @check_logsumexp_accuracy.setter
     def check_logsumexp_accuracy(self, value):
@@ -127,7 +127,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def logsumexp_refresh_rate(self):
-        return self._get_and_check_actors("get_logsumexp_refresh_rate")
+        return self._get_and_check_actors("logsumexp_refresh_rate")
 
     @logsumexp_refresh_rate.setter
     def logsumexp_refresh_rate(self, value):
@@ -136,21 +136,21 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def g(self):
-        return ray.get(self.actors[0].get_g.remote())
+        return ray.get(self.actors[0].getattr.remote("g"))
 
     @property
     def mh_correction(self):
-        return self._get_and_check_actors("get_mh_correction")
+        return self._get_and_check_actors("mh_correction")
 
     def log_likelihood(self):
         likelihoods = [a.log_likelihood.remote() for a in self.actors]
         return sum(ray.get(v) for v in likelihoods)
 
     def _get_and_check_actors(self, actor_func_name):
-        futures = [getattr(self.actors[0], actor_func_name).remote()]
+        futures = [self.actors[0].getattr.remote(actor_func_name)]
         if self.testing:
             futures += [
-                getattr(a, actor_func_name).remote() for a in self.actors[1:]
+                a.getattr.remote(actor_func_name) for a in self.actors[1:]
             ]
         first = ray.get(futures[0])
         if self.testing:

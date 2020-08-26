@@ -136,7 +136,7 @@ def tree_to_newick(
                     name = int(child) + 1
                 else:
                     name = child
-            subgs.append(name)
+            subgs.append(str(name))
         if node_branch_length_lookup:
             subgs[-1] += f":{node_branch_length_lookup[child]:f}"
     new_subg = subgs[0]
