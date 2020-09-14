@@ -223,25 +223,28 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         return self.interactor.changed_nodes
 
     def extending_subtree_prune_and_regraft(
-        self,
-    ) -> Optional[Tuple[int, Tuple[int, int]]]:
+        self, node: int = None
+    ) -> Tuple[int, Tuple[int, int]]:
         """AKA eSPR, as described in Lakner et al. 2008"""
         if len(self.g) < 6:
-            raise TreeIsTooSmallError("Tree contains less than four nodes")
+            raise TreeIsTooSmallError("Tree contains less than four leaves")
+        choices = self._get_choices(node)
         while True:
-            node = self.prng.choice(
-                [
-                    u
-                    for u in self.interactor.inner_g.nodes
-                    if self.g.in_degree(u) != 0
-                ]
-            )
+            node = self.prng.choice(choices)
             self.memento, edge = self.interactor.extend_prune_and_regraft(
                 node, prop_attach=self.ext_choice_prob
             )
             if self.changed_nodes:
                 break
+        assert node is not None
         return node, edge
+
+    def _get_choices(self, node: Optional[int] = None) -> List[int]:
+        choices = [u for u in self.g.nodes if self.g.in_degree(u) != 0]
+        if node is not None:
+            assert node in choices
+            choices = [node]
+        return choices
 
     def swap_leaf(self) -> Tuple[int, int]:
         if len(self.interactor.leaf_nodes) < 3:

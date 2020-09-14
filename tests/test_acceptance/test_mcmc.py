@@ -130,9 +130,10 @@ def test_arbitrary_phylo_trees():
         )
     ]
     assert rand_g_simple_path_lengths == map_g_simple_path_lengths
-    assert (
-        PhyloTreeLikelihoodCalculator(rand_g, gls).log_likelihood()
-        == PhyloTreeLikelihoodCalculator(mcmc.map_g, gls).log_likelihood()
+    assert PhyloTreeLikelihoodCalculator(
+        rand_g, gls
+    ).log_likelihood() == pytest.approx(
+        PhyloTreeLikelihoodCalculator(mcmc.map_g, gls).log_likelihood()
     )
 
 

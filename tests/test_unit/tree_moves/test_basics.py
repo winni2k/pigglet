@@ -198,17 +198,7 @@ class TestPhyloExtendPruneAndRegraft:
 
         # when
         with pytest.raises(AssertionError):
-            inter.extend_prune_and_regraft(0, prop_attach=0.45)
-
-    def test_raises_if_leaf_node_is_chosen(self):
-        # given
-        b = PhyloTreeInteractorBuilder()
-        b.with_balanced_tree(height=2)
-        inter = b.build()
-
-        # when
-        with pytest.raises(AssertionError):
-            inter.extend_prune_and_regraft(3, prop_attach=0.45)
+            inter.extend_prune_and_regraft(2, prop_attach=0.45)
 
     def test_end_constrained_move_mh_correction(self):
         # given

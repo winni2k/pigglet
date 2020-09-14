@@ -297,11 +297,23 @@ class PhyloTreeInteractor(TreeInteractor):
     ) -> Tuple[PhyloTreeMoveMemento, Tuple[int, int]]:
         assert 0 <= prop_attach < 1
         assert self.g.in_degree(node) == 1
-        assert self.g.out_degree(node) == 2
+        edge = self._find_attach_edge(node, prop_attach)
+        if edge[0] == self.root:
+            return (
+                self.rooted_prune_and_regraft(node),
+                edge,
+            )
+        if edge not in self.g.edges:
+            edge = edge[1], edge[0]
+        assert edge in self.g.edges, edge
+        return self.prune_and_regraft(node, edge), edge
+
+    def _find_attach_edge(self, node, prop_attach):
         start = next(self.g.predecessors(node))
-        if len(list(nx.all_neighbors(self.g, start))) == 1:
+        n_neighbors = len(list(nx.all_neighbors(self.g, start)))
+        if n_neighbors == 1:
             raise TreeIsTooSmallError
-        if len(list(nx.all_neighbors(self.g, start))) == 2:
+        if n_neighbors == 2:
             start_constraint = RandomWalkStopType.CONSTRAINED
         else:
             start_constraint = RandomWalkStopType.UNCONSTRAINED
@@ -317,16 +329,7 @@ class PhyloTreeInteractor(TreeInteractor):
         self.mh_correction = determine_espr_mh_correction(
             neighbors, prop_attach, start_constraint
         )
-        if previous_node == self.root:
-            return (
-                self.rooted_prune_and_regraft(node),
-                (previous_node, attach_node),
-            )
-        attach_edge = (previous_node, attach_node)
-        if attach_edge not in self.g.edges:
-            attach_edge = (attach_edge[1], attach_edge[0])
-        assert attach_edge in self.g.edges, attach_edge
-        return self.prune_and_regraft(node, attach_edge), attach_edge
+        return previous_node, attach_node
 
     def check_binary_rooted_tree(self):
         assert nx.is_directed_acyclic_graph(self.g)

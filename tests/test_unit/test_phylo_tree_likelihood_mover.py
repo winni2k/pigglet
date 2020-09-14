@@ -8,8 +8,11 @@ All methods prefixed with "_" are private.
 Call build() to obtain the constructed object.
 """
 import math
+import random
 
+import networkx as nx
 import numpy as np
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -23,7 +26,10 @@ from pytest import approx
 
 from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
 from pigglet.tree_interactor import PhyloTreeInteractor
-from pigglet.tree_likelihood_mover import PhyloTreeLikelihoodMover
+from pigglet.tree_likelihood_mover import (
+    PhyloTreeLikelihoodMover,
+    PhyloTreeMoveCaretaker,
+)
 
 
 def get_mutation_likelihood(calc, site_idx):
@@ -136,7 +142,7 @@ class TestRecalculateAttachmentLogLikeFromNodes:
             assert np.allclose(recalc_like[idx], like[idx]), idx
 
 
-class TestChangedNodes:
+class TestTreeChanges:
     @given(st.randoms(use_true_random=True))
     def test_swap_leaf(self, prng):
         # given
@@ -158,6 +164,20 @@ class TestChangedNodes:
         else:
             assert set(caretaker.changed_nodes) == {4, 5}
 
+    @pytest.mark.parametrize("node", list(range(5)))
+    def test_espr_accepts_all_non_root_nodes(self, node):
+        # given
+        c = PhyloTreeMoveCaretaker(
+            nx.DiGraph([[6, 5], [6, 4], [5, 0], [5, 1], [4, 2], [4, 3]]),
+            prng=random,
+        )
+
+        # when/then
+        ret_node, edge = c.extending_subtree_prune_and_regraft(node=node)
+
+        # then
+        assert ret_node == node
+
     @given(st.randoms(use_true_random=False))
     def test_espr(self, prng):
         # given
@@ -178,10 +198,8 @@ class TestChangedNodes:
         assert node not in caretaker.changed_nodes
         if node == 4 and edge in ((5, 0), (5, 1)):
             assert caretaker.changed_nodes == {6}
-            # assert caretaker.changed_nodes == {5: {0, 1}, 6: set()}
         elif node == 5 and edge in ((4, 2), (4, 3)):
             assert caretaker.changed_nodes == {6}
-            # assert caretaker.changed_nodes == {4: {2, 3}, 6: set()}
 
     @given(st.randoms(use_true_random=False))
     def test_espr_bigger(self, prng):
