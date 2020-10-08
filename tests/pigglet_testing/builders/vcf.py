@@ -20,18 +20,20 @@ class VCFBuilder:
         self.known_tags = {"GL", "PL"}
         self.likelihood_tag = "GL"
         self.gl_header_line = GL_HEADER_LINES["GL"]
+        self.extra_header_lines = []
 
     @property
     def sample_names(self):
         return [f"sample_{sample_idx}" for sample_idx in range(self.n_samples)]
 
     def build_header(self):
-        header = (
-            "##fileformat=VCFv4.2\n"
-            '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n'
-        )
+        header = [
+            "##fileformat=VCFv4.2\n",
+            '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n',
+        ]
+        header += self.extra_header_lines
         header += self.gl_header_line
-        return header
+        return "".join(header)
 
     def build(self):
         header = self.build_header()
@@ -53,6 +55,10 @@ class VCFBuilder:
                 row += "\n"
                 fh.write(row)
         return self.vcf_file
+
+    def with_extra_header_line(self, line):
+        self.extra_header_lines += line
+        return self
 
     def with_site_gls(self, *gls):
         if self.n_samples is None:

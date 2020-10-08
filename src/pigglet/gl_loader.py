@@ -13,9 +13,8 @@ class LikelihoodLoader:
         self.vcf_file = vcf_file
         self.bcf_in = None
         self.gl_field_preference = ["GL", "PL"]
-        self.gl_field_idx = 1
+        self.gl_field_idx = None
         self.gl_field_name = None
-        self.gl_field = 1
         self.gls = None
         self.infos = None
 
@@ -37,15 +36,29 @@ class LikelihoodLoader:
     def _determine_field(self):
         formats = list(self.bcf_in.header.formats)
         for field in self.gl_field_preference:
-            try:
-                self.gl_field_idx = formats.index(field)
+            if field in formats:
                 self.gl_field_name = field
+                self._determine_field_idx()
                 return
-            except ValueError:
-                pass
         raise ValueError(
-            "Could not find a genotype likelihood format field in VCF (%s)",
+            "Could not find a genotype likelihood format "
+            "field in VCF header: (%s)",
             self.vcf_file,
+        )
+
+    def _determine_field_idx(self):
+        rec = next(self.bcf_in.fetch())
+        assert (
+            len(rec.samples) > 0
+        ), "Expected at least one sample in input VCF"
+        for idx, field in enumerate(rec.samples[0].keys()):
+            if field == self.gl_field_name:
+                self.gl_field_idx = idx
+                return
+        raise ValueError(
+            f"Could not find the genotype likelihood field "
+            f"{self.gl_field_name} in the first line of the "
+            f"VCF {self.vcf_file}"
         )
 
     def _extract_gls(self):
