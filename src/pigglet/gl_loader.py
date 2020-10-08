@@ -6,6 +6,14 @@ from pysam import VariantFile
 from pigglet.constants import GL_DTYPE
 
 
+def convert_missing_entries(gls):
+    for gl in gls:
+        if gl == (None,) or "." in gl:
+            yield (0, 0, 0)
+        else:
+            yield gl
+
+
 class LikelihoodLoader:
     """Loads GLs from a VCF"""
 
@@ -72,6 +80,7 @@ class LikelihoodLoader:
                 current_chrom = site_info[0]
                 logging.info("Loading chromosome %s", current_chrom)
             self.infos.append(site_info)
+            gls = list(convert_missing_entries(gls))
             site_gls.append(gls)
         self.gls = np.array(site_gls, dtype=GL_DTYPE)
         if self.gl_field_name == "PL":

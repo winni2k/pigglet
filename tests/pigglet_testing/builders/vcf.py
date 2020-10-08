@@ -1,3 +1,8 @@
+import shutil
+from contextlib import closing
+
+from pysam import VariantFile
+
 from pigglet.gl_loader import LikelihoodLoader
 
 GL_HEADER_LINES = {
@@ -21,6 +26,8 @@ class VCFBuilder:
         self.likelihood_tag = "GL"
         self.gl_header_line = GL_HEADER_LINES["GL"]
         self.extra_header_lines = []
+        self.use_bcf = False
+        self.geno = "./."
 
     @property
     def sample_names(self):
@@ -29,6 +36,7 @@ class VCFBuilder:
     def build_header(self):
         header = [
             "##fileformat=VCFv4.2\n",
+            "##contig=<ID=20,length=63025520>\n",
             '##FORMAT=<ID=GT,Number=1,Type=String,Description="genotype">\n',
         ]
         header += self.extra_header_lines
@@ -51,9 +59,19 @@ class VCFBuilder:
                     if self.likelihood_tag == "PL":
                         tripple = [round(-gl * 10) for gl in tripple]
                     tripple = [str(v) for v in tripple]
-                    row += "\t" + "./.:" + ",".join(tripple)
+                    row += "\t" + f"{self.geno}:" + ",".join(tripple)
                 row += "\n"
                 fh.write(row)
+
+        if self.use_bcf:
+            tmp_vcf = self.vcf_file + ".tmp"
+            shutil.move(self.vcf_file, tmp_vcf)
+            with closing(VariantFile(tmp_vcf)) as bcf_in:
+                with closing(
+                    VariantFile(self.vcf_file, "wb", header=bcf_in.header)
+                ) as bcf_out:
+                    for rec in bcf_in.fetch():
+                        bcf_out.write(rec)
         return self.vcf_file
 
     def with_extra_header_line(self, line):
@@ -71,6 +89,14 @@ class VCFBuilder:
         assert tag in self.known_tags
         self.likelihood_tag = tag
         self.gl_header_line = GL_HEADER_LINES[tag]
+        return self
+
+    def with_geno(self, geno):
+        self.geno = geno
+        return self
+
+    def with_bcf(self):
+        self.use_bcf = True
         return self
 
 

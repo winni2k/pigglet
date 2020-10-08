@@ -67,5 +67,33 @@ def test_handles_extra_unused_format_header_line(tmpdir):
     gls = b.build()
 
     # when/then
-    tuple(gls[0][0]) == (-1, -2, -4)
-    tuple(gls[0][1]) == (-3, -7, -8)
+    assert tuple(gls[0][0]) == (-1, -2, -4)
+    assert tuple(gls[0][1]) == (-3, -7, -8)
+
+
+def test_missing_gls_are_coded_as_all_zeros(tmpdir):
+    # given
+    b = VCFLoadedGLBuilder(tmpdir)
+    b.with_site_gls([".", ".", "."])
+
+    # when
+    gls = b.build()
+
+    # when/then
+    assert tuple(gls[0][0]) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("use_bcf", (True, False))
+def test_missing_gl_entry_is_coded_as_all_zeros(tmpdir, use_bcf):
+    # given
+    b = VCFLoadedGLBuilder(tmpdir)
+    b.with_site_gls(["."])
+    b.with_geno(".")
+    if use_bcf:
+        b.with_bcf()
+
+    # when
+    gls = b.build()
+
+    # then
+    assert tuple(gls[0][0]) == (0, 0, 0)
