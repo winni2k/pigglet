@@ -6,7 +6,7 @@ setup(
         "The Phylogenetic Inference and genotyping from"
         " Genotype Likelihoods Tool"
     ),
-    version="0.14.2",
+    version="0.14.3",
     classifiers=[  # Optional
         # How mature is this project? Common values are
         #   3 - Alpha
