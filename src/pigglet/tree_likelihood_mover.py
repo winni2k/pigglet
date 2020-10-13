@@ -229,13 +229,10 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         if len(self.g) < 6:
             raise TreeIsTooSmallError("Tree contains less than four leaves")
         choices = self._get_choices(node)
-        while True:
-            node = self.prng.choice(choices)
-            self.memento, edge = self.interactor.extend_prune_and_regraft(
-                node, prop_attach=self.ext_choice_prob
-            )
-            if self.changed_nodes:
-                break
+        node = self.prng.choice(choices)
+        self.memento, edge = self.interactor.extend_prune_and_regraft(
+            node, prop_attach=self.ext_choice_prob
+        )
         assert node is not None
         return node, edge
 
@@ -251,11 +248,8 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
             raise TreeIsTooSmallError(
                 "Tree contains less than three leaf nodes"
             )
-        while True:
-            n1, n2 = self._get_two_distinct_leaves()
-            self.memento = self.interactor.swap_leaves(n1, n2)
-            if self.changed_nodes:
-                break
+        n1, n2 = self._get_two_distinct_leaves()
+        self.memento = self.interactor.swap_leaves(n1, n2)
         return n1, n2
 
     def random_move(self, weights=None):

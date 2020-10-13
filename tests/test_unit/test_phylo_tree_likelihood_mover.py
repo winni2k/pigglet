@@ -13,7 +13,7 @@ import random
 import networkx as nx
 import numpy as np
 import pytest
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis import strategies as st
 
 from pigglet_testing.builders.tree import PhyloTreeBuilder
@@ -277,7 +277,9 @@ def test_arbitrary_trees_and_moves_undo_ok(n_samples, prng):
     like = mover.attachment_log_like.copy()
 
     # when/then
+    old_edges = list(mover.g.edges)
     mover.random_move()
+    assume(sorted(old_edges) != sorted(mover.g.edges))
     assert mover.calc.has_changed_nodes()
     mover.attachment_log_like
     assert not mover.calc.has_changed_nodes()

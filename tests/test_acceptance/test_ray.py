@@ -1,7 +1,6 @@
 import random
 
 import pytest
-
 from pigglet_testing.builders.tree_likelihood import MCMCBuilder
 from pigglet.tree_likelihood_mover_ray import PhyloTreeLikelihoodMoverDirector
 
@@ -23,9 +22,13 @@ def test_ray_arbitrary_trees_and_moves_undo_ok(n_samples):
         g=mcmc.g, gls=mcmc.gls, prng=prng, testing=True
     )
     like = mover.log_likelihood()
-
+    old_edges = sorted(mover.g.edges)
+    new_edges = old_edges
     # when/then
-    mover.random_move()
+    while new_edges == old_edges:
+        mover.random_move()
+        new_edges = sorted(mover.g.edges)
+
     assert mover.has_changed_nodes()
     mover.log_likelihood()
     assert not mover.has_changed_nodes()
