@@ -220,6 +220,23 @@ class TestTreeChanges:
         if edge[0] in (2, 5, 6, 11, 12, 13, 14):
             assert inter.changed_nodes == {3, 1}
 
+    @given(st.randoms(use_true_random=False))
+    def test_espr_also_returns_original_tree_with_mh_correction_1(self, prng):
+        # given
+        b = PhyloTreeBuilder(prng=prng)
+        b.with_balanced_tree(height=3)
+
+        inter = PhyloTreeInteractor(b.build(), prng=prng)
+
+        # when
+        node = 7
+        memento, edge = inter.extend_prune_and_regraft(node, 0.99999)
+
+        # then
+        assert set(inter.changed_nodes) == set()
+        assert inter.mh_correction == 1.0
+        assert edge in {(1, 3), (3, 8)}
+
     def test_double_change_prune_and_regraft(self):
         # given
         b = PhyloTreeBuilder(prng=None)
@@ -290,3 +307,35 @@ def test_arbitrary_trees_and_moves_undo_ok(n_samples, prng):
     assert like is not None
     for u in range(like.shape[0]):
         assert np.allclose(like[u], mover.attachment_log_like[u])
+
+
+@given(
+    st.randoms(use_true_random=False), st.integers(min_value=1, max_value=200)
+)
+def test_arbitrary_moves_with_high_certainty_deliver_real_likelihood(
+    prng, certainty
+):
+    # given
+    n_samples = 4
+    b = MCMCBuilder()
+    b.with_prng(prng)
+    b.with_phylogenetic_tree()
+    b.with_msprime_tree(
+        sample_size=n_samples,
+        Ne=1e6,
+        mutation_rate=1e-3,
+        random_seed=prng.randrange(1, 2 ^ 32),
+    )
+    b.with_certainty(certainty)
+    mcmc = b.build()
+    mover = PhyloTreeLikelihoodMover(g=mcmc.g, gls=mcmc.gls, prng=prng)
+
+    # when/then
+    like = mover.random_move_and_get_like()
+    assert like != -np.inf
+    new_like = mover.random_move_and_get_like()
+    assert new_like != -np.inf
+    mover.undo()
+
+    # then
+    assert pytest.approx(like, mover.log_likelihood())

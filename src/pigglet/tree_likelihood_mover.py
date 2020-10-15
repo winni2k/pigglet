@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import List, Optional, Tuple
-
+import logging
 import numpy as np
 
 from pigglet.constants import TreeIsTooSmallError
@@ -14,12 +14,15 @@ from pigglet.tree import MutationTreeMoveMemento
 from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
 from pigglet.tree_utils import parent_node_of, roots_of_tree
 
+logger = logging.getLogger(__name__)
+
 
 class TreeLikelihoodMover(ABC):
     def __init__(self):
         self.mover = None
         self.calc = None
 
+    # todo: rename to make_and_register_random_move
     def random_move(self, weights=None):
         self.mover.random_move(weights=weights)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)

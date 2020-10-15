@@ -1,7 +1,7 @@
 import itertools
 
 import numpy as np
-from pigglet_testing.builders.tree_likelihood import LikelihoodBuilder
+from pigglet_testing.builders.tree_likelihood import GlBuilder
 from pytest import approx
 
 from pigglet.gl_manipulator import GLManipulator
@@ -10,7 +10,7 @@ from pigglet.gl_manipulator import GLManipulator
 class TestNormalizesGLs:
     def test_one_sample_one_site(self):
         # given
-        b = LikelihoodBuilder()
+        b = GlBuilder()
         b.with_mutated_gl_at(0, 0)
         mani = GLManipulator(b.build())
 
@@ -22,7 +22,7 @@ class TestNormalizesGLs:
 
     def test_two_samples_two_sites(self):
         # given
-        b = LikelihoodBuilder()
+        b = GlBuilder()
         b.with_mutated_gl_at(0, 0)
         b.with_mutated_gl_at(1, 1)
         mani = GLManipulator(b.build())

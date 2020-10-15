@@ -318,17 +318,23 @@ class PhyloTreeInteractor(TreeInteractor):
         else:
             start_constraint = RandomWalkStopType.UNCONSTRAINED
         previous_node = start
+        step = 0
         for attach_node, neighbors in self.random_graph_walk_with_memory_from(
             start, seen={node}
         ):
+            step += 1
             if not neighbors:
                 break
             if self.prng.random() < prop_attach:
                 break
             previous_node = attach_node
-        self.mh_correction = determine_espr_mh_correction(
-            neighbors, prop_attach, start_constraint
-        )
+        if step == 1:
+            self.mh_correction = 1
+        else:
+            self.mh_correction = determine_espr_mh_correction(
+                neighbors, prop_attach, start_constraint
+            )
+
         return previous_node, attach_node
 
     def check_binary_rooted_tree(self):

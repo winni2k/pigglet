@@ -31,7 +31,6 @@ class TreeLikelihoodSummer:
     _ll_sum = None
     _update_mask: Optional[Set[int]] = None
     _last_attach_ll = None
-    check_calc = False
     _weights = None
 
     def __post_init__(self):
@@ -74,7 +73,10 @@ class TreeLikelihoodSummer:
                 stacked = np.vstack(
                     [self._ll_sum, new_sum_delta, last_sum_delta]
                 )
-                self._ll_sum = logsumexp(stacked, axis=0, b=self._weights)
+                ll_sum = logsumexp(stacked, axis=0, b=self._weights)
+                if np.min(ll_sum) == -np.inf:
+                    raise FloatingPointError
+                self._ll_sum = ll_sum
                 self._last_attach_ll[mask] = attach_ll[mask]
                 self._n_diffs += 1
             except FloatingPointError:
@@ -84,10 +86,6 @@ class TreeLikelihoodSummer:
             except IndexError:
                 logger.error(f"Mask: {mask}")
                 raise
-            if self.check_calc:
-                self._calculate_and_report_gold(
-                    attach_ll, logger.getEffectiveLevel()
-                )
             self._update_mask.clear()
         return self._ll_sum
 

@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Set, Dict
+import msprime
 
 import networkx as nx
 import numpy as np
@@ -20,7 +21,7 @@ from pigglet.tree_likelihood_mover import (
 
 
 @dataclass
-class LikelihoodBuilder:
+class GlBuilder:
 
     mutated_gls: Set = field(default_factory=set)
     unmutated_gls: Set = field(default_factory=set)
@@ -74,10 +75,46 @@ class LikelihoodBuilder:
         return self
 
 
+@dataclass
+class MspGlBuilder:
+
+    msp_args: Dict = field(default_factory=dict)
+    num_samples = None
+    certainty = 1
+
+    def build(self):
+        ts = msprime.simulate(self.num_samples, **self.msp_args)
+        gmat = ts.genotype_matrix()
+        ll_cert = -1 * self.certainty
+        assert NUM_GLS == 2
+        gls = [
+            [0, ll_cert] if value == 0 else [ll_cert, 0]
+            for _list in gmat.tolist()
+            for value in _list
+        ]
+        return np.array(gls).reshape(-1, self.num_samples, NUM_GLS)
+
+    def with_msprime_tree(
+        self, sample_size, random_seed, Ne=1e6, mutation_rate=1e-2
+    ):
+        self.num_samples = sample_size
+        self.msp_args = {
+            "Ne": Ne,
+            "mutation_rate": mutation_rate,
+            "recombination_rate": 0,
+            "random_seed": random_seed,
+        }
+        return self
+
+    def with_certainty(self, c):
+        self.certainty = c
+        return self
+
+
 class MutationTreeLikelihoodBuilder:
     def __init__(self):
         self.tree_builder = MutationTreeBuilder()
-        self.likelihood_builder = LikelihoodBuilder()
+        self.likelihood_builder = GlBuilder()
 
     def __getattr__(self, attr):
         return getattr(self.likelihood_builder, attr)
@@ -103,7 +140,7 @@ class MutationTreeLikelihoodBuilder:
 class PhyloTreeLikelihoodBuilder:
     def __init__(self):
         self.tree_builder = PhyloTreeBuilder()
-        self.likelihood_builder = LikelihoodBuilder()
+        self.likelihood_builder = GlBuilder()
 
     def __getattr__(self, attr):
         try:
@@ -142,9 +179,9 @@ class PhyloMoveCaretakerBuilder(PhyloTreeBuilder):
         return PhyloTreeMoveCaretaker(g, prng=self.prng)
 
 
-class MCMCBuilder(LikelihoodBuilder):
+class MCMCBuilder:
     def __init__(self):
-        super().__init__()
+        self.l_builder = GlBuilder()
         self.seed = None
         self.prng = random
         self.n_burnin_iter = 10
@@ -153,6 +190,13 @@ class MCMCBuilder(LikelihoodBuilder):
         self.mutation_tree = True
         self.reporting_interval = 10
         self.internal_attach_like_double_checking = True
+
+    def __getattr__(self, item):
+        return getattr(self.l_builder, item)
+
+    def with_msprime_tree(self, *args, **kwargs):
+        self.l_builder = MspGlBuilder()
+        return self.l_builder.with_msprime_tree(*args, **kwargs)
 
     def with_internal_attach_like_double_checking(self):
         self.internal_attach_like_double_checking = True
@@ -181,7 +225,7 @@ class MCMCBuilder(LikelihoodBuilder):
             if self.seed is None:
                 self.seed = 42
             self.prng.seed(self.seed)
-        gls = super().build()
+        gls = self.l_builder.build()
         if self.normalize_gls:
             gls = GLManipulator(gls).normalize().gls
         if self.mutation_tree:
