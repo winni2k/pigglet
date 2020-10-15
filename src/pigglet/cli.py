@@ -128,6 +128,12 @@ def create_store(output_store):
     type=int,
     help="Number of actors to use for phylogenetic tree inference.",
 )
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    help="Delete any pre-existing output files before running.",
+)
 def infer(
     gl_vcf,
     out_prefix,
@@ -143,6 +149,7 @@ def infer(
     double_check_likelihood_calculation,
     defer_mutation_probability_calc,
     num_actors,
+    force,
 ):
     """Infer phylogenetic or mutation tree from genotype likelihoods
     stored in GL_VCF.
@@ -182,6 +189,14 @@ def infer(
     random.seed(seed)
 
     output_store = out_prefix + ".h5"
+    if force:
+        from pathlib import Path
+
+        store_path = Path(output_store)
+        if store_path.is_file():
+            logger.info(f"Deleting previous output store: {output_store}")
+            store_path.unlink()
+
     logger.info(f"Creating output store: {output_store}")
     create_store(output_store)
 
