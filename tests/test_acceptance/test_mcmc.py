@@ -217,12 +217,12 @@ class TestPhyloMoveExecutor:
         # given
         b = PhyloMoveCaretakerBuilder(prng=prng)
         b.with_balanced_tree(height=4)
-        exe = b.build()
+        ct = b.build()
 
         for i in range(20):
-            old_g = exe.g.copy()
+            old_g = ct.g.copy()
             try:
-                exe.random_move()
+                ct.random_move()
             except Exception:
                 logging.error(f"Original tree on iteration {i}:")
                 logging.error(old_g.nodes(data=True))

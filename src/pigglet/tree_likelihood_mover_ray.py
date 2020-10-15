@@ -71,12 +71,12 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
                 likes.append(a.random_move_and_get_like.remote())
         return sum(ray.get(v) for v in likes)
 
-    def random_move(self, weights=None):
+    def make_and_register_random_move(self, weights=None):
         for a in self.actors:
             if weights:
-                a.random_move.remote(weights)
+                a.make_and_register_random_move.remote(weights)
             else:
-                a.random_move.remote()
+                a.make_and_register_random_move.remote()
 
     def has_changed_nodes(self):
         return self._get_and_check_actors("has_changed_nodes")

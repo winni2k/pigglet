@@ -30,7 +30,7 @@ class TestRecalculateAttachmentLogLikeFromNodes:
         calc = mover.calc
 
         # when
-        mover.random_move()
+        mover.make_and_register_random_move()
         like = calc.register_changed_nodes(
             *mover.changed_nodes
         ).attachment_log_like.copy()
@@ -62,7 +62,7 @@ def test_arbitrary_trees_and_moves_undo_ok(n_mutations, prng):
     like = mover.attachment_log_like
 
     # when/then
-    mover.random_move()
+    mover.make_and_register_random_move()
     assert mover.calc.has_changed_nodes()
     mover.attachment_log_like
     assert not mover.calc.has_changed_nodes()

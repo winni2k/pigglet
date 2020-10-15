@@ -22,8 +22,7 @@ class TreeLikelihoodMover(ABC):
         self.mover = None
         self.calc = None
 
-    # todo: rename to make_and_register_random_move
-    def random_move(self, weights=None):
+    def make_and_register_random_move(self, weights=None):
         self.mover.random_move(weights=weights)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
@@ -33,7 +32,7 @@ class TreeLikelihoodMover(ABC):
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
     def random_move_and_get_like(self, weights=None):
-        self.random_move(weights=weights)
+        self.make_and_register_random_move(weights=weights)
         return self.log_likelihood()
 
     def log_likelihood(self):

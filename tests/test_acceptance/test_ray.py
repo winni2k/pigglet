@@ -26,7 +26,7 @@ def test_ray_arbitrary_trees_and_moves_undo_ok(n_samples):
     new_edges = old_edges
     # when/then
     while new_edges == old_edges:
-        mover.random_move()
+        mover.make_and_register_random_move()
         new_edges = sorted(mover.g.edges)
 
     assert mover.has_changed_nodes()
