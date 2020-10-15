@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass, field
-from typing import Set, Dict
+from typing import Set
 import msprime
 
 import networkx as nx
@@ -77,14 +77,12 @@ class GlBuilder:
 
 @dataclass
 class MspGlBuilder:
-
-    msp_args: Dict = field(default_factory=dict)
     num_samples = None
     certainty = 1
+    ts = None
 
     def build(self):
-        ts = msprime.simulate(self.num_samples, **self.msp_args)
-        gmat = ts.genotype_matrix()
+        gmat = self.ts.genotype_matrix()
         ll_cert = -1 * self.certainty
         assert NUM_GLS == 2
         gls = [
@@ -98,13 +96,14 @@ class MspGlBuilder:
         self, sample_size, random_seed, Ne=1e6, mutation_rate=1e-2
     ):
         self.num_samples = sample_size
-        self.msp_args = {
+        msp_args = {
             "Ne": Ne,
             "mutation_rate": mutation_rate,
             "recombination_rate": 0,
             "random_seed": random_seed,
         }
-        return self
+        self.ts = msprime.simulate(self.num_samples, **msp_args)
+        return self.ts
 
     def with_certainty(self, c):
         self.certainty = c

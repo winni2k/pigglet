@@ -104,10 +104,11 @@ def test_arbitrary_phylo_trees():
     b.certainty = 10
     b.reporting_interval = 100
     b.with_phylogenetic_tree()
+    ts = b.with_msprime_tree(n_samples, 42, Ne=1e6, mutation_rate=1e-3)
     b.with_n_burnin_iter(10)
     b.with_n_sampling_iter(10 * 2 ** n_samples)
-    add_gl_at_each_ancestor_node_for_nodes(b, rand_g)
     mcmc = b.build()
+    rand_g = nx.DiGraph(ts.first().as_dict_of_dicts())
 
     # when
     mcmc.run()

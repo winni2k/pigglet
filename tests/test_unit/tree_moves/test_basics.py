@@ -173,6 +173,7 @@ class TestPhyloExtendPruneAndRegraft:
         b.with_balanced_tree(3)
         inter = b.build()
         random.seed(seed)
+        old_edges = sorted(inter.g.edges())
 
         # when
         inter.extend_prune_and_regraft(1, prop_attach=0.45)
@@ -184,7 +185,9 @@ class TestPhyloExtendPruneAndRegraft:
         except StopIteration:
             parent_parent = None
         assert new_parent == 0
-        if parent_parent in {None, 2}:
+        if old_edges == sorted(inter.g.edges()):
+            assert inter.mh_correction == 1
+        elif parent_parent in {None, 2}:
             assert inter.mh_correction == 1 - 0.45
         elif parent_parent in {5, 6}:
             assert inter.mh_correction == 1
@@ -194,11 +197,14 @@ class TestPhyloExtendPruneAndRegraft:
     def test_raises_if_root_is_chosen(self):
         # given
         b = PhyloTreeInteractorBuilder()
+        b.with_balanced_tree(2)
         inter = b.build()
+        root = 0
 
         # when
+        assert len(list(inter.g.predecessors(root))) == 0
         with pytest.raises(AssertionError):
-            inter.extend_prune_and_regraft(2, prop_attach=0.45)
+            inter.extend_prune_and_regraft(root, prop_attach=0.45)
 
     def test_end_constrained_move_mh_correction(self):
         # given

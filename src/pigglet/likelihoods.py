@@ -74,7 +74,7 @@ class TreeLikelihoodSummer:
                     [self._ll_sum, new_sum_delta, last_sum_delta]
                 )
                 ll_sum = logsumexp(stacked, axis=0, b=self._weights)
-                if np.min(ll_sum) == -np.inf:
+                if np.min(ll_sum, initial=0) == -np.inf:
                     raise FloatingPointError
                 self._ll_sum = ll_sum
                 self._last_attach_ll[mask] = attach_ll[mask]

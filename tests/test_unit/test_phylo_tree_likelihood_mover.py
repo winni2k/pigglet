@@ -323,7 +323,7 @@ def test_arbitrary_moves_with_high_certainty_deliver_real_likelihood(
     b.with_msprime_tree(
         sample_size=n_samples,
         Ne=1e6,
-        mutation_rate=1e-3,
+        mutation_rate=1e-4,
         random_seed=prng.randrange(1, 2 ^ 32),
     )
     b.with_certainty(certainty)
