@@ -104,6 +104,9 @@ class PhyloTreeMoveMemento:
         self.commands += other.commands
         self.args += other.args
 
+    def __len__(self):
+        return len(self.commands)
+
 
 @dataclass
 class PhyloTreePruneRegraftMemento(PhyloTreeMoveMemento):

@@ -196,9 +196,14 @@ class MCMCRunner:
         self.new_like = self.like_mover.random_move_and_get_like(
             weights=self.tree_move_weights
         )
+        if not self.like_mover.move_changed_tree:
+            assert np.allclose(
+                self.current_like, self.new_like, atol=1.0e-1
+            ), (self.current_like, self.new_like)
         accepted = self._mh_acceptance()
         if not accepted:
             self.like_mover.undo()
+            self.like_mover.log_likelihood()
         else:
             self.current_like = self.new_like
         return accepted

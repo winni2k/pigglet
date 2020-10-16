@@ -339,3 +339,57 @@ def test_arbitrary_moves_with_high_certainty_deliver_real_likelihood(
 
     # then
     assert pytest.approx(like, mover.log_likelihood())
+
+
+class TestMoveChangedTree:
+    @given(st.randoms(use_true_random=False))
+    def test_is_false_for_moves_that_leave_tree_unchanged(self, prng):
+        # given
+        n_samples = 4
+        certainty = 10
+        b = MCMCBuilder()
+        b.with_prng(prng)
+        b.with_phylogenetic_tree()
+        b.with_msprime_tree(
+            sample_size=n_samples,
+            Ne=1e6,
+            mutation_rate=1e-4,
+            random_seed=prng.randrange(1, 2 ^ 32),
+        )
+        b.with_certainty(certainty)
+        mcmc = b.build()
+        mover = mcmc.like_mover
+        old_edges = sorted(mover.g.edges)
+
+        # when
+        mover.random_move_and_get_like()
+        assume(old_edges == sorted(mover.g.edges))
+
+        # then
+        assert not mover.move_changed_tree
+
+    @given(st.randoms(use_true_random=False))
+    def test_is_true_for_moves_change_tree(self, prng):
+        # given
+        n_samples = 4
+        certainty = 10
+        b = MCMCBuilder()
+        b.with_prng(prng)
+        b.with_phylogenetic_tree()
+        b.with_msprime_tree(
+            sample_size=n_samples,
+            Ne=1e6,
+            mutation_rate=1e-4,
+            random_seed=prng.randrange(1, 2 ^ 32),
+        )
+        b.with_certainty(certainty)
+        mcmc = b.build()
+        mover = mcmc.like_mover
+        old_edges = sorted(mover.g.edges)
+
+        # when
+        mover.random_move_and_get_like()
+        assume(old_edges != sorted(mover.g.edges))
+
+        # then
+        assert mover.move_changed_tree

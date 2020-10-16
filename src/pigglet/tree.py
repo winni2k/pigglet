@@ -34,6 +34,9 @@ class MutationTreeMoveMemento:
         self.commands += other.commands
         self.args += other.args
 
+    def __len__(self):
+        return len(self.commands)
+
 
 def strip_tree(g):
     g = g.copy()

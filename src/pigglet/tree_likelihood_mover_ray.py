@@ -86,6 +86,10 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
             actor.undo.remote()
 
     @property
+    def move_changed_tree(self):
+        return self._get_and_check_actors("move_changed_tree")
+
+    @property
     def double_check_ll_calculations(self):
         return self._get_and_check_actors("double_check_ll_calculations")
 

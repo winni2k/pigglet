@@ -81,6 +81,11 @@ class TreeLikelihoodSummer:
                 self._n_diffs += 1
             except FloatingPointError:
                 self._ll_sum = self._calculate_gold(attach_ll)
+                if np.min(self._ll_sum, initial=0) == -np.inf:
+                    raise FloatingPointError(
+                        "Could not calculate tree likelihood"
+                        " because it is too unlikely."
+                    )
                 self._last_attach_ll[:] = attach_ll[:]
                 self._n_diffs = 0
             except IndexError:

@@ -11,7 +11,11 @@ from pigglet.likelihoods import (
     PhyloTreeLikelihoodCalculator,
 )
 from pigglet.tree import MutationTreeMoveMemento
-from pigglet.tree_interactor import MutationTreeInteractor, PhyloTreeInteractor
+from pigglet.tree_interactor import (
+    MutationTreeInteractor,
+    PhyloTreeInteractor,
+    PhyloTreeMoveMemento,
+)
 from pigglet.tree_utils import parent_node_of, roots_of_tree
 
 logger = logging.getLogger(__name__)
@@ -37,6 +41,10 @@ class TreeLikelihoodMover(ABC):
 
     def log_likelihood(self):
         return self.calc.log_likelihood()
+
+    @property
+    def move_changed_tree(self):
+        return len(self.mover.memento) != 0
 
     @property
     def mh_correction(self):
@@ -212,7 +220,7 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         self.g = g
         self.prng = prng
         self.interactor = PhyloTreeInteractor(self.g)
-        self.memento = None
+        self.memento = PhyloTreeMoveMemento()
         self.available_moves = [
             self.extending_subtree_prune_and_regraft,
             self.swap_leaf,
@@ -261,6 +269,9 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
             range(len(self.available_moves)), weights=weights
         )[0]
         self.available_moves[choice]()
+        # logger.debug(
+        #     "Random Move -- choice, memento: %s, %s", choice, self.memento
+        # )
         self.move_tracker.register_try(choice)
 
     def _get_two_distinct_leaves(self):
@@ -277,7 +288,7 @@ class MutationTreeMoveCaretaker(TreeMoveCaretaker):
         self.g = g
         self.prng = prng
         self.interactor = MutationTreeInteractor(self.g, prng=prng)
-        self.memento = None
+        self.memento = MutationTreeMoveMemento()
         self.available_moves = [
             # self.prune_and_reattach,
             self.extending_subtree_prune_and_regraft,
