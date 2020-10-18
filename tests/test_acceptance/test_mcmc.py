@@ -6,6 +6,8 @@ import networkx as nx
 import pytest
 from hypothesis import given, strategies
 from hypothesis import strategies as st
+
+
 from pigglet_testing.builders.tree_likelihood import (
     MCMCBuilder,
     MutationMoveCaretakerBuilder,
@@ -240,18 +242,18 @@ class TestPhyloMoveExecutor:
         # given
         b = PhyloMoveCaretakerBuilder(prng=prng)
         b.with_random_tree(n_mutations)
-        exe = b.build()
-        original_tree = exe.g.copy()
+        ct = b.build()
+        original_edges = sorted(ct.g.edges)
 
         for move_idx, move in enumerate(moves):
-            exe.available_moves[move]()
+            ct.available_moves[move]()
             if move_idx == 0:
-                memento = exe.memento
+                memento = ct.memento
             else:
-                memento.append(exe.memento)
+                memento.append(ct.memento)
 
         # when
-        exe.undo(memento)
+        ct.undo(memento)
 
         # then
-        assert set(exe.g.edges) == set(original_tree.edges)
+        assert sorted(ct.g.edges) == original_edges

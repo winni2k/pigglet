@@ -159,7 +159,7 @@ class TestTreeChanges:
         n1, n2 = caretaker.swap_leaf()
 
         # then
-        if {n1, n2} in ({0, 1}, {2, 3}):
+        if {n1, n2} in ({0, 1}, {2, 3}) or n1 == n2:
             assert caretaker.changed_nodes == set()
         else:
             assert set(caretaker.changed_nodes) == {4, 5}

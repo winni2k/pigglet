@@ -145,6 +145,9 @@ class PhyloTreeMoveMementoBuilder:
             commands=[self.interactor.swap_leaves], args=[{"u": u, "v": v}]
         )
 
+    def of_no_change(self):
+        return PhyloTreeMoveMemento()
+
 
 class TreeInteractor(ABC):
     @abstractmethod
@@ -263,7 +266,7 @@ class PhyloTreeInteractor(TreeInteractor):
         root = self.root
         parent = next(g.predecessors(node))
         if parent == root:
-            return PhyloTreeMoveMemento()
+            return self._memento_builder.of_no_change()
         predecessors = list(g.predecessors(parent))
         parent_parent = predecessors[0]
         parent_child = next(u for u in g.successors(parent) if u != node)
@@ -281,12 +284,13 @@ class PhyloTreeInteractor(TreeInteractor):
         )
 
     def swap_leaves(self, u, v) -> PhyloTreeMoveMemento:
-        assert u != v
         assert u in self.leaf_nodes
         assert v in self.leaf_nodes
+        if u == v:
+            return self._memento_builder.of_no_change()
         parents = [next(self.g.predecessors(node)) for node in [u, v]]
         if parents[0] == parents[1]:
-            return PhyloTreeMoveMemento()
+            return self._memento_builder.of_no_change()
         for node, parent in zip([u, v], parents):
             self.g.remove_edge(parent, node)
         for node, parent in zip([u, v], reversed(parents)):

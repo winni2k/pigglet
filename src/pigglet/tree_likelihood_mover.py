@@ -258,7 +258,7 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
             raise TreeIsTooSmallError(
                 "Tree contains less than three leaf nodes"
             )
-        n1, n2 = self._get_two_distinct_leaves()
+        n1, n2 = self._get_two_leaves()
         self.memento = self.interactor.swap_leaves(n1, n2)
         return n1, n2
 
@@ -274,12 +274,10 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         # )
         self.move_tracker.register_try(choice)
 
-    def _get_two_distinct_leaves(self):
-        n1 = n2 = 0
+    def _get_two_leaves(self):
         leaf_nodes = self.interactor.leaf_node_list
-        while n1 == n2:
-            n1 = self.prng.choice(leaf_nodes)
-            n2 = self.prng.choice(leaf_nodes)
+        n1 = self.prng.choice(leaf_nodes)
+        n2 = self.prng.choice(leaf_nodes)
         return n1, n2
 
 
