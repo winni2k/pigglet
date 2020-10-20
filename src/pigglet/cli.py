@@ -411,6 +411,48 @@ def calc_branch_lengths(h5_file, jobs=1):
 
 @cli.command()
 @click.argument("h5_file")
+@click.argument("newick_tree", type=click.File())
+@click.option(
+    "--label-leaves/--no-label-leaves",
+    default=False,
+    help="Use sample labels on output trees",
+)
+@click.option(
+    "--one-based/--no-one-based",
+    default=True,
+    help="Input node IDs are 1-based (default for Newick format)",
+)
+def calc_tree_stats(h5_file, newick_tree, label_leaves, one_based):
+    """Calculate likelihood and branch lengths for a tree in Newick format
+    from genotype likelihoods stored in H5_FILE.
+
+    H5_FILE is the output file of pigglet infer ending in .h5
+    """
+    import h5py
+    from pigglet.extract import extract_newick_file_as_digraph
+    from pigglet.calc import calc_tree_stats_for_digraph
+    import sys
+
+    with h5py.File(h5_file, "r") as fh:
+        if "input/gls" not in fh:
+            raise Exception("Please run pigglet store-gls.")
+        gls = fh["input/gls"][:]
+        leaf_labels = None
+        if label_leaves:
+            print("Annotating nodes with leaf labels", file=sys.stderr)
+            leaf_labels = list(fh["input/samples"])
+        else:
+            print("Newick output leaf nodes are zero-based", file=sys.stderr)
+
+    for g in extract_newick_file_as_digraph(
+        newick_tree, zero_based=not one_based
+    ):
+        ll, nw = calc_tree_stats_for_digraph(gls, g, leaf_lookup=leaf_labels)
+        print(f"tree_log_likelihood={ll}\tnewick_branch_lengths={nw}")
+
+
+@cli.command()
+@click.argument("h5_file")
 @click.option(
     "--phylo-nexus",
     type=click.File("w"),

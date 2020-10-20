@@ -1,5 +1,7 @@
 import h5py
 import networkx as nx
+import newick
+
 from pigglet.aggregator import tree_to_newick
 
 from dataclasses import dataclass
@@ -80,3 +82,38 @@ class NewickTreeConverter:
             leaf_lookup=leaf_labels,
             node_branch_length_lookup=node_branch_lengths,
         )
+
+
+def extract_newick_file_as_digraph(newick_tree_file, zero_based=False):
+    for t in newick.load(newick_tree_file):
+        g = nx.DiGraph()
+        node_names = {}
+        for idx, node in enumerate(t.walk()):
+            if node.name is None:
+                node_names[id(node)] = -1
+            else:
+                node_id = int(node.name)
+                node_names[id(node)] = node_id
+            for dec in node.descendants:
+                g.add_edge(id(node), id(dec))
+        first_leaf_id = sorted(set(node_names.values()))[1]
+        if zero_based:
+            assert first_leaf_id == 0
+        else:
+            assert first_leaf_id == 1
+        last_leaf_id = max(node_names.values())
+        num_missing_nodes = sum(
+            1 if v == -1 else 0 for v in node_names.values()
+        )
+        assert len(g.nodes) == last_leaf_id + num_missing_nodes + int(
+            zero_based
+        ), "Assuming leaf nodes have ids 1:n_leaves"
+        next_node_id = last_leaf_id + 1
+        for n in g:
+            if node_names[n] == -1:
+                node_names[n] = next_node_id
+                next_node_id += 1
+        if not zero_based:
+            node_names = {k: v - 1 for k, v in node_names.items()}
+        g = nx.relabel_nodes(g, node_names)
+        yield g

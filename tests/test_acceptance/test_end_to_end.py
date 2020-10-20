@@ -341,3 +341,66 @@ def test_extract_trees(tmpdir):
         for sample in range(1, len(b.sample_names) + 1):
             assert f"{sample}:0.0" in tree
         assert re.search(r"\):1.0*;$", tree)
+
+
+@pytest.mark.parametrize(
+    "tree_str,one_base,label_leaves",
+    [
+        ("((1,2),3);", True, False),
+        ("((0,1),2);", False, False),
+        ("((1,2),3);", True, True),
+        ("((0,1),2);", False, True),
+    ],
+)
+def test_calc_tree_stats(tmp_path, tree_str, one_base, label_leaves):
+    # given
+    gl_tag = "PL"
+    b = VCFBuilder(tmp_path)
+    b.with_tag(gl_tag)
+    mut = (-100, 0, -100)
+    no_mut = (0, -100, -100)
+    b.with_site_gls(mut, mut, no_mut)
+    b.with_site_gls(mut, no_mut, no_mut)
+    b.with_site_gls(no_mut, mut, no_mut)
+    b.with_site_gls(no_mut, no_mut, mut)
+    b.with_site_gls(no_mut, no_mut, mut)
+    vcf_file = b.build()
+    prefix = tmp_path / "out"
+    out_h5 = str(prefix) + ".h5"
+    test_nw = tmp_path / "test.nw"
+
+    runner = CliRunner()
+    command = [str(vcf_file), str(out_h5)]
+    result = runner.invoke(cli.store_gls, command, catch_exceptions=False)
+    assert result.exit_code == 0
+
+    with open(str(test_nw), "w") as fh:
+        fh.write(tree_str)
+
+    # when
+    expected_nw = "((1:1, 2:1):1, 3:2):0"
+    command = [out_h5, str(test_nw)]
+    if one_base:
+        command += ["--one-based"]
+    else:
+        command += ["--no-one-based"]
+    if label_leaves:
+        command += ["--label-leaves"]
+        expected_nw = re.sub(
+            r"(\d):(\d)",
+            lambda m: f"sample_{int(m.group(1))-1}:{m.group(2)}",
+            expected_nw,
+        )
+
+    result = runner.invoke(
+        cli.calc_tree_stats, command, catch_exceptions=False
+    )
+
+    # then
+    print(result.output)
+    assert result.exit_code == 0
+    output = result.output.rstrip().split("\n")[-1]
+    output = re.sub(r"\.0+", "", output)
+    assert (
+        output == f"tree_log_likelihood=0\tnewick_branch_lengths={expected_nw}"
+    )

@@ -19,7 +19,7 @@ GL_HEADER_LINES = {
 
 class VCFBuilder:
     def __init__(self, tmpdir):
-        self.vcf_file = tmpdir.join("input.vcf")
+        self.vcf_file = tmpdir / "input.vcf"
         self.gls = []
         self.n_samples = None
         self.known_tags = {"GL", "PL"}

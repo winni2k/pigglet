@@ -6,8 +6,9 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
-from pigglet.aggregator import PhyloAttachmentAggregator
+from pigglet.aggregator import PhyloAttachmentAggregator, tree_to_newick
 from pigglet.likelihoods import PhyloTreeLikelihoodCalculator
+from pigglet.scipy_import import logsumexp
 from pigglet.tree_interactor import GraphAnnotator
 
 
@@ -70,3 +71,33 @@ def calc_mutation_probabilities(gls, h5_file, jobs, n_sampling_iterations):
             data=sum_ll,
             compression="gzip",
         )
+
+
+def calc_phylo_branch_lengths_for_tree(gls, g_edge_list):
+    g = nx.DiGraph(list(g_edge_list))
+    GraphAnnotator(g).annotate_all_nodes_with_descendant_leaves()
+    calc = PhyloTreeLikelihoodCalculator(g, gls)
+    site_like_total = calc.attachment_marginalized_log_likelihoods()
+    # log_likes.shape = len(g) x m
+    log_likes = calc.attachment_log_like - site_like_total
+    expected_num_sites = np.exp(logsumexp(log_likes, axis=1))
+    for n in range(len(expected_num_sites)):
+        g.nodes[n]["expected_n_mut"] = expected_num_sites[n]
+    return g
+
+
+def calc_tree_stats_for_digraph(gls, g, leaf_lookup=None, one_base=True):
+    g_with_exp_n_mut = calc_phylo_branch_lengths_for_tree(gls, g.edges)
+    ll = PhyloTreeLikelihoodCalculator(g, gls).log_likelihood()
+    node_branch_lengths = {
+        k: v for k, v in g_with_exp_n_mut.nodes(data="expected_n_mut")
+    }
+    return (
+        ll,
+        tree_to_newick(
+            g_with_exp_n_mut,
+            one_base=one_base,
+            leaf_lookup=leaf_lookup,
+            node_branch_length_lookup=node_branch_lengths,
+        ),
+    )

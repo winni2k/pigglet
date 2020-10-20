@@ -39,6 +39,7 @@ setup(
         "tskit",
         "pyfiglet==0.8.post1",
         "ray",
+        "newick>=1.0.0",
     ],
     packages=find_packages(
         "src", exclude=["contrib", "docs", "tests", "test_utils"]
