@@ -233,6 +233,9 @@ def infer(
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
+    logger.info("Proposing trees with following proposal methods:")
+    # for method in runner.
+    # logger.info("\t")
 
     runner.like_mover.check_logsumexp_accuracy_on = check_logsumexp_accuracy
     runner.like_mover.logsumexp_refresh_rate = logsumexp_refresh_rate

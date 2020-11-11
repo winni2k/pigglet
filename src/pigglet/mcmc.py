@@ -1,7 +1,7 @@
 import logging
 import math
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, List, Optional
 
 import networkx as nx
@@ -19,8 +19,6 @@ from pigglet.tree_likelihood_mover import (
     PhyloTreeLikelihoodMover,
     TreeLikelihoodMover,
 )
-
-NUM_MCMC_MOVES = 3
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +44,6 @@ class MCMCRunner:
     new_like: float = 0.0
     current_like: float = 0.0
     map_like: float = 0.0
-    mcmc_moves: List[int] = field(
-        default_factory=lambda: list(range(NUM_MCMC_MOVES))
-    )
     tree_aggregator: Optional[TreeAggregator] = None
 
     def __post_init__(self):
