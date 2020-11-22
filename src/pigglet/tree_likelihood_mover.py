@@ -109,6 +109,13 @@ class TreeLikelihoodMover(ABC):
     def get_available_move_names(self):
         return [m.__name__ for m in self.mover.available_moves]
 
+    @property
+    def move_weights(self):
+        return self.mover.weights
+
+    def set_move_weight(self, weight_index, weight):
+        self.mover.weights[weight_index] = weight
+
 
 class PhyloTreeLikelihoodMover(TreeLikelihoodMover):
     """Make phylogenetic tree moves while keeping tree likelihoods updated"""

@@ -134,6 +134,12 @@ def create_store(output_store):
     is_flag=True,
     help="Delete any pre-existing output files before running.",
 )
+@click.option(
+    "--leaf-swap-weight",
+    type=float,
+    default=1,
+    help="Relative weight of leaf swap move. 0 turns off leaf swap.",
+)
 def infer(
     gl_vcf,
     out_prefix,
@@ -150,6 +156,7 @@ def infer(
     defer_mutation_probability_calc,
     num_actors,
     force,
+    leaf_swap_weight,
 ):
     """Infer phylogenetic or mutation tree from genotype likelihoods
     stored in GL_VCF.
@@ -229,6 +236,7 @@ def infer(
             double_check_ll_calculation=double_check_likelihood_calculation,
             num_actors=num_actors,
         )
+        runner.set_move_weight("swap_leaf", leaf_swap_weight)
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval

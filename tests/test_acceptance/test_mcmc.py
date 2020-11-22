@@ -34,7 +34,6 @@ def test_finds_one_sample_one_site():
     assert set(mcmc.map_g.edges()) == {(-1, 0)}
 
 
-# @pytest.mark.parametrize("mutation_tree", (True, False))
 def test_finds_two_samples_two_sites():
     mutation_tree = True
     b = MCMCBuilder()
@@ -257,3 +256,43 @@ class TestPhyloMoveExecutor:
 
         # then
         assert sorted(ct.g.edges) == original_edges
+
+
+@pytest.mark.parametrize(
+    "mutation_tree,num_actors", [(True, 1), (False, 1), (False, 2)]
+)
+def test_sets_tree_move_weights(mutation_tree, num_actors):
+    b = MCMCBuilder()
+    b.with_mutated_gl_at(0, 0)
+    b.with_mutated_gl_at(1, 1)
+    b.with_num_actors(num_actors)
+    if mutation_tree:
+        move_name = "swap_node"
+    else:
+        move_name = "swap_leaf"
+        b.with_phylogenetic_tree()
+    mcmc = b.build()
+
+    # when
+    assert 1 == mcmc.move_weights[move_name]
+    mcmc.set_move_weight(move_name, 0.5)
+
+    # then
+    assert 0.5 == mcmc.move_weights[move_name]
+
+
+@pytest.mark.parametrize("is_phylogenetic", (True, False))
+def test_raises_if_unknown_move_weight_is_changed(is_phylogenetic):
+    # given
+    b = MCMCBuilder()
+    if is_phylogenetic:
+        b.with_phylogenetic_tree()
+
+    for sample in range(2):
+        b.with_mutated_gl_at(sample, sample)
+
+    mcmc = b.build()
+
+    # when/then
+    with pytest.raises(ValueError):
+        mcmc.set_move_weight("bla", 0.5)

@@ -21,8 +21,8 @@ class PhyloTreeLikelihoodMoverActor(PhyloTreeLikelihoodMover):
     def getattr(self, attr):
         return getattr(self, attr)
 
-    def setattr(self, attr, val):
-        setattr(self, attr, val)
+    def setattr(self, attr, *vals):
+        setattr(self, attr, *vals)
 
 
 def stride_ranges(num_items, num_chunks):
@@ -43,7 +43,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
             num_actors = n_sites
         g_id = ray.put(g)
         lefts, rights = stride_ranges(n_sites, num_actors)
-        logger.info(f"Creating ({len(lefts)} actors")
+        logger.info(f"Creating {len(lefts)} actors")
         for idx, (left, right) in enumerate(zip(lefts, rights)):
             logger.info(f"Actor {idx}: {right-left} sites")
             self.actors.append(
@@ -73,7 +73,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
             a.make_and_register_random_move.remote()
 
     def has_changed_nodes(self):
-        return self._get_and_check_actors("has_changed_nodes")
+        return self._get_attr_and_check_actors("has_changed_nodes")
 
     def undo(self):
         for actor in self.actors:
@@ -81,11 +81,11 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def move_changed_tree(self):
-        return self._get_and_check_actors("move_changed_tree")
+        return self._get_attr_and_check_actors("move_changed_tree")
 
     @property
     def double_check_ll_calculations(self):
-        return self._get_and_check_actors("double_check_ll_calculations")
+        return self._get_attr_and_check_actors("double_check_ll_calculations")
 
     @double_check_ll_calculations.setter
     def double_check_ll_calculations(self, value):
@@ -93,7 +93,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def check_logsumexp_accuracy(self):
-        return self._get_and_check_actors("check_logsumexp_accuracy")
+        return self._get_attr_and_check_actors("check_logsumexp_accuracy")
 
     @check_logsumexp_accuracy.setter
     def check_logsumexp_accuracy(self, value):
@@ -101,7 +101,7 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def logsumexp_refresh_rate(self):
-        return self._get_and_check_actors("logsumexp_refresh_rate")
+        return self._get_attr_and_check_actors("logsumexp_refresh_rate")
 
     @logsumexp_refresh_rate.setter
     def logsumexp_refresh_rate(self, value):
@@ -113,13 +113,21 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
 
     @property
     def mh_correction(self):
-        return self._get_and_check_actors("mh_correction")
+        return self._get_attr_and_check_actors("mh_correction")
 
     def log_likelihood(self):
         likelihoods = [a.log_likelihood.remote() for a in self.actors]
         return sum(ray.get(v) for v in likelihoods)
 
-    def _get_and_check_actors(self, actor_func_name):
+    @property
+    def move_weights(self):
+        return self._get_attr_and_check_actors("move_weights")
+
+    def set_move_weight(self, weight_index, weight):
+        for a in self.actors:
+            a.set_move_weight.remote(weight_index, weight)
+
+    def _get_attr_and_check_actors(self, actor_func_name):
         futures = [self.actors[0].getattr.remote(actor_func_name)]
         if self.testing:
             futures += [
@@ -130,9 +138,9 @@ class PhyloTreeLikelihoodMoverDirector(TreeLikelihoodMover):
             assert all(ray.get(v) == first for v in futures[1:])
         return first
 
-    def _set_for_all_actors(self, actor_func_name, val):
+    def _set_for_all_actors(self, actor_func_name, *vals):
         for actor in self.actors:
-            actor.setattr.remote(actor_func_name, val)
+            actor.setattr.remote(actor_func_name, *vals)
 
     def get_tracker_n_tries(self):
         return ray.get(self.actors[0].get_tracker_n_tries.remote())

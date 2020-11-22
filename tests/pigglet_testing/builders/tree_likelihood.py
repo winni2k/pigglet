@@ -189,6 +189,7 @@ class MCMCBuilder:
         self.mutation_tree = True
         self.reporting_interval = 10
         self.internal_attach_like_double_checking = True
+        self.num_actors = 1
 
     def __getattr__(self, item):
         return getattr(self.l_builder, item)
@@ -219,6 +220,9 @@ class MCMCBuilder:
     def with_prng(self, prng):
         self.prng = prng
 
+    def with_num_actors(self, num_actors):
+        self.num_actors = num_actors
+
     def build(self):
         if self.prng is random:
             if self.seed is None:
@@ -230,7 +234,9 @@ class MCMCBuilder:
         if self.mutation_tree:
             runner = MCMCRunner.mutation_tree_from_gls(gls, prng=self.prng)
         else:
-            runner = MCMCRunner.phylogenetic_tree_from_gls(gls, prng=self.prng)
+            runner = MCMCRunner.phylogenetic_tree_from_gls(
+                gls, prng=self.prng, num_actors=self.num_actors
+            )
             if self.internal_attach_like_double_checking:
                 runner.like_mover.double_check_ll_calculations = True
         runner.num_burnin_iter = self.n_burnin_iter

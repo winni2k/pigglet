@@ -170,6 +170,18 @@ class MCMCRunner:
     def g(self):
         return self.like_mover.g
 
+    def set_move_weight(self, move_name: str, weight: float):
+        assert weight >= 0
+        available_moves = self.like_mover.get_available_move_names()
+        move_index = available_moves.index(move_name)
+        self.like_mover.set_move_weight(move_index, weight)
+
+    @property
+    def move_weights(self):
+        available_moves = self.like_mover.get_available_move_names()
+        weights = self.like_mover.move_weights
+        return {k: v for k, v in zip(available_moves, weights)}
+
     def _update_map(self, iteration):
         if self.new_like > self.map_like:
             self.map_g = self.g.copy()
