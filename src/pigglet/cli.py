@@ -226,16 +226,12 @@ def infer(
     else:
         runner = MCMCRunner.phylogenetic_tree_from_gls(
             gls,
-            tree_move_weights=[int(gls.shape[1] != 3), 1],
             double_check_ll_calculation=double_check_likelihood_calculation,
             num_actors=num_actors,
         )
     runner.num_burnin_iter = burnin
     runner.num_sampling_iter = sampling
     runner.reporting_interval = reporting_interval
-    logger.info("Proposing trees with following proposal methods:")
-    # for method in runner.
-    # logger.info("\t")
 
     runner.like_mover.check_logsumexp_accuracy_on = check_logsumexp_accuracy
     runner.like_mover.logsumexp_refresh_rate = logsumexp_refresh_rate

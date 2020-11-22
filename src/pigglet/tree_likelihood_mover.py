@@ -26,8 +26,8 @@ class TreeLikelihoodMover(ABC):
         self.mover = None
         self.calc = None
 
-    def make_and_register_random_move(self, weights=None):
-        self.mover.random_move(weights=weights)
+    def make_and_register_random_move(self):
+        self.mover.random_move()
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
     def undo(self):
@@ -35,8 +35,8 @@ class TreeLikelihoodMover(ABC):
         self.mover.undo(memento=self.mover.memento)
         self.calc.register_changed_nodes(*self.mover.changed_nodes)
 
-    def random_move_and_get_like(self, weights=None):
-        self.make_and_register_random_move(weights=weights)
+    def random_move_and_get_like(self):
+        self.make_and_register_random_move()
         return self.log_likelihood()
 
     def log_likelihood(self):
@@ -225,6 +225,7 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
             self.extending_subtree_prune_and_regraft,
             self.swap_leaf,
         ]
+        self.weights = [1] * len(self.available_moves)
         self.move_tracker = MoveTracker(len(self.available_moves))
         self.ext_choice_prob = 0.33
 
@@ -236,8 +237,8 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         self, node: int = None
     ) -> Tuple[int, Tuple[int, int]]:
         """AKA eSPR, as described in Lakner et al. 2008"""
-        if len(self.g) < 6:
-            raise TreeIsTooSmallError("Tree contains less than four leaves")
+        # if len(self.g) < 6:
+        #     raise TreeIsTooSmallError("Tree contains less than four leaves")
         choices = self._get_choices(node)
         node = self.prng.choice(choices)
         self.memento, edge = self.interactor.extend_prune_and_regraft(
@@ -262,11 +263,9 @@ class PhyloTreeMoveCaretaker(TreeMoveCaretaker):
         self.memento = self.interactor.swap_leaves(n1, n2)
         return n1, n2
 
-    def random_move(self, weights=None):
-        if weights is None:
-            weights = [1] * len(self.available_moves)
+    def random_move(self):
         choice = self.prng.choices(
-            range(len(self.available_moves)), weights=weights
+            range(len(self.available_moves)), weights=self.weights
         )[0]
         self.available_moves[choice]()
         # logger.debug(
@@ -293,6 +292,7 @@ class MutationTreeMoveCaretaker(TreeMoveCaretaker):
             self.swap_node,
             self.swap_subtree,
         ]
+        self.weights = [1] * len(self.available_moves)
         self.move_tracker = MoveTracker(len(self.available_moves))
         self.changed_nodes = list(roots_of_tree(g))
         self.ext_choice_prob = 0.5
@@ -337,11 +337,9 @@ class MutationTreeMoveCaretaker(TreeMoveCaretaker):
         self.memento = self.interactor.swap_subtrees(n1, n2)
         self.changed_nodes = [n1, n2]
 
-    def random_move(self, weights=None):
-        if weights is None:
-            weights = [1, 1, 1]
+    def random_move(self):
         choice = self.prng.choices(
-            range(len(self.available_moves)), weights=weights
+            range(len(self.available_moves)), weights=self.weights
         )[0]
         self.move_tracker.register_try(choice)
         self.available_moves[choice]()

@@ -26,7 +26,7 @@ from pigglet import cli
     "gl_tag,mutation_tree,invoke",
     it.product(["GL", "PL"], [True, False], [True, False]),
 )
-def test_single_mutation_one_sample_creates_trivial_graph(
+def test_single_mutation_three_samples_creates_trivial_graph(
     tmpdir, gl_tag, mutation_tree, invoke
 ):
     # given

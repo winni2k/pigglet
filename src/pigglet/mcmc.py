@@ -2,7 +2,7 @@ import logging
 import math
 import random
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import networkx as nx
 import numpy as np
@@ -34,7 +34,6 @@ def rearrange_gl_axes_for_performance(gls):
 @dataclass
 class MCMCRunner:
     map_g: nx.DiGraph
-    tree_move_weights: List[float]
     like_mover: TreeLikelihoodMover
     agg: AttachmentAggregator
     prng: Any
@@ -59,7 +58,6 @@ class MCMCRunner:
         like_mover = MutationTreeLikelihoodMover(graph, gls, prng=prng)
         return cls(
             map_g=graph.copy(),
-            tree_move_weights=[1] * len(like_mover.mover.available_moves),
             like_mover=like_mover,
             agg=MutationAttachmentAggregator(),
             prng=prng,
@@ -90,10 +88,6 @@ class MCMCRunner:
             )
         else:
             like_mover = PhyloTreeLikelihoodMover(graph, gls, prng)
-        if "tree_move_weights" not in kwargs:
-            kwargs["tree_move_weights"] = [1] * len(
-                like_mover.mover.available_moves
-            )
         if "double_check_ll_calculation" in kwargs:
             like_mover.double_check_ll_calculations = kwargs.pop(
                 "double_check_ll_calculation"
@@ -188,9 +182,7 @@ class MCMCRunner:
 
     def _mh_step(self):
         """Propose tree and MH reject proposal"""
-        self.new_like = self.like_mover.random_move_and_get_like(
-            weights=self.tree_move_weights
-        )
+        self.new_like = self.like_mover.random_move_and_get_like()
         if not self.like_mover.move_changed_tree:
             assert np.allclose(
                 self.current_like, self.new_like, atol=1.0e-1
