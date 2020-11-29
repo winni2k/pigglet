@@ -7,6 +7,10 @@ from pigglet.aggregator import tree_to_newick
 from dataclasses import dataclass
 
 
+def get_input_samples(h5_fh):
+    return [s.decode() for s in h5_fh["input/samples"]]
+
+
 @dataclass
 class NewickTreeConverter:
     h5_file: str
@@ -17,7 +21,7 @@ class NewickTreeConverter:
         """Convert posterior phylogenetic tree samples to NEXUS format"""
         nexus_out = []
         with h5py.File(self.h5_file, "r") as h5_fh:
-            taxa = list(h5_fh["input/samples"])
+            taxa = get_input_samples(h5_fh)
             nexus_out.append(
                 f"#NEXUS\n"
                 f"Begin TAXA;\n"
@@ -52,7 +56,7 @@ class NewickTreeConverter:
     ):
         leaf_labels = node_branch_lengths = None
         if self.label_leaves:
-            leaf_labels = list(h5_fh["input/samples"])
+            leaf_labels = get_input_samples(h5_fh)
         for sample in list(h5_fh[trees]):
             if self.branch_lengths:
                 node_branch_lengths = list(h5_fh[f"{br_lens}/{sample}"])
@@ -72,7 +76,7 @@ class NewickTreeConverter:
     ):
         leaf_labels = node_branch_lengths = None
         if self.label_leaves:
-            leaf_labels = list(h5_fh["input/samples"])
+            leaf_labels = get_input_samples(h5_fh)
         if self.branch_lengths:
             node_branch_lengths = list(h5_fh[br_lens])
         g = nx.DiGraph(list(h5_fh[tree]))

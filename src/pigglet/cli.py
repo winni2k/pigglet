@@ -447,7 +447,7 @@ def calc_tree_stats(h5_file, newick_tree, label_leaves, one_based):
         leaf_labels = None
         if label_leaves:
             print("Annotating nodes with leaf labels", file=sys.stderr)
-            leaf_labels = list(fh["input/samples"])
+            leaf_labels = [s.decode() for s in fh["input/samples"]]
         else:
             print("Newick output leaf nodes are zero-based", file=sys.stderr)
 
@@ -527,10 +527,13 @@ def store_input(gls, loader, output_store, store_gls):
         if "input/site_info" in fh:
             assert loader.infos == "input/site_info"
         else:
+            infos = []
+            for info_line in loader.infos:
+                infos.append([str(v) for v in info_line])
             fh.create_dataset(
                 "input/site_info",
                 data=np.array(
-                    loader.infos, dtype=h5py.string_dtype(encoding="utf-8")
+                    infos, dtype=h5py.string_dtype(encoding="utf-8")
                 ),
                 compression="gzip",
             )
