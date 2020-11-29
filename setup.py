@@ -38,7 +38,7 @@ setup(
         "msprime",
         "tskit",
         "pyfiglet==0.8.post1",
-        "ray",
+        "ray==1.0.1.post1",  # works ok with 0.8.6
         "newick>=1.0.0",
     ],
     packages=find_packages(
